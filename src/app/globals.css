@@ -1,0 +1,50 @@
+@import "tailwindcss";
+
+:root {
+  /* Light theme (default) */
+  --bg: #ffffff; /* lightBackground */
+  --surface: #f9fafb; /* lightSurface */
+  --fg: #050505; /* primaryTextOnLight */
+  --muted-text: #9ca3af; /* mutedText */
+  --muted-border: #1f2933; /* mutedBorder (subtle) */
+  --ring: #111827; /* subtle focus ring */
+}
+
+.theme-dark {
+  /* Dark theme overrides */
+  --bg: #000000; /* darkBackground */
+  --surface: #050505; /* darkSurface */
+  --fg: #f9fafb; /* primaryTextOnDark */
+  --muted-text: #9ca3af; /* mutedText (same) */
+  --muted-border: #1f2933; /* mutedBorder */
+  --ring: #f9fafb; /* high-contrast ring */
+}
+
+@theme inline {
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  background: var(--bg);
+  color: var(--fg);
+}
+
+/* Utilities using tokens */
+.surface {
+  background-color: var(--surface);
+}
+.border-muted {
+  border-color: color-mix(in oklab, var(--muted-border) 40%, transparent);
+}
+.text-muted {
+  color: var(--muted-text);
+}
+.ring-token {
+  --tw-ring-color: var(--ring);
+}

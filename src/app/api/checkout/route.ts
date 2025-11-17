@@ -1,0 +1,88 @@
+import { NextResponse } from "next/server";
+import { z } from "zod";
+import { getCurrentUser } from "@/lib/auth/session";
+import { getDb } from "@/lib/db/connection";
+import { CartItemModel } from "@/lib/db/models/CartItem";
+import { ProductModel } from "@/lib/db/models/Product";
+import { OrderModel } from "@/lib/db/models/Order";
+import { ConsoleEmailService, buildOrderEmail } from "@/lib/email/EmailService";
+import { env } from "@/config/env";
+
+const bodySchema = z.object({
+  deliveryAddress: z.string().min(5),
+  phone: z.string().min(5),
+  email: z.string().email(),
+});
+
+export async function POST(req: Request) {
+  const user = await getCurrentUser();
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!env.MONGODB_URI || !env.MONGODB_URI.startsWith("mongodb")) {
+    return NextResponse.json({ error: "Database not configured" }, { status: 500 });
+  }
+  const json = await req.json().catch(() => null);
+  const parsed = bodySchema.safeParse(json);
+  if (!parsed.success) return NextResponse.json({ error: "Invalid input" }, { status: 400 });
+  const { deliveryAddress, phone, email } = parsed.data;
+
+  await getDb();
+  const cartItems = await CartItemModel.find({ userId: user.id }).lean();
+  if (!cartItems.length) return NextResponse.json({ error: "Cart is empty" }, { status: 409 });
+
+  const productIds = cartItems.map((i) => i.productId);
+  const products = await ProductModel.find({ _id: { $in: productIds }, isActive: true }).lean();
+  type WithId = { _id: string | { toString(): string } };
+  type ProductLean = WithId & { name: string; basePrice: number };
+  const toIdString = (id: string | { toString(): string }) => (typeof id === "string" ? id : id.toString());
+  const productMap = new Map<string, ProductLean>(
+    products.map((p) => [toIdString((p as unknown as WithId)._id), p as unknown as ProductLean])
+  );
+
+  // Validate all items exist
+  for (const i of cartItems) {
+    const p = productMap.get(i.productId.toString());
+    if (!p) return NextResponse.json({ error: "Some items are unavailable" }, { status: 409 });
+  }
+
+  // Build order items with snapshots
+  const items = cartItems.map((i) => {
+    const p = productMap.get(i.productId.toString())!;
+    return {
+      productId: i.productId,
+      name: p.name,
+      price: p.basePrice,
+      size: i.size,
+      color: i.color,
+      quantity: i.quantity,
+    };
+  });
+
+  const subtotal = items.reduce((sum, it) => sum + it.price * it.quantity, 0);
+  const total = subtotal; // placeholder for taxes/discounts
+
+  const order = await OrderModel.create({
+    userId: user.id,
+    items,
+    deliveryAddress,
+    phone,
+    email,
+    subtotal,
+    total,
+    status: "Pending",
+  });
+
+  // Clear cart
+  await CartItemModel.deleteMany({ userId: user.id });
+
+  // Send transactional email (bypasses marketing prefs by design)
+  const mailer = new ConsoleEmailService();
+  const mail = buildOrderEmail("order_placed", {
+    email,
+    customer_name: user.name || user.email,
+    order_id: order._id.toString(),
+    total: total.toFixed(2),
+  });
+  await mailer.send(mail);
+
+  return NextResponse.json({ orderId: order._id.toString() }, { status: 201 });
+}
