@@ -3,19 +3,23 @@
  * Run with: node test-db-connection.js
  */
 
-const mongoose = require("mongoose");
-
 const MONGODB_URI =
+  process.env.MONGODB_URI ||
   "mongodb+srv://fraolashebir84:67tfWBkn10QWP81t@nodetest.6founly.mongodb.net/tshirt_app?retryWrites=true&w=majority&appName=nodeTest";
+if (!process.env.MONGODB_URI) {
+  console.log(
+    "ℹ️ Using hardcoded fallback connection string. Set MONGODB_URI in .env.local to override."
+  );
+}
 
 async function testConnection() {
   console.log("🔌 Testing MongoDB connection...\n");
 
+  const mongoose = (await import("mongoose")).default;
+
   try {
     // Connect to MongoDB
     await mongoose.connect(MONGODB_URI);
-    console.log("✅ MongoDB connection successful!");
-    console.log("📦 Database:", mongoose.connection.db.databaseName);
     console.log("🌐 Host:", mongoose.connection.host);
 
     // List existing collections
