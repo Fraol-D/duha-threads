@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
-import { clearAuthCookie } from "@/lib/auth/session";
+import { attachClearAuthCookie } from "@/lib/auth/session";
 
 export async function POST() {
-  clearAuthCookie();
-  return NextResponse.json({ status: "logged_out" });
+  const res = NextResponse.json({ status: "logged_out" });
+  attachClearAuthCookie(res);
+  return res;
 }

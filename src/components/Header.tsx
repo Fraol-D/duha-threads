@@ -5,9 +5,11 @@ import { ThemeToggle } from "./ui/ThemeToggle";
 const navItems = [
   { href: "/", label: "Home" },
   { href: "/products", label: "Products" },
-  { href: "/custom", label: "Custom Orders" },
-  { href: "/about", label: "About" },
-  { href: "/contact", label: "Contact" },
+  { href: "/custom-order", label: "Custom Order" },
+  { href: "/cart", label: "Cart" },
+  { href: "/wishlist", label: "Wishlist" },
+  { href: "/custom-orders", label: "My Orders" },
+  { href: "/profile", label: "Profile" },
 ];
 
 export function Header() {
