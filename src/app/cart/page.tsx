@@ -1,5 +1,6 @@
 "use client";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
+import Link from "next/link";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { MascotSlot } from "@/components/ui/MascotSlot";
 
@@ -45,11 +46,6 @@ export default function CartPage() {
       .then(() => setItems((prev) => prev.filter((i) => i._id !== id)));
   }
 
-  const total = useMemo(() => {
-    // Placeholder: real total requires product price lookup; to be implemented later
-    return items.reduce((sum, i) => sum + i.quantity * 0, 0);
-  }, [items]);
-
   if (loading) return <div className="py-12 text-center">Loading cart...</div>;
   if (error) return <div className="py-12 text-center text-red-600">{error}</div>;
 
@@ -58,8 +54,8 @@ export default function CartPage() {
       <div className="py-10">
         <EmptyState
           title="Your cart is empty"
-          description="Looks like you haven’t added anything yet."
-          action={<a href="/products" className="underline">Browse products</a>}
+          description="Looks like you haven't added anything yet."
+          action={<Link href="/products" className="underline">Browse products</Link>}
         />
         <div className="mt-6">
           <MascotSlot variant="emptyCart" />
@@ -85,8 +81,7 @@ export default function CartPage() {
           </div>
         ))}
       </div>
-      <div className="text-right font-medium">Total: ${" "}{total.toFixed(2)}</div>
-      <a href="/checkout" className="inline-block bg-black text-white px-4 py-2 rounded">Checkout</a>
+      <Link href="/checkout" className="inline-block bg-black text-white px-4 py-2 rounded">Checkout</Link>
     </div>
   );
 }

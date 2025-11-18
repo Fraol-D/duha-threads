@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { MascotSlot } from "@/components/ui/MascotSlot";
 
@@ -37,11 +38,11 @@ export default function WishlistPage() {
   if (error) return <div className="py-12 text-center text-red-600">{error}</div>;
   if (items.length === 0) {
     return (
-      <div className="py-10">
+      <div>
         <EmptyState
           title="Your wishlist is empty"
           description="Save products you love and revisit later."
-          action={<a href="/products" className="underline">Browse products</a>}
+          action={<Link href="/products" className="underline">Browse products</Link>}
         />
         <div className="mt-6">
           <MascotSlot variant="emptyWishlist" />
