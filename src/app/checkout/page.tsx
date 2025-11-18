@@ -1,6 +1,10 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { Card } from "@/components/ui/Card";
+import { Input } from "@/components/ui/Input";
+import { Textarea } from "@/components/ui/Textarea";
+import { Button } from "@/components/ui/Button";
 
 interface CartItem { _id: string; productId: string; size: string; color: string; quantity: number }
 interface Product { id: string; name: string; basePrice: number }
@@ -66,35 +70,39 @@ export default function CheckoutPage() {
 
   return (
     <div className="py-8 grid grid-cols-1 lg:grid-cols-3 gap-8">
-      <div className="lg:col-span-2 space-y-4">
-        <h1 className="text-2xl font-semibold">Checkout</h1>
-        <div className="space-y-3">
+      <div className="lg:col-span-2 space-y-6">
+        <h1 className="text-section-title">Checkout</h1>
+        <div className="space-y-4">
           {items.map((i) => (
-            <div key={i._id} className="flex items-center justify-between border rounded p-3 bg-white">
-              <div>
-                <div className="font-medium">Product {i.productId}</div>
-                <div className="text-sm text-gray-600">Size: {i.size} • Color: {i.color}</div>
+            <Card key={i._id} className="p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="font-medium">Product {i.productId}</div>
+                  <div className="text-sm text-muted">Size: {i.size} • Color: {i.color}</div>
+                </div>
+                <div className="text-sm font-medium">
+                  ${(prices[i.productId]?.basePrice || 0).toFixed(2)} × {i.quantity}
+                </div>
               </div>
-              <div className="text-sm">
-                {(prices[i.productId]?.basePrice || 0).toFixed(2)} × {i.quantity}
-              </div>
-            </div>
+            </Card>
           ))}
         </div>
       </div>
-      <div className="space-y-4">
-        <h2 className="text-xl font-semibold">Delivery</h2>
-        <form onSubmit={placeOrder} className="space-y-3">
-          <input required placeholder="Email" type="email" className="w-full border p-2 rounded" value={email} onChange={(e) => setEmail(e.target.value)} />
-          <input required placeholder="Phone" className="w-full border p-2 rounded" value={phone} onChange={(e) => setPhone(e.target.value)} />
-          <textarea required placeholder="Delivery Address" className="w-full border p-2 rounded" value={deliveryAddress} onChange={(e) => setDeliveryAddress(e.target.value)} />
-          <div className="flex items-center justify-between font-medium pt-2">
-            <span>Total</span>
-            <span>${" "}{total.toFixed(2)}</span>
-          </div>
-          <button className="w-full bg-black text-white py-2 rounded">Place Order</button>
-          {error && <p className="text-red-600 text-sm">{error}</p>}
-        </form>
+      <div className="space-y-6">
+        <Card variant="glass" className="p-6 space-y-4">
+          <h2 className="text-xl font-semibold">Delivery</h2>
+          <form onSubmit={placeOrder} className="space-y-4">
+            <Input required placeholder="Email" type="email" value={email} onChange={(e) => setEmail(e.currentTarget.value)} />
+            <Input required placeholder="Phone" value={phone} onChange={(e) => setPhone(e.currentTarget.value)} />
+            <Textarea required placeholder="Delivery Address" value={deliveryAddress} onChange={(e) => setDeliveryAddress(e.currentTarget.value)} />
+            <div className="flex items-center justify-between font-medium pt-2 border-t border-token">
+              <span>Total</span>
+              <span className="text-xl">${total.toFixed(2)}</span>
+            </div>
+            <Button type="submit" className="w-full">Place Order</Button>
+            {error && <p className="text-red-600 text-sm">{error}</p>}
+          </form>
+        </Card>
       </div>
     </div>
   );

@@ -1,6 +1,12 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
+import { motion } from "framer-motion";
+import { Card } from "@/components/ui/Card";
+import { Input } from "@/components/ui/Input";
+import { Select } from "@/components/ui/Select";
+import { Button } from "@/components/ui/Button";
+import { fadeInUp, staggerChildren } from "@/lib/motion";
 
 interface ProductListItem {
   id: string;
@@ -80,51 +86,60 @@ export default function ProductsClient() {
 
   return (
     <div className="py-8 space-y-6">
-      <div className="flex flex-col md:flex-row md:items-end gap-4">
-        <div className="flex gap-2 flex-1">
-          <input placeholder="Category" className="border rounded p-2 w-full" defaultValue={params.get("category") || ""} onBlur={(e) => setParam("category", e.target.value || undefined)} />
-          <input placeholder="Color" className="border rounded p-2 w-full" defaultValue={params.get("color") || ""} onBlur={(e) => setParam("color", e.target.value || undefined)} />
-          <input placeholder="Size" className="border rounded p-2 w-full" defaultValue={params.get("size") || ""} onBlur={(e) => setParam("size", e.target.value || undefined)} />
+      <Card variant="glass" className="p-4">
+        <div className="flex flex-col md:flex-row md:items-end gap-4">
+          <div className="flex gap-2 flex-1">
+            <Input placeholder="Category" defaultValue={params.get("category") || ""} onBlur={(e) => setParam("category", e.currentTarget.value || undefined)} />
+            <Input placeholder="Color" defaultValue={params.get("color") || ""} onBlur={(e) => setParam("color", e.currentTarget.value || undefined)} />
+            <Input placeholder="Size" defaultValue={params.get("size") || ""} onBlur={(e) => setParam("size", e.currentTarget.value || undefined)} />
+          </div>
+          <div className="flex gap-2">
+            <Select value={params.get("sort") || "newest"} onChange={(e) => setParam("sort", e.currentTarget.value)}>
+              {sortOptions.map((o) => (
+                <option key={o.value} value={o.value}>{o.label}</option>
+              ))}
+            </Select>
+            <Select value={params.get("pageSize") || "12"} onChange={(e) => setParam("pageSize", e.currentTarget.value)}>
+              {pageSizeOptions.map((n) => (
+                <option key={n} value={n}>{n} / page</option>
+              ))}
+            </Select>
+          </div>
         </div>
-        <div className="flex gap-2">
-          <select className="border rounded p-2" defaultValue={params.get("sort") || "newest"} onChange={(e) => setParam("sort", e.target.value)}>
-            {sortOptions.map((o) => (
-              <option key={o.value} value={o.value}>{o.label}</option>
-            ))}
-          </select>
-          <select className="border rounded p-2" defaultValue={params.get("pageSize") || "12"} onChange={(e) => setParam("pageSize", e.target.value)}>
-            {pageSizeOptions.map((n) => (
-              <option key={n} value={n}>{n} / page</option>
-            ))}
-          </select>
-        </div>
-      </div>
+      </Card>
 
-      {loading && <div>Loading products...</div>}
+      {loading && <div className="text-center py-12 text-muted">Loading products...</div>}
       {!loading && data && (
         <>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+          <motion.div 
+            className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4"
+            initial="hidden"
+            animate="show"
+            variants={staggerChildren}
+          >
             {data.products.map((p) => (
-              <a key={p.id} href={`/products/${p.slug}`} className="border rounded overflow-hidden bg-white hover:shadow">
-                <div className="aspect-square bg-gray-100">
-                  {p.primaryImage ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={p.primaryImage.url} alt={p.primaryImage.alt} className="w-full h-full object-cover" />
-                  ) : null}
-                </div>
-                <div className="p-3 space-y-1">
-                  <div className="text-sm text-gray-500">{p.category}</div>
-                  <div className="font-medium">{p.name}</div>
-                  <div className="text-sm">${" "}{p.basePrice.toFixed(2)}</div>
-                </div>
-              </a>
+              <motion.a key={p.id} href={`/products/${p.slug}`} variants={fadeInUp}>
+                <Card interactive className="overflow-hidden group">
+                  <div className="aspect-square bg-muted">
+                    {p.primaryImage ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={p.primaryImage.url} alt={p.primaryImage.alt} className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" />
+                    ) : null}
+                  </div>
+                  <div className="p-3 space-y-1">
+                    <div className="text-sm text-muted">{p.category}</div>
+                    <div className="font-medium">{p.name}</div>
+                    <div className="text-sm">${p.basePrice.toFixed(2)}</div>
+                  </div>
+                </Card>
+              </motion.a>
             ))}
-          </div>
+          </motion.div>
 
-          <div className="flex items-center justify-center gap-2 pt-6">
-            <button className="px-3 py-1 border rounded disabled:opacity-50" disabled={data.page <= 1} onClick={() => goToPage(data.page - 1)}>Prev</button>
+          <div className="flex items-center justify-center gap-3 pt-6">
+            <Button variant="secondary" disabled={data.page <= 1} onClick={() => goToPage(data.page - 1)}>Prev</Button>
             <div className="text-sm">Page {data.page} of {data.totalPages}</div>
-            <button className="px-3 py-1 border rounded disabled:opacity-50" disabled={data.page >= data.totalPages} onClick={() => goToPage(data.page + 1)}>Next</button>
+            <Button variant="secondary" disabled={data.page >= data.totalPages} onClick={() => goToPage(data.page + 1)}>Next</Button>
           </div>
         </>
       )}

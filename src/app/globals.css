@@ -2,22 +2,40 @@
 
 :root {
   /* Light theme (default) */
-  --bg: #ffffff; /* lightBackground */
-  --surface: #f9fafb; /* lightSurface */
-  --fg: #050505; /* primaryTextOnLight */
-  --muted-text: #9ca3af; /* mutedText */
-  --muted-border: #1f2933; /* mutedBorder (subtle) */
-  --ring: #111827; /* subtle focus ring */
+  --bg: #ffffff;
+  --surface: #f9fafb;
+  --fg: #050505;
+  --muted-text: #9ca3af;
+  --muted-border: #e5e7eb;
+  --ring: #111827;
+
+  /* Morphism tokens */
+  --glass-bg: rgba(255, 255, 255, 0.5);
+  --glass-border: rgba(229, 231, 235, 0.6);
+  --shadow-soft-1: 4px 4px 12px rgba(0, 0, 0, 0.06);
+  --shadow-soft-2: -2px -2px 8px rgba(255, 255, 255, 0.5);
+  --shadow-glass: 0 8px 32px rgba(0, 0, 0, 0.08);
+  --shadow-3d: 0 2px 8px rgba(0, 0, 0, 0.1);
+  --shadow-3d-hover: 0 6px 20px rgba(0, 0, 0, 0.15);
 }
 
 .theme-dark {
   /* Dark theme overrides */
-  --bg: #000000; /* darkBackground */
-  --surface: #050505; /* darkSurface */
-  --fg: #f9fafb; /* primaryTextOnDark */
-  --muted-text: #9ca3af; /* mutedText (same) */
-  --muted-border: #1f2933; /* mutedBorder */
-  --ring: #f9fafb; /* high-contrast ring */
+  --bg: #000000;
+  --surface: #050505;
+  --fg: #f9fafb;
+  --muted-text: #9ca3af;
+  --muted-border: #1f2933;
+  --ring: #f9fafb;
+
+  /* Morphism tokens (dark) */
+  --glass-bg: rgba(5, 5, 5, 0.4);
+  --glass-border: rgba(31, 41, 51, 0.7);
+  --shadow-soft-1: 4px 4px 12px rgba(0, 0, 0, 0.3);
+  --shadow-soft-2: -2px -2px 8px rgba(255, 255, 255, 0.02);
+  --shadow-glass: 0 8px 32px rgba(0, 0, 0, 0.4);
+  --shadow-3d: 0 2px 8px rgba(0, 0, 0, 0.4);
+  --shadow-3d-hover: 0 6px 20px rgba(0, 0, 0, 0.6);
 }
 
 @theme inline {
@@ -40,11 +58,50 @@ body {
   background-color: var(--surface);
 }
 .border-muted {
-  border-color: color-mix(in oklab, var(--muted-border) 40%, transparent);
+  border-color: var(--muted-border);
 }
 .text-muted {
   color: var(--muted-text);
 }
 .ring-token {
   --tw-ring-color: var(--ring);
+}
+
+/* Morphism utilities */
+.glass {
+  background: var(--glass-bg);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--shadow-glass);
+}
+
+.soft-3d {
+  background: var(--surface);
+  box-shadow: var(--shadow-soft-1), var(--shadow-soft-2);
+}
+
+.shadow-3d {
+  box-shadow: var(--shadow-3d);
+  transition: box-shadow 200ms ease-out, transform 200ms ease-out;
+}
+
+.shadow-3d:hover {
+  box-shadow: var(--shadow-3d-hover);
+  transform: translateY(-2px);
+}
+
+/* Typography scale */
+.text-hero {
+  font-size: clamp(2.5rem, 5vw, 4rem);
+  line-height: 1.1;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.text-section-title {
+  font-size: clamp(1.75rem, 3vw, 2.5rem);
+  line-height: 1.2;
+  font-weight: 700;
+  letter-spacing: -0.01em;
 }

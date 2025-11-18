@@ -1,43 +1,93 @@
-import Image from "next/image";
+"use client";
 import Link from "next/link";
-import { Section } from "@/components/ui/Section";
-import { Card } from "@/components/ui/Card";
+import { motion } from "framer-motion";
+import { BentoGrid, BentoTile } from "@/components/ui/BentoGrid";
 import { Button } from "@/components/ui/Button";
 import { MascotSlot } from "@/components/ui/MascotSlot";
+import { fadeInUp, staggerChildren } from "@/lib/motion";
 
 export default function Home() {
   return (
-    <>
-      <Section>
-        <Card className="p-8 md:p-12">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
-            <div className="space-y-3">
-              <h1 className="text-3xl md:text-4xl font-semibold tracking-tight">Minimalist Tees, Maximum Impact</h1>
-              <p className="text-muted">High-contrast, modern designs printed on premium cotton.</p>
-              <div className="flex gap-3 pt-2">
-                <Link href="/products"><Button>Browse Products</Button></Link>
-                <Link href="/custom"><Button variant="secondary">Custom Orders</Button></Link>
+    <motion.div
+      initial="initial"
+      animate="animate"
+      variants={staggerChildren}
+      className="py-8 md:py-12 space-y-8"
+    >
+      <BentoGrid>
+        {/* Hero Tile */}
+        <motion.div variants={fadeInUp}>
+          <BentoTile span="2" rowSpan="2" variant="glass">
+            <div className="h-full flex flex-col justify-between gap-6">
+              <div className="space-y-4">
+                <h1 className="text-hero">
+                  Wear Your Story
+                </h1>
+                <p className="text-lg text-muted max-w-lg">
+                  Premium custom tees with bold designs. High-contrast, minimalist aesthetics. Made to order.
+                </p>
+                <div className="flex gap-3 pt-2">
+                  <Link href="/products">
+                    <Button>Browse Collection</Button>
+                  </Link>
+                  <Link href="/custom">
+                    <Button variant="secondary">Custom Order</Button>
+                  </Link>
+                </div>
               </div>
             </div>
-            <MascotSlot variant="hero" />
-          </div>
-        </Card>
-      </Section>
+          </BentoTile>
+        </motion.div>
 
-      <Section>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <Card className="p-6">
-            <h2 className="text-xl font-semibold mb-2">Browse Products</h2>
-            <p className="text-muted mb-4">Explore our catalog of best-selling designs.</p>
-            <Link href="/products" className="underline">View Products</Link>
-          </Card>
-          <Card className="p-6">
-            <h2 className="text-xl font-semibold mb-2">Custom Orders</h2>
-            <p className="text-muted mb-4">Bring your idea, we’ll craft the rest.</p>
-            <Link href="/custom" className="underline">Start Custom Order</Link>
-          </Card>
-        </div>
-      </Section>
-    </>
+        {/* Mascot Tile */}
+        <motion.div variants={fadeInUp}>
+          <BentoTile rowSpan="2" variant="soft3D">
+            <MascotSlot variant="hero" />
+          </BentoTile>
+        </motion.div>
+
+        {/* Featured Products Tile */}
+        <motion.div variants={fadeInUp}>
+          <BentoTile span="2" variant="flat">
+            <h2 className="text-section-title mb-4">Featured Designs</h2>
+            <p className="text-muted mb-4">
+              Explore our curated collection of best-selling tees.
+            </p>
+            <Link href="/products" className="underline text-sm">
+              View all products →
+            </Link>
+          </BentoTile>
+        </motion.div>
+
+        {/* Custom Builder Teaser */}
+        <motion.div variants={fadeInUp}>
+          <BentoTile variant="glass">
+            <h3 className="text-xl font-bold mb-2">Custom Builder</h3>
+            <p className="text-sm text-muted mb-4">
+              Design your own. Zero friction.
+            </p>
+            <Link href="/custom">
+              <Button variant="secondary" className="w-full">
+                Start Designing
+              </Button>
+            </Link>
+          </BentoTile>
+        </motion.div>
+
+        {/* Brand Story Tile */}
+        <motion.div variants={fadeInUp}>
+          <BentoTile span="full" variant="soft3D">
+            <div className="max-w-3xl mx-auto text-center space-y-3">
+              <h2 className="text-2xl md:text-3xl font-bold">
+                Minimalist Tees, Maximum Impact
+              </h2>
+              <p className="text-muted">
+                Every piece is crafted with intention. Bold typography, clean lines, premium cotton.
+              </p>
+            </div>
+          </BentoTile>
+        </motion.div>
+      </BentoGrid>
+    </motion.div>
   );
 }

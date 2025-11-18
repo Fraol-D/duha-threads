@@ -1,8 +1,12 @@
 "use client";
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { motion } from "framer-motion";
+import { Card } from "@/components/ui/Card";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { MascotSlot } from "@/components/ui/MascotSlot";
+import { Button } from "@/components/ui/Button";
+import { fadeInUp } from "@/lib/motion";
 
 interface CartItem {
   _id: string;
@@ -51,37 +55,51 @@ export default function CartPage() {
 
   if (items.length === 0) {
     return (
-      <div className="py-10">
-        <EmptyState
-          title="Your cart is empty"
-          description="Looks like you haven't added anything yet."
-          action={<Link href="/products" className="underline">Browse products</Link>}
-        />
-        <div className="mt-6">
+      <div className="py-10 space-y-6">
+        <Card variant="glass" className="p-8">
+          <EmptyState
+            title="Your cart is empty"
+            description="Looks like you haven't added anything yet."
+            action={<Link href="/products" className="underline">Browse products</Link>}
+          />
+        </Card>
+        <Card variant="soft3D" className="p-6">
           <MascotSlot variant="emptyCart" />
-        </div>
+        </Card>
       </div>
     );
   }
 
   return (
     <div className="py-8 space-y-6">
-      <h1 className="text-2xl font-semibold">Your Cart</h1>
+      <h1 className="text-section-title">Your Cart</h1>
       <div className="space-y-4">
         {items.map((i) => (
-          <div key={i._id} className="flex items-center justify-between border rounded p-3 bg-white">
-            <div className="space-y-1">
-              <div className="font-medium">Product {i.productId}</div>
-              <div className="text-sm text-gray-600">Size: {i.size} • Color: {i.color}</div>
-            </div>
-            <div className="flex items-center gap-2">
-              <input type="number" min={1} className="w-20 border rounded p-1" value={i.quantity} onChange={(e) => updateItem(i._id, { quantity: Number(e.target.value) })} />
-              <button className="text-sm underline" onClick={() => removeItem(i._id)}>Remove</button>
-            </div>
-          </div>
+          <motion.div key={i._id} variants={fadeInUp}>
+            <Card interactive className="p-4">
+              <div className="flex items-center justify-between">
+                <div className="space-y-1">
+                  <div className="font-medium">Product {i.productId}</div>
+                  <div className="text-sm text-muted">Size: {i.size} • Color: {i.color}</div>
+                </div>
+                <div className="flex items-center gap-3">
+                  <input 
+                    type="number" 
+                    min={1} 
+                    className="w-20 border border-muted rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 ring-token" 
+                    value={i.quantity} 
+                    onChange={(e) => updateItem(i._id, { quantity: Number(e.target.value) })} 
+                  />
+                  <button className="text-sm underline hover:no-underline" onClick={() => removeItem(i._id)}>Remove</button>
+                </div>
+              </div>
+            </Card>
+          </motion.div>
         ))}
       </div>
-      <Link href="/checkout" className="inline-block bg-black text-white px-4 py-2 rounded">Checkout</Link>
+      <Link href="/checkout">
+        <Button className="w-full md:w-auto">Checkout</Button>
+      </Link>
     </div>
   );
 }

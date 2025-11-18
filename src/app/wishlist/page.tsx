@@ -2,8 +2,11 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { motion } from "framer-motion";
+import { Card } from "@/components/ui/Card";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { MascotSlot } from "@/components/ui/MascotSlot";
+import { fadeInUp, staggerChildren } from "@/lib/motion";
 
 interface WishlistItem { _id: string; productId: string }
 
@@ -38,33 +41,44 @@ export default function WishlistPage() {
   if (error) return <div className="py-12 text-center text-red-600">{error}</div>;
   if (items.length === 0) {
     return (
-      <div>
-        <EmptyState
-          title="Your wishlist is empty"
-          description="Save products you love and revisit later."
-          action={<Link href="/products" className="underline">Browse products</Link>}
-        />
-        <div className="mt-6">
+      <div className="py-10 space-y-6">
+        <Card variant="glass" className="p-8">
+          <EmptyState
+            title="Your wishlist is empty"
+            description="Save products you love and revisit later."
+            action={<Link href="/products" className="underline">Browse products</Link>}
+          />
+        </Card>
+        <Card variant="soft3D" className="p-6">
           <MascotSlot variant="emptyWishlist" />
-        </div>
+        </Card>
       </div>
     );
   }
 
   return (
-    <div className="py-8 space-y-6">
-      <h1 className="text-2xl font-semibold">Wishlist</h1>
-      <div className="space-y-3">
+    <motion.div 
+      className="py-8 space-y-6"
+      initial="hidden"
+      animate="show"
+      variants={staggerChildren}
+    >
+      <h1 className="text-section-title">Wishlist</h1>
+      <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {items.map((i) => (
-          <div key={i._id} className="flex items-center justify-between border rounded p-3 bg-white">
-            <div>Product {i.productId}</div>
-            <div className="flex gap-2">
-              <button className="text-sm underline" onClick={() => addToCart(i.productId)}>Add to Cart</button>
-              <button className="text-sm underline" onClick={() => remove(i._id)}>Remove</button>
-            </div>
-          </div>
+          <motion.div key={i._id} variants={fadeInUp}>
+            <Card interactive className="p-4 space-y-3">
+              <Link href={`/products/${i.productId}`} className="block font-medium hover:underline">
+                Product {i.productId}
+              </Link>
+              <div className="flex gap-2">
+                <button className="text-sm underline hover:no-underline" onClick={() => addToCart(i.productId)}>Add to Cart</button>
+                <button className="text-sm underline hover:no-underline" onClick={() => remove(i._id)}>Remove</button>
+              </div>
+            </Card>
+          </motion.div>
         ))}
       </div>
-    </div>
+    </motion.div>
   );
 }
