@@ -2,13 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/lib/db/connection";
 import { CustomOrderModel } from "@/lib/db/models/CustomOrder";
 import { verifyAuth } from "@/lib/auth/session";
-import { env } from "@/config/env";
+import { isAdmin } from "@/lib/auth/admin";
 import { z } from "zod";
 
-function isAdmin(email: string): boolean {
-  const adminEmails = env.ADMIN_EMAILS?.split(",").map((e) => e.trim().toLowerCase()) || [];
-  return adminEmails.includes(email.toLowerCase());
-}
 
 const UpdateCustomOrderSchema = z.object({
   status: z.enum([
@@ -22,6 +18,7 @@ const UpdateCustomOrderSchema = z.object({
   ]).optional(),
   finalTotal: z.number().optional(),
   adminNotes: z.string().optional(),
+  adminNote: z.string().optional(),
   addStatusHistory: z.boolean().optional().default(true),
 });
 
@@ -31,7 +28,7 @@ export async function GET(
 ) {
   try {
     const authResult = await verifyAuth(req);
-    if (!authResult.user || !isAdmin(authResult.user.email)) {
+    if (!authResult.user || !isAdmin(authResult.user)) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
@@ -75,7 +72,7 @@ export async function PATCH(
 ) {
   try {
     const authResult = await verifyAuth(req);
-    if (!authResult.user || !isAdmin(authResult.user.email)) {
+    if (!authResult.user || !isAdmin(authResult.user)) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
@@ -117,10 +114,11 @@ export async function PATCH(
     }
 
     // Admin notes can be appended to the notes field
-    if (data.adminNotes) {
+    const noteToAppend = data.adminNotes || data.adminNote;
+    if (noteToAppend) {
       customOrder.notes = customOrder.notes
-        ? `${customOrder.notes}\n\nAdmin Note: ${data.adminNotes}`
-        : `Admin Note: ${data.adminNotes}`;
+        ? `${customOrder.notes}\n\nAdmin Note: ${noteToAppend}`
+        : `Admin Note: ${noteToAppend}`;
     }
 
     await customOrder.save();

@@ -3,6 +3,7 @@ export interface UserDocument {
   name: string;
   email: string;
   hashedPassword: string;
+  role: "user" | "admin";
   phone?: string;
   defaultAddress?: string;
   marketingEmailOptIn: boolean;
@@ -15,6 +16,7 @@ export interface PublicUser {
   id: string;
   name: string;
   email: string;
+  role: "user" | "admin";
   phone?: string;
   defaultAddress?: string;
   marketingEmailOptIn: boolean;
@@ -28,6 +30,7 @@ export function toPublicUser(doc: UserDocument): PublicUser {
     id: doc._id.toString(),
     name: doc.name,
     email: doc.email,
+    role: doc.role,
     phone: doc.phone,
     defaultAddress: doc.defaultAddress,
     marketingEmailOptIn: doc.marketingEmailOptIn,

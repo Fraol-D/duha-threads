@@ -4,6 +4,7 @@ import { getDb } from "@/lib/db/connection";
 import { UserModel } from "@/lib/db/models/User";
 import { hashPassword } from "@/lib/auth/password";
 import { attachAuthCookie } from "@/lib/auth/session";
+import { env } from "@/config/env";
 import { toPublicUser } from "@/types/user";
 
 const signupSchema = z.object({
@@ -30,10 +31,13 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Email already registered" }, { status: 409 });
     }
     const hashed = await hashPassword(data.password);
+    const adminEmails = env.ADMIN_EMAILS?.split(",").map(e => e.trim().toLowerCase()) || [];
+    const role: "user" | "admin" = adminEmails.includes(data.email.toLowerCase()) ? "admin" : "user";
     const user = await UserModel.create({
       name: data.name,
       email: data.email.toLowerCase(),
       hashedPassword: hashed,
+      role,
       phone: data.phone,
       defaultAddress: data.defaultAddress,
       marketingEmailOptIn: data.marketingEmailOptIn,

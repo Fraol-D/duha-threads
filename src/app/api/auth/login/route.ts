@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getDb } from "@/lib/db/connection";
 import { UserModel } from "@/lib/db/models/User";
+import type { UserDocument } from "@/types/user";
 import { verifyPassword } from "@/lib/auth/password";
 import { attachAuthCookie } from "@/lib/auth/session";
 import { toPublicUser } from "@/types/user";
@@ -31,7 +32,8 @@ export async function POST(req: Request) {
       console.error(`Login failed: Password mismatch for email: ${email.toLowerCase()}`);
       return NextResponse.json({ error: "Invalid credentials" }, { status: 401 });
     }
-    const res = NextResponse.json({ user: toPublicUser(user) });
+    const doc = user.toObject() as UserDocument;
+    const res = NextResponse.json({ user: toPublicUser(doc) });
     attachAuthCookie(res, user._id.toString());
     return res;
   } catch (err) {

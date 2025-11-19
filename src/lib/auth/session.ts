@@ -17,7 +17,7 @@ export async function getCurrentUser() {
   return toPublicUser(user as any);
 }
 
-export async function verifyAuth(req: NextRequest): Promise<{ user: { id: string; email: string } | null }> {
+export async function verifyAuth(req: NextRequest): Promise<{ user: { id: string; email: string; role: "user" | "admin" } | null }> {
   const token = req.cookies.get(COOKIE_NAME)?.value;
   if (!token) return { user: null };
   
@@ -32,6 +32,7 @@ export async function verifyAuth(req: NextRequest): Promise<{ user: { id: string
     user: {
       id: user._id.toString(),
       email: user.email,
+      role: (user as any).role || "user",
     },
   };
 }

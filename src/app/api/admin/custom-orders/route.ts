@@ -2,17 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/lib/db/connection";
 import { CustomOrderModel } from "@/lib/db/models/CustomOrder";
 import { verifyAuth } from "@/lib/auth/session";
-import { env } from "@/config/env";
-
-function isAdmin(email: string): boolean {
-  const adminEmails = env.ADMIN_EMAILS?.split(",").map((e) => e.trim().toLowerCase()) || [];
-  return adminEmails.includes(email.toLowerCase());
-}
+import { isAdmin } from "@/lib/auth/admin";
 
 export async function GET(req: NextRequest) {
   try {
     const authResult = await verifyAuth(req);
-    if (!authResult.user || !isAdmin(authResult.user.email)) {
+    if (!authResult.user || !isAdmin(authResult.user)) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
