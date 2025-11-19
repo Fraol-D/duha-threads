@@ -4,9 +4,31 @@ import { motion } from "framer-motion";
 import { BentoGrid, BentoTile } from "@/components/ui/BentoGrid";
 import { Button } from "@/components/ui/Button";
 import { MascotSlot } from "@/components/ui/MascotSlot";
+import { useEffect, useState } from 'react';
+import { DesignAssistant } from '@/components/DesignAssistant';
 import { fadeInUp, staggerChildren } from "@/lib/motion";
 
+interface PopularTemplate {
+  _id: string;
+  name: string;
+  usageCount: number;
+  description?: string;
+}
+
 export default function Home() {
+  const [popular, setPopular] = useState<PopularTemplate[]>([]);
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await fetch('/api/templates?limit=6');
+        if (res.ok) {
+          const json = await res.json();
+          setPopular(json.templates || []);
+        }
+      } catch {}
+    })();
+  }, []);
+
   return (
     <motion.div
       initial="initial"
@@ -56,6 +78,33 @@ export default function Home() {
             <Link href="/products" className="underline text-sm">
               View all products →
             </Link>
+          </BentoTile>
+        </motion.div>
+
+        {/* Popular Templates Tile */}
+        <motion.div variants={fadeInUp}>
+          <BentoTile span="2" variant="glass">
+            <h2 className="text-section-title mb-2">Popular Design Templates</h2>
+            <p className="text-muted mb-4 text-sm">Kickstart with community favorites.</p>
+            <div className="grid sm:grid-cols-2 gap-3 mb-4">
+              {popular.map(t => (
+                <div key={t._id} className="rounded-lg border border-muted/50 p-3 bg-[--surface]/40">
+                  <div className="text-sm font-medium truncate" title={t.name}>{t.name}</div>
+                  <div className="text-[11px] opacity-60">{t.usageCount} uses</div>
+                </div>
+              ))}
+              {popular.length === 0 && (
+                <div className="text-xs opacity-60">No templates yet.</div>
+              )}
+            </div>
+            <div className="flex gap-3">
+              <Link href="/custom-order" className="flex-1">
+                <Button className="w-full" variant="secondary">Start Custom Design</Button>
+              </Link>
+              <Link href="/custom-order" className="flex-1">
+                <Button className="w-full" variant="outline">Browse All</Button>
+              </Link>
+            </div>
           </BentoTile>
         </motion.div>
 

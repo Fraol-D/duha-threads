@@ -11,6 +11,8 @@ import { Select } from "@/components/ui/Select";
 import { Stepper } from "@/components/ui/Stepper";
 import { MascotSlot } from "@/components/ui/MascotSlot";
 import { fadeInUp } from "@/lib/motion";
+import { DesignAssistant } from "@/components/DesignAssistant";
+import { logEvent } from "@/lib/loggerEvents";
 
 interface Product {
   id: string;
@@ -96,6 +98,13 @@ export default function CustomOrderBuilderPage() {
       .catch(() => {});
   }, []);
 
+  // Log start event when user selects first product (heuristic) or reaches step 1
+  useEffect(() => {
+    if (currentStep === 1) {
+      logEvent({ type: 'custom_order_started', entityId: null });
+    }
+  }, [currentStep]);
+
   const steps = [
     { label: "Base Shirt", status: (currentStep > 0 ? "completed" : currentStep === 0 ? "current" : "upcoming") as "completed" | "current" | "upcoming" },
     { label: "Placements", status: (currentStep > 1 ? "completed" : currentStep === 1 ? "current" : "upcoming") as "completed" | "current" | "upcoming" },
@@ -161,6 +170,7 @@ export default function CustomOrderBuilderPage() {
       }
 
       const data = await res.json();
+      logEvent({ type: 'custom_order_completed', entityId: data.customOrderId });
       router.push(`/custom-orders/${data.customOrderId}`);
     } catch (error: unknown) {
       const msg = error instanceof Error ? error.message : "Failed to submit order";
@@ -220,6 +230,36 @@ export default function CustomOrderBuilderPage() {
         color,
       },
     ]);
+  }
+
+  function applyTemplatePlacements(payload: { placements: { placementKey: string; type: string; imageUrl?: string | null; text?: string | null; font?: string | null; color?: string | null }[] }) {
+    // Merge placements: auto-select any placement from template
+    const templatePlacementKeys = payload.placements.map(p => p.placementKey);
+    setPlacements(prev => prev.map(p => templatePlacementKeys.includes(p.key) ? { ...p, selected: true } : p));
+    // Merge design assets from template placements
+    setDesignAssets(prev => {
+      const filtered = prev.filter(a => !templatePlacementKeys.includes(a.placementKey));
+      const additions = payload.placements.map(p => {
+        if (p.type === 'image' && p.imageUrl) {
+          return { placementKey: p.placementKey, type: 'image', sourceType: 'template', imageUrl: p.imageUrl } as DesignAsset;
+        }
+        if (p.type === 'text' && p.text) {
+          return { placementKey: p.placementKey, type: 'text', sourceType: 'template', text: p.text, font: p.font || 'Inter', color: p.color || '#ffffff' } as DesignAsset;
+        }
+        if (p.type === 'combo') {
+          // For combo we could have both image and text; treat image first if exists
+          if (p.imageUrl) {
+            return { placementKey: p.placementKey, type: 'image', sourceType: 'template', imageUrl: p.imageUrl } as DesignAsset;
+          } else if (p.text) {
+            return { placementKey: p.placementKey, type: 'text', sourceType: 'template', text: p.text, font: p.font || 'Inter', color: p.color || '#ffffff' } as DesignAsset;
+          }
+        }
+        return null;
+      }).filter(Boolean) as DesignAsset[];
+      return [...filtered, ...additions];
+    });
+    // Jump to design step if not there yet
+    if (currentStep < 2) setCurrentStep(2);
   }
 
   const estimatedTotal = selectedProductData
@@ -555,6 +595,7 @@ export default function CustomOrderBuilderPage() {
               <div className="font-bold pt-2">Est. Total: ${estimatedTotal.toFixed(2)}</div>
             </div>
           </Card>
+          <DesignAssistant onApplyTemplate={applyTemplatePlacements} />
         </div>
       </div>
     </div>
