@@ -27,6 +27,18 @@ export async function GET(
 
     const order = {
       id: customOrder._id.toString(),
+      // Flattened builder fields (if present)
+      baseColor: customOrder.baseColor,
+      placement: customOrder.placement,
+      verticalPosition: customOrder.verticalPosition,
+      designType: customOrder.designType,
+      designText: customOrder.designText,
+      designFont: customOrder.designFont,
+      designColor: customOrder.designColor,
+      designImageUrl: customOrder.designImageUrl,
+      quantity: customOrder.quantity || customOrder.baseShirt?.quantity || 1,
+      previewImageUrl: customOrder.previewImageUrl || null,
+      // Legacy/structured fields
       baseShirt: customOrder.baseShirt,
       placements: customOrder.placements,
       designAssets: customOrder.designAssets,

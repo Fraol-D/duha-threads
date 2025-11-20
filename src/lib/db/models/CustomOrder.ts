@@ -37,14 +37,16 @@ export interface IStatusHistoryEntry {
   changedBy: string;
 }
 
-export type CustomOrderStatus = 
-  | "PENDING_REVIEW"
-  | "ACCEPTED"
-  | "IN_DESIGN"
-  | "IN_PRINTING"
-  | "OUT_FOR_DELIVERY"
-  | "DELIVERED"
-  | "CANCELLED";
+export type CustomOrderStatus =
+  | 'PENDING_REVIEW'
+  | 'ACCEPTED' // legacy
+  | 'APPROVED' // new preferred label replacing ACCEPTED
+  | 'IN_DESIGN'
+  | 'IN_PRINTING'
+  | 'READY_FOR_PICKUP'
+  | 'OUT_FOR_DELIVERY'
+  | 'DELIVERED'
+  | 'CANCELLED';
 
 export interface CustomOrderDocument extends Document {
   userId: mongoose.Types.ObjectId | null;
@@ -54,11 +56,27 @@ export interface CustomOrderDocument extends Document {
     size: string;
     quantity: number;
   };
+  // Unified quantity field (builder-specific; legacy still uses baseShirt.quantity)
+  quantity?: number;
+  // Flattened builder fields (optional for legacy orders)
+  baseColor?: 'white' | 'black';
+  placement?: 'front' | 'back' | 'chest_left' | 'chest_right';
+  verticalPosition?: 'upper' | 'center' | 'lower';
+  designType?: 'text' | 'image';
+  designText?: string | null;
+  designFont?: string | null;
+  designColor?: string | null;
+  designImageUrl?: string | null;
+  previewImageUrl?: string | null;
+  deliveryName?: string;
+  phoneNumber?: string;
   placements: IPlacement[];
   designAssets: IDesignAsset[];
   notes: string;
   delivery: IDelivery;
   pricing: IPricing;
+  priceEstimate?: number | null;
+  finalPrice?: number | null;
   status: CustomOrderStatus;
   statusHistory: IStatusHistoryEntry[];
   createdAt: Date;
@@ -111,15 +129,29 @@ const CustomOrderSchema = new Schema<CustomOrderDocument>(
       size: { type: String, required: true },
       quantity: { type: Number, required: true, min: 1 },
     },
+    baseColor: { type: String },
+    placement: { type: String },
+    verticalPosition: { type: String, enum: ['upper','center','lower'] },
+    designType: { type: String, enum: ['text','image'] },
+    designText: { type: String },
+    designFont: { type: String },
+    designColor: { type: String },
+    designImageUrl: { type: String },
+    previewImageUrl: { type: String },
+    quantity: { type: Number, min: 1, default: 1 },
+    deliveryName: { type: String },
+    phoneNumber: { type: String },
     placements: { type: [PlacementSchema], required: true },
     designAssets: { type: [DesignAssetSchema], required: true },
     notes: { type: String, default: "" },
     delivery: { type: DeliverySchema, required: true },
     pricing: { type: PricingSchema, required: true },
+    priceEstimate: { type: Number },
+    finalPrice: { type: Number },
     status: {
       type: String,
-      enum: ["PENDING_REVIEW", "ACCEPTED", "IN_DESIGN", "IN_PRINTING", "OUT_FOR_DELIVERY", "DELIVERED", "CANCELLED"],
-      default: "PENDING_REVIEW",
+      enum: ['PENDING_REVIEW','ACCEPTED','APPROVED','IN_DESIGN','IN_PRINTING','READY_FOR_PICKUP','OUT_FOR_DELIVERY','DELIVERED','CANCELLED'],
+      default: 'PENDING_REVIEW',
       required: true,
     },
     statusHistory: { type: [StatusHistorySchema], default: [] },
@@ -130,6 +162,8 @@ const CustomOrderSchema = new Schema<CustomOrderDocument>(
 // Add indexes for common queries
 CustomOrderSchema.index({ userId: 1, createdAt: -1 });
 CustomOrderSchema.index({ status: 1, createdAt: -1 });
+CustomOrderSchema.index({ placement: 1 });
+CustomOrderSchema.index({ verticalPosition: 1 });
 
 export const CustomOrderModel: Model<CustomOrderDocument> =
   mongoose.models.CustomOrder || mongoose.model<CustomOrderDocument>("CustomOrder", CustomOrderSchema);

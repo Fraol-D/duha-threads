@@ -1,5 +1,6 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
+import { useParams } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import { Card } from "@/components/ui/Card";
@@ -20,6 +21,16 @@ interface CustomOrder {
     size: string;
     quantity: number;
   };
+  quantity?: number;
+  baseColor?: 'black' | 'white';
+  placement?: 'front' | 'back' | 'chest_left' | 'chest_right';
+  verticalPosition?: 'upper' | 'center' | 'lower';
+  previewImageUrl?: string | null;
+  designType?: 'text' | 'image';
+  designText?: string | null;
+  designFont?: string | null;
+  designColor?: string | null;
+  designImageUrl?: string | null;
   placements: Array<{ placementKey: string; label: string }>;
   designAssets: Array<{
     placementKey: string;
@@ -54,14 +65,16 @@ interface CustomOrder {
 
 const STATUS_ORDER = [
   "PENDING_REVIEW",
-  "ACCEPTED",
+  "APPROVED",
   "IN_DESIGN",
   "IN_PRINTING",
+  "READY_FOR_PICKUP",
   "OUT_FOR_DELIVERY",
   "DELIVERED",
 ];
 
-export default function AdminCustomOrderDetailPage({ params }: { params: { id: string } }) {
+export default function AdminCustomOrderDetailPage() {
+  const { id } = useParams() as { id: string };
   const [order, setOrder] = useState<CustomOrder | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -69,19 +82,15 @@ export default function AdminCustomOrderDetailPage({ params }: { params: { id: s
 
   const [newStatus, setNewStatus] = useState<string>("");
   const [newFinalTotal, setNewFinalTotal] = useState<string>("");
+  const [adminNoteDraft, setAdminNoteDraft] = useState<string>("");
   const [adminNotes, setAdminNotes] = useState<string>("");
 
-  useEffect(() => {
-    loadOrder();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  async function loadOrder() {
+  const loadOrder = useCallback(async () => {
     setLoading(true);
     setError(null);
 
     try {
-      const res = await fetch(`/api/admin/custom-orders/${params.id}`);
+      const res = await fetch(`/api/admin/custom-orders/${id}`);
       if (res.status === 403) {
         throw new Error("You do not have admin permissions");
       }
@@ -97,7 +106,12 @@ export default function AdminCustomOrderDetailPage({ params }: { params: { id: s
     } finally {
       setLoading(false);
     }
-  }
+  }, [id]);
+
+  useEffect(() => {
+    if (!id) return; // wait for params
+    loadOrder();
+  }, [id, loadOrder]);
 
   async function handleUpdate() {
     if (!order) return;
@@ -117,8 +131,11 @@ export default function AdminCustomOrderDetailPage({ params }: { params: { id: s
       if (adminNotes.trim()) {
         payload.adminNotes = adminNotes.trim();
       }
+      if (adminNoteDraft.trim()) {
+        payload.adminNotes = (payload.adminNotes ? payload.adminNotes + '\n' : '') + adminNoteDraft.trim();
+      }
 
-      const res = await fetch(`/api/admin/custom-orders/${params.id}`, {
+      const res = await fetch(`/api/admin/custom-orders/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -128,6 +145,7 @@ export default function AdminCustomOrderDetailPage({ params }: { params: { id: s
 
       await loadOrder();
       setAdminNotes("");
+      setAdminNoteDraft("");
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Failed to update order";
       setError(msg);
@@ -151,7 +169,8 @@ export default function AdminCustomOrderDetailPage({ params }: { params: { id: s
     );
   }
 
-  const currentStatusIndex = STATUS_ORDER.indexOf(order.status);
+  const normalizedStatus = order.status === 'ACCEPTED' ? 'APPROVED' : order.status;
+  const currentStatusIndex = STATUS_ORDER.indexOf(normalizedStatus);
   type StepStatus = 'completed' | 'current' | 'upcoming';
   const statusSteps = STATUS_ORDER.map((status, index): { key: string; label: string; status: StepStatus } => ({
     key: status,
@@ -184,9 +203,11 @@ export default function AdminCustomOrderDetailPage({ params }: { params: { id: s
             <label className="text-sm font-medium">Status</label>
             <Select value={newStatus} onChange={(e) => setNewStatus(e.currentTarget.value)}>
               <option value="PENDING_REVIEW">Pending Review</option>
+              <option value="APPROVED">Approved</option>
               <option value="ACCEPTED">Accepted</option>
               <option value="IN_DESIGN">In Design</option>
               <option value="IN_PRINTING">In Printing</option>
+              <option value="READY_FOR_PICKUP">Ready for Pickup</option>
               <option value="OUT_FOR_DELIVERY">Out for Delivery</option>
               <option value="DELIVERED">Delivered</option>
               <option value="CANCELLED">Cancelled</option>
@@ -218,12 +239,19 @@ export default function AdminCustomOrderDetailPage({ params }: { params: { id: s
         {error && <p className="text-sm text-red-600">{error}</p>}
       </Card>
 
+      {order.previewImageUrl && (
+        <Card className="p-4">
+          <h2 className="text-xl font-semibold mb-3">Preview</h2>
+          <Image src={order.previewImageUrl} alt="Preview" width={480} height={640} className="w-full max-w-md h-auto rounded" />
+        </Card>
+      )}
+
       <Card variant="glass" className="p-6">
         <h2 className="text-xl font-semibold mb-4">Status Timeline</h2>
         <Stepper steps={statusSteps} />
       </Card>
 
-      <div className="grid md:grid-cols-2 gap-6">
+        <div className="grid md:grid-cols-4 gap-4">
         <Card className="p-6 space-y-4">
           <h2 className="text-xl font-semibold">Base Shirt</h2>
           <div className="space-y-2 text-sm">
@@ -234,7 +262,7 @@ export default function AdminCustomOrderDetailPage({ params }: { params: { id: s
               <span className="text-muted">Size:</span> {order.baseShirt.size}
             </div>
             <div>
-              <span className="text-muted">Quantity:</span> {order.baseShirt.quantity}
+              <span className="text-muted">Quantity:</span> {order.quantity || order.baseShirt.quantity}
             </div>
           </div>
         </Card>
@@ -257,6 +285,15 @@ export default function AdminCustomOrderDetailPage({ params }: { params: { id: s
             <div className="border-t pt-2 flex justify-between font-semibold">
               <span>Estimated Total:</span>
               <span>${order.pricing.estimatedTotal.toFixed(2)}</span>
+          <div className="space-y-2">
+            <label className="text-sm font-medium">New Note</label>
+            <Textarea
+              value={adminNoteDraft}
+              onChange={(e) => setAdminNoteDraft(e.currentTarget.value)}
+              placeholder="Add a new admin note"
+              rows={1}
+            />
+          </div>
             </div>
             {order.pricing.finalTotal && (
               <div className="flex justify-between font-bold text-lg">
@@ -267,6 +304,29 @@ export default function AdminCustomOrderDetailPage({ params }: { params: { id: s
           </div>
         </Card>
       </div>
+
+      <Card className="p-6 space-y-4">
+        <h2 className="text-xl font-semibold">Design Overview</h2>
+        <div className="grid md:grid-cols-2 gap-3 text-sm">
+          <div><span className="text-muted">Base Color:</span> {order.baseColor || order.baseShirt.color}</div>
+          <div><span className="text-muted">Placement:</span> {order.placement ? order.placement.replace(/_/g,' ') : (order.placements[0]?.label || order.placements[0]?.placementKey)}</div>
+          <div><span className="text-muted">Vertical Position:</span> {order.verticalPosition ? order.verticalPosition.replace(/_/g,' ') : '—'}</div>
+          <div><span className="text-muted">Design Type:</span> {order.designType || order.designAssets[0]?.type || '—'}</div>
+          {(order.designType === 'text' || order.designAssets[0]?.type === 'text') && (
+            <>
+              <div className="md:col-span-2"><span className="text-muted">Text:</span> {order.designText || order.designAssets[0]?.text || '—'}</div>
+              <div><span className="text-muted">Font:</span> {order.designFont || order.designAssets[0]?.font || '—'}</div>
+              <div className="flex items-center gap-2"><span className="text-muted">Color:</span> <span className="inline-block w-5 h-5 rounded border" style={{ backgroundColor: order.designColor || order.designAssets[0]?.color || '#000' }} /></div>
+            </>
+          )}
+          {(order.designType === 'image' || order.designAssets[0]?.type === 'image') && (
+            <div className="md:col-span-2 flex items-center gap-3">
+              <span className="text-muted">Image:</span>
+              {order.designImageUrl || order.designAssets[0]?.imageUrl ? <Image src={(order.designImageUrl || order.designAssets[0]?.imageUrl)!} alt="Design" width={96} height={96} className="w-24 h-24 object-contain border rounded" /> : '—'}
+            </div>
+          )}
+        </div>
+      </Card>
 
       <Card className="p-6 space-y-4">
         <h2 className="text-xl font-semibold">Placements</h2>

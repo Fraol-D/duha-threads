@@ -3,6 +3,7 @@ import { getDb } from "@/lib/db/connection";
 import { CustomOrderModel } from "@/lib/db/models/CustomOrder";
 import { verifyAuth } from "@/lib/auth/session";
 import { isAdmin } from "@/lib/auth/admin";
+import { ConsoleEmailService, sendCustomOrderStatusChanged } from "@/lib/email/EmailService";
 import { z } from "zod";
 
 
@@ -45,6 +46,17 @@ export async function GET(
       id: customOrder._id.toString(),
       userId: customOrder.userId?.toString() || null,
       baseShirt: customOrder.baseShirt,
+      // Flattened builder fields (optional)
+      baseColor: customOrder.baseColor,
+      placement: customOrder.placement,
+      verticalPosition: customOrder.verticalPosition,
+      designType: customOrder.designType,
+      designText: customOrder.designText,
+      designFont: customOrder.designFont,
+      designColor: customOrder.designColor,
+      designImageUrl: customOrder.designImageUrl,
+      previewImageUrl: customOrder.previewImageUrl,
+      quantity: customOrder.quantity || customOrder.baseShirt?.quantity || 1,
       placements: customOrder.placements,
       designAssets: customOrder.designAssets,
       notes: customOrder.notes,
@@ -122,6 +134,16 @@ export async function PATCH(
     }
 
     await customOrder.save();
+
+    // Send status change email (best-effort)
+    if (data.status) {
+      try {
+        const emailService = new ConsoleEmailService();
+        await sendCustomOrderStatusChanged(emailService, { email: customOrder.delivery.email, order_id: customOrder._id.toString(), status: customOrder.status });
+      } catch (e) {
+        console.warn("Admin status email failed", e);
+      }
+    }
 
     return NextResponse.json({
       success: true,

@@ -9,9 +9,10 @@ import { cookies } from "next/headers";
 
 const STATUS_ORDER = [
   "PENDING_REVIEW",
-  "ACCEPTED",
+  "APPROVED",
   "IN_DESIGN",
   "IN_PRINTING",
+  "READY_FOR_PICKUP",
   "OUT_FOR_DELIVERY",
   "DELIVERED",
 ];
@@ -57,7 +58,8 @@ export default async function CustomOrderDetailPage({
   }
 
   // Build status steps for Stepper
-  const currentStatusIndex = STATUS_ORDER.indexOf(customOrder.status);
+  const normalizedStatus = customOrder.status === 'ACCEPTED' ? 'APPROVED' : customOrder.status;
+  const currentStatusIndex = STATUS_ORDER.indexOf(normalizedStatus);
   const statusSteps: { key: string; label: string; status: 'completed' | 'current' | 'upcoming' }[] = STATUS_ORDER.map((status, index) => ({
     key: status,
     label: status.replace(/_/g, " "),

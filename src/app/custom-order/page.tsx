@@ -7,7 +7,6 @@ import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Textarea } from "@/components/ui/Textarea";
-import { Select } from "@/components/ui/Select";
 import { Stepper } from "@/components/ui/Stepper";
 import { MascotSlot } from "@/components/ui/MascotSlot";
 import { fadeInUp } from "@/lib/motion";
@@ -16,7 +15,6 @@ import { BaseShirtColor } from "@/config/baseShirts";
 import { DesignAssistant } from "@/components/DesignAssistant";
 import { logEvent } from "@/lib/loggerEvents";
 
-interface DesignAsset { placementKey: string; type: 'image' | 'text'; sourceType: 'uploaded' | 'template' | 'ai_generated'; imageUrl?: string; text?: string; font?: string; color?: string; }
 type BuilderStep = 'baseShirt' | 'placements' | 'design' | 'review';
 const FONT_MAP: Record<string, { label: string; class: string; family: string }> = {
   sans: { label: 'Sans', class: 'font-sans', family: 'Inter, system-ui, sans-serif' },
@@ -47,6 +45,7 @@ export default function CustomOrderBuilderPage() {
   const [designTextColor, setDesignTextColor] = useState('#000000');
   const [designImagePreviewUrl, setDesignImagePreviewUrl] = useState<string | null>(null);
   const [uploadedImageUrl, setUploadedImageUrl] = useState<string | null>(null);
+  const [quantity, setQuantity] = useState<number>(1);
   const [deliveryName, setDeliveryName] = useState('');
   const [deliveryAddress, setDeliveryAddress] = useState('');
   const [deliveryPhone, setDeliveryPhone] = useState('');
@@ -94,22 +93,27 @@ export default function CustomOrderBuilderPage() {
     setLoading(true); setError(null);
     try {
       if (currentStep !== 'review') { setError('Go to Review to submit'); setLoading(false); return; }
-      const designAssets: DesignAsset[] = [];
-      if (designType==='text' && designText.trim()) designAssets.push({ placementKey: selectedPlacement, type:'text', sourceType:'uploaded', text:designText.trim(), font: FONT_MAP[designFont].family, color: designTextColor });
-      if (designType==='image' && uploadedImageUrl) designAssets.push({ placementKey: selectedPlacement, type:'image', sourceType:'uploaded', imageUrl: uploadedImageUrl });
       const payload = {
-        baseShirt: { productId: 'base-shirt-simple', color: selectedBaseColor, size: 'standard', quantity: 1 },
-        placements: [{ placementKey: selectedPlacement, label: selectedPlacement.replace(/_/g,' ') }],
-        designAssets,
-        notes,
-        delivery: { address: deliveryAddress, phone: deliveryPhone, email: deliveryEmail },
-        builderSimple: { selectedBaseColor, selectedPlacement, designType, designText, designImagePreviewUrl },
+        baseColor: selectedBaseColor,
+        placement: selectedPlacement,
+        verticalPosition,
+        designType,
+        designText: designType==='text' ? designText.trim() || null : null,
+        designFont: designType==='text' ? FONT_MAP[designFont].family : null,
+        designColor: designType==='text' ? designTextColor : null,
+        designImageUrl: designType==='image' ? (uploadedImageUrl || null) : null,
+        quantity,
+        deliveryName: deliveryName || 'Customer',
+        deliveryAddress,
+        phoneNumber: deliveryPhone,
+        notes: notes || null,
       };
       const res = await fetch('/api/custom-orders', { method: 'POST', headers: { 'Content-Type':'application/json' }, body: JSON.stringify(payload) });
       if (!res.ok) { const data = await res.json().catch(()=>({})); throw new Error(data.error || 'Failed to create custom order'); }
       const data = await res.json();
-      logEvent({ type: 'custom_order_completed', entityId: data.customOrderId });
-      router.push(`/custom-orders/${data.customOrderId}`);
+      const orderId = data.orderId || data.customOrderId; // backward compat
+      logEvent({ type: 'custom_order_completed', entityId: orderId });
+      router.push(`/custom-order/confirmation/${orderId}`);
     } catch (e: unknown) { setError(e instanceof Error ? e.message : 'Submit failed'); } finally { setLoading(false); }
   }
 
@@ -141,10 +145,6 @@ export default function CustomOrderBuilderPage() {
                 <h2 className="text-section-title">Base Shirt</h2>
                 <div className="space-y-2">
                   <label className="text-sm font-medium">Choose Color</label>
-                  <Select value={selectedBaseColor} onChange={(e)=>setSelectedBaseColor(e.currentTarget.value as BaseShirtColor)}>
-                    <option value="white">White</option>
-                    <option value="black">Black</option>
-                  </Select>
                   <div className="flex gap-2 pt-2">
                     {(['white','black'] as BaseShirtColor[]).map(c => (
                       <button key={c} type="button" onClick={()=>setSelectedBaseColor(c)} className={`h-10 w-10 rounded-full flex items-center justify-center border ${selectedBaseColor===c?'ring-2 ring-token border-token':'border-muted'} bg-[--surface]`}>
@@ -212,10 +212,17 @@ export default function CustomOrderBuilderPage() {
             {currentStep==='review' && (
               <div className="space-y-6">
                 <h2 className="text-section-title">Review & Delivery</h2>
-                <Card variant="soft3D" className="p-4 space-y-2">
+                <Card variant="soft3D" className="p-4 space-y-3">
                   <div className="text-sm"><span className="font-medium">Base Shirt:</span> {selectedBaseColor==='black'?'Black':'White'}</div>
                   <div className="text-sm"><span className="font-medium">Placement:</span> {selectedPlacement.replace(/_/g,' ')}</div>
                   <div className="text-sm"><span className="font-medium">Design:</span> {designType==='text'?`Text (${designText.slice(0,20)||'None'})`: uploadedImageUrl ? 'Image uploaded':'None'}</div>
+                  <div className="text-sm flex items-center gap-2"><span className="font-medium">Quantity:</span>
+                    <div className="inline-flex items-center gap-2">
+                      <button type="button" disabled={quantity<=1} onClick={()=>setQuantity(q=>Math.max(1,q-1))} className="px-2 py-1 rounded border border-muted text-xs">-</button>
+                      <span className="min-w-[2ch] text-center font-medium">{quantity}</span>
+                      <button type="button" disabled={quantity>=20} onClick={()=>setQuantity(q=>Math.min(20,q+1))} className="px-2 py-1 rounded border border-muted text-xs">+</button>
+                    </div>
+                  </div>
                   <div className="text-sm"><span className="font-medium">Estimated Total:</span> ${estimatedTotal.toFixed(2)}</div>
                 </Card>
                 <div className="space-y-3">
