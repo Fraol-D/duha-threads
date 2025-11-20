@@ -52,7 +52,7 @@ export default function Home() {
                   <Link href="/products">
                     <Button>Browse Collection</Button>
                   </Link>
-                  <Link href="/custom">
+                  <Link href="/custom-order">
                     <Button variant="secondary">Custom Order</Button>
                   </Link>
                 </div>
@@ -115,7 +115,7 @@ export default function Home() {
             <p className="text-sm text-muted mb-4">
               Design your own. Zero friction.
             </p>
-            <Link href="/custom">
+            <Link href="/custom-order">
               <Button variant="secondary" className="w-full">
                 Start Designing
               </Button>

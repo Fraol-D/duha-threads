@@ -58,14 +58,14 @@ export default async function CustomOrderDetailPage({
 
   // Build status steps for Stepper
   const currentStatusIndex = STATUS_ORDER.indexOf(customOrder.status);
-  const statusSteps: Array<{ label: string; status: "completed" | "current" | "upcoming" }> = STATUS_ORDER.map((status, index) => ({
+  const statusSteps: { key: string; label: string; status: 'completed' | 'current' | 'upcoming' }[] = STATUS_ORDER.map((status, index) => ({
+    key: status,
     label: status.replace(/_/g, " "),
-    status:
-      index < currentStatusIndex
-        ? "completed"
-        : index === currentStatusIndex
-        ? "current"
-        : "upcoming",
+    status: (index < currentStatusIndex
+      ? 'completed'
+      : index === currentStatusIndex
+      ? 'current'
+      : 'upcoming') as 'completed' | 'current' | 'upcoming',
   }));
 
   return (

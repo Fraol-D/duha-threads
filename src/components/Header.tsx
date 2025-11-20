@@ -21,7 +21,7 @@ const baseNav: NavItem[] = [
   { href: "/products", label: "Products", icon: Shirt },
   { href: "/wishlist", label: "Wishlist", icon: Heart },
   { href: "/cart", label: "Cart", icon: ShoppingCart },
-  { href: "/custom-orders", label: "My Orders", icon: Package },
+  { href: "/custom-order", label: "Custom Builder", icon: Package },
 ];
 
 export function Header() {

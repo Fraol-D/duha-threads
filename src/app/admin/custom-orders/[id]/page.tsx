@@ -152,14 +152,15 @@ export default function AdminCustomOrderDetailPage({ params }: { params: { id: s
   }
 
   const currentStatusIndex = STATUS_ORDER.indexOf(order.status);
-  const statusSteps: Array<{ label: string; status: "completed" | "current" | "upcoming" }> = STATUS_ORDER.map((status, index) => ({
-    label: status.replace(/_/g, " "),
-    status:
-      index < currentStatusIndex
-        ? "completed"
-        : index === currentStatusIndex
-        ? "current"
-        : "upcoming",
+  type StepStatus = 'completed' | 'current' | 'upcoming';
+  const statusSteps = STATUS_ORDER.map((status, index): { key: string; label: string; status: StepStatus } => ({
+    key: status,
+    label: status.replace(/_/g, ' '),
+    status: (index < currentStatusIndex
+      ? 'completed'
+      : index === currentStatusIndex
+      ? 'current'
+      : 'upcoming') as StepStatus,
   }));
 
   return (

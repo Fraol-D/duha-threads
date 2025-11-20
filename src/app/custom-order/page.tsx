@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import Image from "next/image";
@@ -11,589 +11,253 @@ import { Select } from "@/components/ui/Select";
 import { Stepper } from "@/components/ui/Stepper";
 import { MascotSlot } from "@/components/ui/MascotSlot";
 import { fadeInUp } from "@/lib/motion";
+import { DesignPreview } from "@/components/DesignPreview";
+import { BaseShirtColor } from "@/config/baseShirts";
 import { DesignAssistant } from "@/components/DesignAssistant";
 import { logEvent } from "@/lib/loggerEvents";
 
-interface Product {
-  id: string;
-  name: string;
-  slug: string;
-  basePrice: number;
-  colors?: string[];
-  sizes?: string[];
-}
-
-interface Placement {
-  key: string;
-  label: string;
-  selected: boolean;
-}
-
-interface DesignAsset {
-  placementKey: string;
-  type: "image" | "text";
-  sourceType: "uploaded" | "template" | "ai_generated";
-  imageUrl?: string;
-  text?: string;
-  font?: string;
-  color?: string;
-}
-
-const AVAILABLE_PLACEMENTS: Placement[] = [
-  { key: "front", label: "Front", selected: false },
-  { key: "back", label: "Back", selected: false },
-  { key: "chest", label: "Chest Pocket", selected: false },
-  { key: "sleeve_left", label: "Left Sleeve", selected: false },
-  { key: "sleeve_right", label: "Right Sleeve", selected: false },
+interface DesignAsset { placementKey: string; type: 'image' | 'text'; sourceType: 'uploaded' | 'template' | 'ai_generated'; imageUrl?: string; text?: string; font?: string; color?: string; }
+type BuilderStep = 'baseShirt' | 'placements' | 'design' | 'review';
+const FONT_MAP: Record<string, { label: string; class: string; family: string }> = {
+  sans: { label: 'Sans', class: 'font-sans', family: 'Inter, system-ui, sans-serif' },
+  serif: { label: 'Serif', class: 'font-serif', family: 'Georgia, serif' },
+  mono: { label: 'Mono', class: 'font-mono', family: 'Courier New, monospace' },
+  script: { label: 'Script', class: 'font-[cursive]', family: 'cursive' },
+  display: { label: 'Display', class: 'font-bold tracking-wide', family: 'Impact, system-ui, sans-serif' },
+};
+const TEXT_COLORS = [
+  { value: '#000000', label: 'Black', swatch: 'bg-black' },
+  { value: '#ffffff', label: 'White', swatch: 'bg-white border border-muted' },
+  { value: '#ff4747', label: 'Red', swatch: 'bg-red-600' },
+  { value: '#facc15', label: 'Yellow', swatch: 'bg-yellow-400' },
+  { value: '#2563eb', label: 'Blue', swatch: 'bg-blue-600' },
 ];
-
-const FONTS = ["Arial", "Helvetica", "Times New Roman", "Georgia", "Courier New", "Verdana"];
 
 export default function CustomOrderBuilderPage() {
   const router = useRouter();
-  const [currentStep, setCurrentStep] = useState(0);
+  const [currentStep, setCurrentStep] = useState<BuilderStep>('baseShirt');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  // Step 1: Base Shirt
-  const [products, setProducts] = useState<Product[]>([]);
-  const [selectedProduct, setSelectedProduct] = useState<string>("");
-  const [color, setColor] = useState<string>("");
-  const [size, setSize] = useState<string>("");
-  const [quantity, setQuantity] = useState<number>(1);
-
-  // Step 2: Placements
-  const [placements, setPlacements] = useState<Placement[]>(AVAILABLE_PLACEMENTS);
-
-  // Step 3: Design Assets
-  const [designAssets, setDesignAssets] = useState<DesignAsset[]>([]);
-  const [activeDesignPlacement, setActiveDesignPlacement] = useState<string>("");
-
-  // Step 4: Review & Notes
-  const [notes, setNotes] = useState<string>("");
-
-  // Step 5: Delivery
-  const [address, setAddress] = useState<string>("");
-  const [phone, setPhone] = useState<string>("");
-  const [email, setEmail] = useState<string>("");
-
-  const selectedPlacements = placements.filter((p) => p.selected);
-  const selectedProductData = products.find((p) => p.id === selectedProduct);
+  const [selectedBaseColor, setSelectedBaseColor] = useState<BaseShirtColor>('white');
+  const [selectedPlacement, setSelectedPlacement] = useState<'front'|'back'|'chest_left'|'chest_right'>('front');
+  const [verticalPosition, setVerticalPosition] = useState<'upper'|'center'|'lower'>('upper');
+  const [designType, setDesignType] = useState<'text'|'image'>('text');
+  const [designText, setDesignText] = useState('');
+  const [designFont, setDesignFont] = useState<keyof typeof FONT_MAP>('sans');
+  const [designTextColor, setDesignTextColor] = useState('#000000');
+  const [designImagePreviewUrl, setDesignImagePreviewUrl] = useState<string | null>(null);
+  const [uploadedImageUrl, setUploadedImageUrl] = useState<string | null>(null);
+  const [deliveryName, setDeliveryName] = useState('');
+  const [deliveryAddress, setDeliveryAddress] = useState('');
+  const [deliveryPhone, setDeliveryPhone] = useState('');
+  const [deliveryEmail, setDeliveryEmail] = useState('');
+  const [notes, setNotes] = useState('');
 
   useEffect(() => {
-    // Fetch base products for shirts
-    fetch("/api/products?category=shirts&pageSize=50")
-      .then((r) => r.json())
-      .then((data) => setProducts(data.products || []))
-      .catch(() => setError("Failed to load products"));
-
-    // Pre-fill user email from profile if logged in
-    fetch("/api/user/me")
-      .then((r) => r.json())
-      .then((data) => {
-        if (data.user) {
-          setEmail(data.user.email || "");
-        }
-      })
-      .catch(() => {});
+    fetch('/api/user/me').then(r=>r.json()).then(data => {
+      if (data.user) {
+        setDeliveryEmail(data.user.email || '');
+        setDeliveryName(data.user.name || '');
+      }
+    }).catch(()=>{});
   }, []);
 
-  // Log start event when user selects first product (heuristic) or reaches step 1
-  useEffect(() => {
-    if (currentStep === 1) {
-      logEvent({ type: 'custom_order_started', entityId: null });
-    }
+  useEffect(() => { if (currentStep === 'placements') logEvent({ type: 'custom_order_started', entityId: null }); }, [currentStep]);
+
+  const steps: Array<{ key: BuilderStep; label: string; status: 'completed'|'current'|'upcoming'; clickable: boolean }> = useMemo(() => {
+    const order: BuilderStep[] = ['baseShirt','placements','design','review'];
+    const activeIdx = order.indexOf(currentStep);
+    return order.map((key,i) => ({
+      key,
+      label: `${i+1}. ${key==='baseShirt'?'Base Shirt': key==='placements'?'Placements': key==='design'?'Design':'Review & Delivery'}`,
+      status: (i < activeIdx ? 'completed' : i===activeIdx ? 'current' : 'upcoming') as 'completed'|'current'|'upcoming',
+      clickable: i < activeIdx,
+    }));
   }, [currentStep]);
 
-  const steps = [
-    { label: "Base Shirt", status: (currentStep > 0 ? "completed" : currentStep === 0 ? "current" : "upcoming") as "completed" | "current" | "upcoming" },
-    { label: "Placements", status: (currentStep > 1 ? "completed" : currentStep === 1 ? "current" : "upcoming") as "completed" | "current" | "upcoming" },
-    { label: "Designs", status: (currentStep > 2 ? "completed" : currentStep === 2 ? "current" : "upcoming") as "completed" | "current" | "upcoming" },
-    { label: "Review", status: (currentStep > 3 ? "completed" : currentStep === 3 ? "current" : "upcoming") as "completed" | "current" | "upcoming" },
-    { label: "Delivery", status: (currentStep > 4 ? "completed" : currentStep === 4 ? "current" : "upcoming") as "completed" | "current" | "upcoming" },
-  ];
+  function goToStep(s: BuilderStep) { setCurrentStep(s); }
 
   function handleNext() {
-    if (currentStep === 0) {
-      if (!selectedProduct || !color || !size || quantity < 1) {
-        setError("Please complete all base shirt fields");
-        return;
-      }
-    } else if (currentStep === 1) {
-      if (selectedPlacements.length === 0) {
-        setError("Please select at least one placement");
-        return;
-      }
-    } else if (currentStep === 4) {
-      if (!address || !phone || !email) {
-        setError("Please complete delivery information");
-        return;
-      }
+    if (currentStep === 'placements' && !selectedPlacement) { setError('Choose a placement'); return; }
+    if (currentStep === 'design') {
+      if (designType === 'text' && designText.trim().length === 0) { setError('Add some text'); return; }
+      if (designType === 'image' && !uploadedImageUrl) { setError('Upload an image'); return; }
     }
-    
     setError(null);
-    setCurrentStep((prev) => Math.min(prev + 1, steps.length - 1));
+    const order: BuilderStep[] = ['baseShirt','placements','design','review'];
+    const idx = order.indexOf(currentStep);
+    if (idx < order.length - 1) setCurrentStep(order[idx+1]);
   }
-
-  function handleBack() {
-    setError(null);
-    setCurrentStep((prev) => Math.max(prev - 1, 0));
-  }
+  function handleBack() { setError(null); const order: BuilderStep[] = ['baseShirt','placements','design','review']; const idx = order.indexOf(currentStep); if (idx>0) setCurrentStep(order[idx-1]); }
 
   async function handleSubmit() {
-    setLoading(true);
-    setError(null);
-
+    setLoading(true); setError(null);
     try {
+      if (currentStep !== 'review') { setError('Go to Review to submit'); setLoading(false); return; }
+      const designAssets: DesignAsset[] = [];
+      if (designType==='text' && designText.trim()) designAssets.push({ placementKey: selectedPlacement, type:'text', sourceType:'uploaded', text:designText.trim(), font: FONT_MAP[designFont].family, color: designTextColor });
+      if (designType==='image' && uploadedImageUrl) designAssets.push({ placementKey: selectedPlacement, type:'image', sourceType:'uploaded', imageUrl: uploadedImageUrl });
       const payload = {
-        baseShirt: {
-          productId: selectedProduct,
-          color,
-          size,
-          quantity,
-        },
-        placements: selectedPlacements.map((p) => ({ placementKey: p.key, label: p.label })),
+        baseShirt: { productId: 'base-shirt-simple', color: selectedBaseColor, size: 'standard', quantity: 1 },
+        placements: [{ placementKey: selectedPlacement, label: selectedPlacement.replace(/_/g,' ') }],
         designAssets,
         notes,
-        delivery: { address, phone, email },
+        delivery: { address: deliveryAddress, phone: deliveryPhone, email: deliveryEmail },
+        builderSimple: { selectedBaseColor, selectedPlacement, designType, designText, designImagePreviewUrl },
       };
-
-      const res = await fetch("/api/custom-orders", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error || "Failed to create custom order");
-      }
-
+      const res = await fetch('/api/custom-orders', { method: 'POST', headers: { 'Content-Type':'application/json' }, body: JSON.stringify(payload) });
+      if (!res.ok) { const data = await res.json().catch(()=>({})); throw new Error(data.error || 'Failed to create custom order'); }
       const data = await res.json();
       logEvent({ type: 'custom_order_completed', entityId: data.customOrderId });
       router.push(`/custom-orders/${data.customOrderId}`);
-    } catch (error: unknown) {
-      const msg = error instanceof Error ? error.message : "Failed to submit order";
-      setError(msg);
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  function togglePlacement(key: string) {
-    setPlacements((prev) => prev.map((p) => (p.key === key ? { ...p, selected: !p.selected } : p)));
-  }
-
-  async function handleImageUpload(placementKey: string, file: File) {
-    setLoading(true);
-    setError(null);
-
-    try {
-      const formData = new FormData();
-      formData.append("file", file);
-      formData.append("placementKey", placementKey);
-
-      const res = await fetch("/api/uploads/custom-design", {
-        method: "POST",
-        body: formData,
-      });
-
-      if (!res.ok) throw new Error("Upload failed");
-
-      const data = await res.json();
-      
-      setDesignAssets((prev) => [
-        ...prev.filter((a) => a.placementKey !== placementKey || a.type !== "image"),
-        {
-          placementKey,
-          type: "image",
-          sourceType: "uploaded",
-          imageUrl: data.imageUrl,
-        },
-      ]);
-    } catch {
-      setError("Failed to upload image");
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  function addTextDesign(placementKey: string, text: string, font: string, color: string) {
-    setDesignAssets((prev) => [
-      ...prev.filter((a) => a.placementKey !== placementKey || a.type !== "text"),
-      {
-        placementKey,
-        type: "text",
-        sourceType: "uploaded",
-        text,
-        font,
-        color,
-      },
-    ]);
+    } catch (e: unknown) { setError(e instanceof Error ? e.message : 'Submit failed'); } finally { setLoading(false); }
   }
 
   function applyTemplatePlacements(payload: { placements: { placementKey: string; type: string; imageUrl?: string | null; text?: string | null; font?: string | null; color?: string | null }[] }) {
-    // Merge placements: auto-select any placement from template
-    const templatePlacementKeys = payload.placements.map(p => p.placementKey);
-    setPlacements(prev => prev.map(p => templatePlacementKeys.includes(p.key) ? { ...p, selected: true } : p));
-    // Merge design assets from template placements
-    setDesignAssets(prev => {
-      const filtered = prev.filter(a => !templatePlacementKeys.includes(a.placementKey));
-      const additions = payload.placements.map(p => {
-        if (p.type === 'image' && p.imageUrl) {
-          return { placementKey: p.placementKey, type: 'image', sourceType: 'template', imageUrl: p.imageUrl } as DesignAsset;
-        }
-        if (p.type === 'text' && p.text) {
-          return { placementKey: p.placementKey, type: 'text', sourceType: 'template', text: p.text, font: p.font || 'Inter', color: p.color || '#ffffff' } as DesignAsset;
-        }
-        if (p.type === 'combo') {
-          // For combo we could have both image and text; treat image first if exists
-          if (p.imageUrl) {
-            return { placementKey: p.placementKey, type: 'image', sourceType: 'template', imageUrl: p.imageUrl } as DesignAsset;
-          } else if (p.text) {
-            return { placementKey: p.placementKey, type: 'text', sourceType: 'template', text: p.text, font: p.font || 'Inter', color: p.color || '#ffffff' } as DesignAsset;
-          }
-        }
-        return null;
-      }).filter(Boolean) as DesignAsset[];
-      return [...filtered, ...additions];
-    });
-    // Jump to design step if not there yet
-    if (currentStep < 2) setCurrentStep(2);
+    const first = payload.placements[0];
+    if (!first) return;
+    if (['front','back','chest_left','chest_right'].includes(first.placementKey)) {
+      setSelectedPlacement(first.placementKey as 'front'|'back'|'chest_left'|'chest_right');
+    }
+    if (first.type==='image' && first.imageUrl) { setDesignType('image'); setUploadedImageUrl(first.imageUrl); setDesignImagePreviewUrl(first.imageUrl); }
+    else if (first.type==='text' && first.text) { setDesignType('text'); setDesignText(first.text); setDesignTextColor(first.color || '#000000'); }
+    setCurrentStep('design');
   }
 
-  const estimatedTotal = selectedProductData
-    ? (selectedProductData.basePrice + selectedPlacements.length * 15) * quantity
-    : 0;
+  const estimatedTotal = useMemo(()=>20+15,[]); // static demo pricing
 
   return (
     <div className="py-8">
-      <motion.div variants={fadeInUp} initial="hidden" animate="show">
-        <h1 className="text-hero mb-8">Custom Order Builder</h1>
-      </motion.div>
-
-      <div className="grid lg:grid-cols-3 gap-6">
-        {/* Main Builder Area */}
-        <div className="lg:col-span-2 space-y-6">
+      <motion.div variants={fadeInUp} initial="hidden" animate="show"><h1 className="text-hero mb-8">Custom Order Builder</h1></motion.div>
+      <div className="flex flex-col lg:flex-row gap-6 lg:gap-10">
+        <div className="flex-1 space-y-6">
           <Card variant="glass" className="p-6">
-            <Stepper steps={steps} />
+            <Stepper steps={steps} onStepClick={(k)=>goToStep(k as BuilderStep)} />
+            <div className="mt-2 text-xs text-muted lg:hidden">Step {steps.findIndex(s=>s.key===currentStep)+1} of 4</div>
           </Card>
-
           <Card className="p-6 space-y-6">
-            {currentStep === 0 && (
+            {currentStep==='baseShirt' && (
               <div className="space-y-4">
-                <h2 className="text-section-title">Choose Base Shirt</h2>
-                <Select value={selectedProduct} onChange={(e) => setSelectedProduct(e.currentTarget.value)}>
-                  <option value="">Select a product</option>
-                  {products.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.name} - ${p.basePrice}
-                    </option>
-                  ))}
-                </Select>
-                
-                {selectedProductData && (
-                  <>
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium">Color</label>
-                      <div className="flex gap-2 flex-wrap">
-                        {selectedProductData.colors?.map((c) => (
-                          <button
-                            key={c}
-                            onClick={() => setColor(c)}
-                            className={`soft-3d px-4 py-2 rounded-full text-sm ${
-                              color === c ? "ring-2 ring-token" : ""
-                            }`}
-                          >
-                            {c}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium">Size</label>
-                      <div className="flex gap-2 flex-wrap">
-                        {selectedProductData.sizes?.map((s) => (
-                          <button
-                            key={s}
-                            onClick={() => setSize(s)}
-                            className={`soft-3d px-4 py-2 rounded-full text-sm ${
-                              size === s ? "ring-2 ring-token" : ""
-                            }`}
-                          >
-                            {s}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium">Quantity</label>
-                      <Input
-                        type="number"
-                        min={1}
-                        value={quantity}
-                        onChange={(e) => setQuantity(Number(e.currentTarget.value))}
-                      />
-                    </div>
-                  </>
-                )}
-              </div>
-            )}
-
-            {currentStep === 1 && (
-              <div className="space-y-4">
-                <h2 className="text-section-title">Select Placements</h2>
-                <p className="text-sm text-muted">Choose where you want designs on your shirt ($15 per placement)</p>
-                <div className="grid sm:grid-cols-2 gap-3">
-                  {placements.map((p) => (
-                    <button
-                      key={p.key}
-                      onClick={() => togglePlacement(p.key)}
-                      className={`soft-3d p-4 rounded-lg text-left transition-all ${
-                        p.selected ? "ring-2 ring-token" : ""
-                      }`}
-                    >
-                      <div className="font-medium">{p.label}</div>
-                      <div className="text-xs text-muted mt-1">{p.selected ? "Selected" : "Click to select"}</div>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {currentStep === 2 && (
-              <div className="space-y-4">
-                <h2 className="text-section-title">Design Your Shirt</h2>
-                {selectedPlacements.length === 0 ? (
-                  <p className="text-muted">No placements selected. Go back to select placements.</p>
-                ) : (
-                  <div className="space-y-6">
-                    {selectedPlacements.map((placement) => {
-                      const existingDesign = designAssets.find((a) => a.placementKey === placement.key);
-                      const isActive = activeDesignPlacement === placement.key;
-
-                      return (
-                        <Card key={placement.key} variant="soft3D" className="p-4 space-y-3">
-                          <div className="flex items-center justify-between">
-                            <h3 className="font-medium">{placement.label}</h3>
-                            <button
-                              className="text-sm underline hover:no-underline"
-                              onClick={() => setActiveDesignPlacement(isActive ? "" : placement.key)}
-                            >
-                              {isActive ? "Close" : existingDesign ? "Edit" : "Add Design"}
-                            </button>
-                          </div>
-
-                          {existingDesign && (
-                            <div className="text-sm">
-                              {existingDesign.type === "image" && existingDesign.imageUrl && (
-                                <div className="flex items-center gap-2">
-                                  <Image
-                                    src={existingDesign.imageUrl}
-                                    alt="Design"
-                                    width={64}
-                                    height={64}
-                                    className="w-16 h-16 object-cover rounded"
-                                  />
-                                  <span className="text-muted">Image uploaded</span>
-                                </div>
-                              )}
-                              {existingDesign.type === "text" && (
-                                <div className="text-muted">
-                                  Text: &quot;{existingDesign.text}&quot; ({existingDesign.font}, {existingDesign.color})
-                                </div>
-                              )}
-                            </div>
-                          )}
-
-                          {isActive && (
-                            <div className="space-y-3 pt-3 border-t border-muted">
-                              <div className="space-y-2">
-                                <label className="text-sm font-medium">Upload Image</label>
-                                <input
-                                  type="file"
-                                  accept="image/*"
-                                  className="block w-full text-sm"
-                                  onChange={(e) => {
-                                    const file = e.target.files?.[0];
-                                    if (file) handleImageUpload(placement.key, file);
-                                  }}
-                                />
-                              </div>
-
-                              <div className="text-sm text-muted text-center py-2">OR</div>
-
-                              <div className="space-y-3">
-                                <label className="text-sm font-medium">Add Text</label>
-                                <Input
-                                  placeholder="Enter text"
-                                  id={`text-${placement.key}`}
-                                />
-                                <Select id={`font-${placement.key}`} defaultValue="Arial">
-                                  {FONTS.map((f) => (
-                                    <option key={f} value={f}>
-                                      {f}
-                                    </option>
-                                  ))}
-                                </Select>
-                                <Input
-                                  type="color"
-                                  id={`color-${placement.key}`}
-                                  defaultValue="#000000"
-                                />
-                                <Button
-                                  variant="secondary"
-                                  className="w-full"
-                                  onClick={() => {
-                                    const textEl = document.getElementById(`text-${placement.key}`) as HTMLInputElement;
-                                    const fontEl = document.getElementById(`font-${placement.key}`) as HTMLSelectElement;
-                                    const colorEl = document.getElementById(`color-${placement.key}`) as HTMLInputElement;
-                                    
-                                    if (textEl.value) {
-                                      addTextDesign(placement.key, textEl.value, fontEl.value, colorEl.value);
-                                      setActiveDesignPlacement("");
-                                    }
-                                  }}
-                                >
-                                  Add Text Design
-                                </Button>
-                              </div>
-                            </div>
-                          )}
-                        </Card>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-            )}
-
-            {currentStep === 3 && (
-              <div className="space-y-4">
-                <h2 className="text-section-title">Review & Notes</h2>
-                <Card variant="soft3D" className="p-4 space-y-3">
-                  <div>
-                    <div className="font-medium">Base Shirt</div>
-                    <div className="text-sm text-muted">
-                      {selectedProductData?.name} - {color} - {size} - Qty: {quantity}
-                    </div>
-                  </div>
-                  <div>
-                    <div className="font-medium">Placements ({selectedPlacements.length})</div>
-                    <div className="text-sm text-muted">
-                      {selectedPlacements.map((p) => p.label).join(", ")}
-                    </div>
-                  </div>
-                  <div>
-                    <div className="font-medium">Design Assets ({designAssets.length})</div>
-                    <div className="text-sm text-muted">
-                      {designAssets.length === 0
-                        ? "No designs added"
-                        : designAssets.map((a) => `${a.placementKey}: ${a.type}`).join(", ")}
-                    </div>
-                  </div>
-                  <div>
-                    <div className="font-medium">Estimated Total</div>
-                    <div className="text-2xl font-bold">${estimatedTotal.toFixed(2)}</div>
-                    <div className="text-xs text-muted">
-                      Base: ${selectedProductData?.basePrice || 0} + Placements: ${selectedPlacements.length * 15} × {quantity}
-                    </div>
-                  </div>
-                </Card>
-
+                <h2 className="text-section-title">Base Shirt</h2>
                 <div className="space-y-2">
-                  <label className="text-sm font-medium">Additional Notes (Optional)</label>
-                  <Textarea
-                    placeholder="Any special requests or instructions..."
-                    value={notes}
-                    onChange={(e) => setNotes(e.currentTarget.value)}
-                    rows={4}
-                  />
+                  <label className="text-sm font-medium">Choose Color</label>
+                  <Select value={selectedBaseColor} onChange={(e)=>setSelectedBaseColor(e.currentTarget.value as BaseShirtColor)}>
+                    <option value="white">White</option>
+                    <option value="black">Black</option>
+                  </Select>
+                  <div className="flex gap-2 pt-2">
+                    {(['white','black'] as BaseShirtColor[]).map(c => (
+                      <button key={c} type="button" onClick={()=>setSelectedBaseColor(c)} className={`h-10 w-10 rounded-full flex items-center justify-center border ${selectedBaseColor===c?'ring-2 ring-token border-token':'border-muted'} bg-[--surface]`}>
+                        <span className={`block h-6 w-6 rounded-full ${c==='white'?'bg-white border border-muted':'bg-black'}`}></span>
+                      </button>
+                    ))}
+                  </div>
                 </div>
+                <p className="text-xs text-muted">Select your base shirt color. This will update the live preview immediately.</p>
               </div>
             )}
-
-            {currentStep === 4 && (
+            {currentStep==='placements' && (
               <div className="space-y-4">
-                <h2 className="text-section-title">Delivery Information</h2>
+                <h2 className="text-section-title">Choose Placement</h2>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                  {(['front','back','chest_left','chest_right'] as Array<'front'|'back'|'chest_left'|'chest_right'>).map(p => (
+                    <button key={p} type="button" onClick={()=>setSelectedPlacement(p)} className={`soft-3d px-3 py-2 rounded text-sm ${selectedPlacement===p?'ring-2 ring-token':''}`}>{p==='front'?'Front':p==='back'?'Back':p==='chest_left'?'Left chest':'Right chest'}</button>
+                  ))}
+                </div>
+                {(selectedPlacement==='front' || selectedPlacement==='back') && (
+                  <div className="space-y-2 pt-2">
+                    <label className="text-xs font-medium">Vertical position</label>
+                    <div className="flex gap-2 flex-wrap">
+                      {([
+                        { key: 'upper', label: selectedPlacement==='front' ? 'Upper chest' : 'Upper back' },
+                        { key: 'center', label: selectedPlacement==='front' ? 'Center' : 'Center back' },
+                        { key: 'lower', label: selectedPlacement==='front' ? 'Lower' : 'Lower back' },
+                      ] as const).map(v => (
+                        <button
+                          key={v.key}
+                          type="button"
+                          onClick={()=>setVerticalPosition(v.key)}
+                          className={`soft-3d px-3 py-1.5 rounded text-xs ${verticalPosition===v.key?'ring-2 ring-token':''}`}
+                        >{v.label}</button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                <p className="text-xs text-muted">Switch placement and vertical position to see the marker move.</p>
+              </div>
+            )}
+            {currentStep==='design' && (
+              <div className="space-y-6">
+                <h2 className="text-section-title">Design Your Print</h2>
+                <div className="flex gap-2">
+                  <button type="button" onClick={()=>setDesignType('text')} className={`soft-3d px-3 py-1.5 rounded text-sm ${designType==='text'?'ring-2 ring-token':''}`}>Text design</button>
+                  <button type="button" onClick={()=>setDesignType('image')} className={`soft-3d px-3 py-1.5 rounded text-sm ${designType==='image'?'ring-2 ring-token':''}`}>Image design</button>
+                </div>
+                {designType==='text' && (
+                  <div className="space-y-4">
+                    <div className="space-y-2"><label className="text-sm font-medium">Text</label><Input value={designText} onChange={(e)=>setDesignText(e.currentTarget.value)} placeholder="Your phrase" /></div>
+                    <div className="space-y-2"><label className="text-sm font-medium">Font Style</label><div className="flex flex-wrap gap-2">{(Object.keys(FONT_MAP) as Array<keyof typeof FONT_MAP>).map(k => (<button key={k} type="button" onClick={()=>setDesignFont(k)} className={`soft-3d px-3 py-1.5 rounded text-xs ${designFont===k?'ring-2 ring-token':''}`}>{FONT_MAP[k].label}</button>))}</div></div>
+                    <div className="space-y-2"><label className="text-sm font-medium">Text Color</label><div className="flex gap-2 flex-wrap">{TEXT_COLORS.map(c => (<button key={c.value} type="button" onClick={()=>setDesignTextColor(c.value)} className={`h-8 w-8 rounded-full flex items-center justify-center ${designTextColor===c.value?'ring-2 ring-token':''}`}> <span className={`block h-6 w-6 rounded-full ${c.swatch}`}></span></button>))}</div></div>
+                  </div>
+                )}
+                {designType==='image' && (
+                  <div className="space-y-3">
+                    <label className="text-sm font-medium">Upload Image</label>
+                    <input type="file" accept="image/*" onChange={async (e) => { const file = e.target.files?.[0]; if (!file) return; const localUrl = URL.createObjectURL(file); setDesignImagePreviewUrl(localUrl); setLoading(true); const fd = new FormData(); fd.append('file', file); fd.append('placementKey', selectedPlacement); try { const res = await fetch('/api/uploads/custom-design', { method: 'POST', body: fd }); if (!res.ok) throw new Error('Upload failed'); const data = await res.json(); setUploadedImageUrl(data.imageUrl); } catch { setError('Image upload failed'); } finally { setLoading(false); } }} />
+                    {designImagePreviewUrl && (<Image src={designImagePreviewUrl} alt="Preview" width={96} height={96} className="w-24 h-24 object-contain" />)}
+                  </div>
+                )}
+              </div>
+            )}
+            {currentStep==='review' && (
+              <div className="space-y-6">
+                <h2 className="text-section-title">Review & Delivery</h2>
+                <Card variant="soft3D" className="p-4 space-y-2">
+                  <div className="text-sm"><span className="font-medium">Base Shirt:</span> {selectedBaseColor==='black'?'Black':'White'}</div>
+                  <div className="text-sm"><span className="font-medium">Placement:</span> {selectedPlacement.replace(/_/g,' ')}</div>
+                  <div className="text-sm"><span className="font-medium">Design:</span> {designType==='text'?`Text (${designText.slice(0,20)||'None'})`: uploadedImageUrl ? 'Image uploaded':'None'}</div>
+                  <div className="text-sm"><span className="font-medium">Estimated Total:</span> ${estimatedTotal.toFixed(2)}</div>
+                </Card>
                 <div className="space-y-3">
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium">Email</label>
-                    <Input
-                      type="email"
-                      required
-                      value={email}
-                      onChange={(e) => setEmail(e.currentTarget.value)}
-                      placeholder="your@email.com"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium">Phone</label>
-                    <Input
-                      type="tel"
-                      required
-                      value={phone}
-                      onChange={(e) => setPhone(e.currentTarget.value)}
-                      placeholder="+1234567890"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium">Delivery Address</label>
-                    <Textarea
-                      required
-                      value={address}
-                      onChange={(e) => setAddress(e.currentTarget.value)}
-                      placeholder="Street address, city, state, ZIP code"
-                      rows={3}
-                    />
-                  </div>
+                  <div className="space-y-1"><label className="text-xs font-medium">Delivery Name</label><Input value={deliveryName} onChange={(e)=>setDeliveryName(e.currentTarget.value)} placeholder="Name" /></div>
+                  <div className="space-y-1"><label className="text-xs font-medium">Email</label><Input type="email" required value={deliveryEmail} onChange={(e)=>setDeliveryEmail(e.currentTarget.value)} placeholder="you@example.com" /></div>
+                  <div className="space-y-1"><label className="text-xs font-medium">Phone</label><Input type="tel" required value={deliveryPhone} onChange={(e)=>setDeliveryPhone(e.currentTarget.value)} placeholder="+123456789" /></div>
+                  <div className="space-y-1"><label className="text-xs font-medium">Address</label><Textarea rows={3} required value={deliveryAddress} onChange={(e)=>setDeliveryAddress(e.currentTarget.value)} placeholder="Street, City, State" /></div>
+                  <div className="space-y-1"><label className="text-xs font-medium">Notes (Optional)</label><Textarea rows={3} value={notes} onChange={(e)=>setNotes(e.currentTarget.value)} placeholder="Additional instructions" /></div>
                 </div>
               </div>
             )}
-
-            {error && (
-              <div className="text-sm text-red-600 bg-red-50 dark:bg-red-900/20 p-3 rounded">
-                {error}
-              </div>
-            )}
-
-            <div className="flex items-center justify-between pt-4">
-              <Button variant="secondary" onClick={handleBack} disabled={currentStep === 0 || loading}>
-                Back
-              </Button>
-              {currentStep < steps.length - 1 ? (
-                <Button onClick={handleNext} disabled={loading}>
-                  Next
-                </Button>
-              ) : (
-                <Button onClick={handleSubmit} disabled={loading}>
-                  {loading ? "Submitting..." : "Submit Order"}
-                </Button>
-              )}
+            {error && <div className="text-sm text-red-600 bg-red-50 dark:bg-red-900/20 p-3 rounded">{error}</div>}
+            <div className="flex items-center justify-between pt-2">
+              <Button variant="secondary" onClick={handleBack} disabled={currentStep==='baseShirt' || loading}>Back</Button>
+              {currentStep!=='review' ? (<Button onClick={handleNext} disabled={loading}>Next</Button>) : (<Button onClick={handleSubmit} disabled={loading || !deliveryAddress || !deliveryPhone || !deliveryEmail}>{loading?'Submitting...':'Place Custom Order'}</Button>)}
             </div>
           </Card>
         </div>
-
-        {/* Side Panel */}
-        <div className="space-y-6">
-          <Card variant="glass" className="p-6 space-y-4">
-            <MascotSlot variant="customBuilderHelper" />
-            <div className="text-sm text-muted">
-              <p className="font-medium mb-2">Building Your Custom Shirt</p>
-              <p>Follow the steps to create your unique design. Our team will review and bring it to life!</p>
+        <div className="lg:w-1/2 space-y-6 order-first lg:order-0">
+          <Card variant="soft3D" className="p-4 space-y-2">
+            <div className="font-medium">Live Preview</div>
+            <DesignPreview
+              baseColor={selectedBaseColor}
+              overlayPlacementKey={selectedPlacement}
+              overlayType={currentStep==='placements' ? 'placeholder' : designType==='text' && designText.trim() ? 'text' : designType==='image' && (designImagePreviewUrl || uploadedImageUrl) ? 'image' : (currentStep==='design' ? 'placeholder' : null)}
+              overlayText={designType==='text' ? designText : undefined}
+              overlayImageUrl={designType==='image' ? (designImagePreviewUrl || uploadedImageUrl) : undefined}
+              overlayColor={designTextColor}
+              overlayFont={FONT_MAP[designFont].family}
+              overlayVerticalPosition={verticalPosition}
+            />
+            <div className="pt-3 flex gap-2">
+              {(['white','black'] as BaseShirtColor[]).map(c => (
+                <button key={c} type="button" onClick={()=>setSelectedBaseColor(c)} className={`h-9 w-9 rounded-full flex items-center justify-center border ${selectedBaseColor===c?'ring-2 ring-token border-token':'border-muted'} bg-[--surface]`}>
+                  <span className={`block h-5 w-5 rounded-full ${c==='white'?'bg-white border border-muted':'bg-black'}`}></span>
+                </button>
+              ))}
             </div>
           </Card>
-
-          <Card variant="soft3D" className="p-4 space-y-2">
-            <div className="font-medium">Quick Summary</div>
-            <div className="text-sm space-y-1">
-              <div>Product: {selectedProductData?.name || "Not selected"}</div>
-              <div>Placements: {selectedPlacements.length}</div>
-              <div>Designs: {designAssets.length}</div>
-              <div className="font-bold pt-2">Est. Total: ${estimatedTotal.toFixed(2)}</div>
-            </div>
+          <Card variant="glass" className="p-6 space-y-4">
+            <MascotSlot variant="customBuilderHelper" />
+            <div className="text-xs text-muted"><p className="font-medium mb-2">Wizard Guide</p><p>Progress through each step. The preview updates instantly with placement and design changes.</p></div>
           </Card>
           <DesignAssistant onApplyTemplate={applyTemplatePlacements} />
         </div>

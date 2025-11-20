@@ -51,6 +51,14 @@ export default function OrderDetailPage({ params }: { params: { orderId: string 
     return idx === -1 ? 0 : idx;
   }, [order]);
 
+  const statusSteps: { key: string; label: string; status: 'completed' | 'current' | 'upcoming' }[] = useMemo(() => {
+    return STATUS_FLOW.map((status, index) => ({
+      key: status,
+      label: status,
+      status: (index < activeIndex ? 'completed' : index === activeIndex ? 'current' : 'upcoming') as 'completed' | 'current' | 'upcoming'
+    }));
+  }, [activeIndex]);
+
   if (loading) return <div className="py-12 text-center">Loading order...</div>;
   if (error) return <div className="py-12 text-center text-red-600">{error}</div>;
   if (!order) return <div className="py-12 text-center">No order found.</div>;
@@ -71,7 +79,7 @@ export default function OrderDetailPage({ params }: { params: { orderId: string 
           <div className="font-semibold">Status: {order.status}</div>
         </div>
         <div className="mt-4">
-          <Stepper steps={STATUS_FLOW} activeIndex={activeIndex} />
+          <Stepper steps={statusSteps} />
         </div>
       </div>
 

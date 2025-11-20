@@ -1,33 +1,41 @@
 import clsx from "clsx";
 
 interface Step {
+  key: string;
   label: string;
-  status: "completed" | "current" | "upcoming";
+  status: 'completed' | 'current' | 'upcoming';
+  clickable?: boolean; // allow navigation back to previous steps
 }
 
-export function Stepper({ steps, activeIndex }: { steps: string[] | Step[]; activeIndex?: number }) {
-  // Handle both string[] and Step[] formats
-  const stepItems: Array<{ label: string; status?: string }> = Array.isArray(steps)
-    ? steps.map((s) => (typeof s === "string" ? { label: s } : s))
-    : [];
+interface StepperProps {
+  steps: Step[];
+  onStepClick?: (key: string) => void;
+}
 
+export function Stepper({ steps, onStepClick }: StepperProps) {
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-5 gap-2">
-      {stepItems.map((s, i) => {
-        const isActive = s.status
-          ? s.status === "current" || s.status === "completed"
-          : activeIndex !== undefined && i <= activeIndex;
-
+    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+      {steps.map((step) => {
+        const canNavigate = step.clickable && step.status !== 'current';
         return (
-          <div
-            key={s.label}
+          <button
+            type="button"
+            key={step.key}
+            disabled={!canNavigate}
+            onClick={() => canNavigate && onStepClick?.(step.key)}
             className={clsx(
-              "text-center text-xs py-2 rounded border",
-              isActive ? "bg-black text-white border-black" : "bg-[--surface] text-[--fg] border-muted"
+              'group relative text-center text-xs py-2 rounded border transition-colors',
+              step.status === 'current' && 'bg-black text-white border-black',
+              step.status === 'completed' && 'bg-token/10 text-token border-token/40',
+              step.status === 'upcoming' && 'bg-[--surface] text-[--fg] border-muted',
+              canNavigate && 'cursor-pointer hover:border-token hover:bg-token/5'
             )}
           >
-            {s.label}
-          </div>
+            <span className="font-medium">{step.label}</span>
+            {step.status === 'completed' && (
+              <span className="absolute top-1 right-1 text-[10px]">✓</span>
+            )}
+          </button>
         );
       })}
     </div>
