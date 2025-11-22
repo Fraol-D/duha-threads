@@ -1,6 +1,6 @@
 "use client";
 import Image from 'next/image';
-import { BASE_SHIRTS, BaseShirtColor } from '@/config/baseShirts';
+import { FRONT_BASE_SHIRTS, BACK_BASE_SHIRTS, BASE_SHIRTS, BaseShirtColor } from '@/config/baseShirts';
 import { PLACEMENT_RECTS } from '@/config/placementGuides';
 
 type DesignAsset = {
@@ -15,23 +15,38 @@ type DesignAsset = {
 
 type VerticalPosition = 'upper' | 'center' | 'lower';
 
+interface NewPlacementPreview {
+  id: string;
+  area: 'front' | 'back' | 'left_chest' | 'right_chest';
+  verticalPosition: VerticalPosition;
+  designType: 'text' | 'image';
+  designText?: string | null;
+  designFont?: string | null;
+  designColor?: string | null;
+  designImageUrl?: string | null;
+}
+
 interface Props {
   baseColor: BaseShirtColor;
-  assets?: DesignAsset[];
-  overlayPlacementKey?: string; // live placement highlight or in-progress design
-  overlayType?: 'image' | 'text' | 'placeholder' | null; // placeholder added for step 2 highlight
+  assets?: DesignAsset[]; // legacy assets
+  mode?: 'front' | 'back';
+  placements?: NewPlacementPreview[]; // new placement configs
+  overlayPlacementKey?: string;
+  overlayType?: 'image' | 'text' | 'placeholder' | null;
   overlayText?: string;
   overlayImageUrl?: string | null;
   overlayColor?: string;
   overlayFont?: string;
-  overlayVerticalPosition?: VerticalPosition; // for front/back variant vertical adjustment
+  overlayVerticalPosition?: VerticalPosition;
 }
 
-export function DesignPreview({ baseColor, assets = [], overlayPlacementKey, overlayType, overlayText, overlayImageUrl, overlayColor, overlayFont, overlayVerticalPosition = 'upper' }: Props) {
+export function DesignPreview({ baseColor, assets = [], mode = 'front', placements = [], overlayPlacementKey, overlayType, overlayText, overlayImageUrl, overlayColor, overlayFont, overlayVerticalPosition = 'upper' }: Props) {
+  // Determine base image depending on mode (front/back)
+  const baseImg = mode === 'front' ? (FRONT_BASE_SHIRTS[baseColor] || BASE_SHIRTS[baseColor]) : (BACK_BASE_SHIRTS[baseColor] || BASE_SHIRTS[baseColor]);
   return (
     <div className="relative w-full max-w-md mx-auto aspect-3/4 select-none">
       <Image
-        src={BASE_SHIRTS[baseColor]}
+        src={baseImg}
         alt="Base shirt"
         fill
         priority={false}
@@ -39,6 +54,7 @@ export function DesignPreview({ baseColor, assets = [], overlayPlacementKey, ove
         className="object-contain"
       />
       <div className="absolute inset-0 pointer-events-none">
+        {/* Legacy assets rendering */}
         {assets.map((a, idx) => {
           const baseRect = PLACEMENT_RECTS[a.placementKey as keyof typeof PLACEMENT_RECTS];
           const rect = { ...baseRect };
@@ -66,6 +82,43 @@ export function DesignPreview({ baseColor, assets = [], overlayPlacementKey, ove
                   style={{ color: a.color || '#000', fontFamily: a.font || 'Inter, system-ui, sans-serif' }}
                 >
                   <span className="text-[clamp(12px,4vw,28px)] leading-tight px-1 bg-transparent">{a.text}</span>
+                </div>
+              ) : null}
+            </div>
+          );
+        })}
+
+        {/* New placements rendering based on mode */}
+        {placements.filter(p => mode === 'front' ? (p.area === 'front' || p.area === 'left_chest' || p.area === 'right_chest') : p.area === 'back').map(p => {
+          // Map area names to existing placement rect keys
+          const keyMap: Record<string,string> = {
+            left_chest: 'chest_left',
+            right_chest: 'chest_right',
+          };
+          const mappedKey = p.area === 'left_chest' || p.area === 'right_chest' ? keyMap[p.area] : p.area;
+          const baseRect = PLACEMENT_RECTS[mappedKey as keyof typeof PLACEMENT_RECTS];
+          if (!baseRect) return null;
+          const rect = { ...baseRect };
+          if ((p.area === 'front' || p.area === 'back') && p.verticalPosition) {
+            rect.topPercent = p.verticalPosition === 'upper' ? 22 : p.verticalPosition === 'center' ? 32 : 42;
+          }
+          const style: React.CSSProperties = {
+            top: `${rect.topPercent}%`,
+            left: `${rect.leftPercent}%`,
+            width: `${rect.widthPercent}%`,
+            height: `${rect.heightPercent}%`,
+            transform: rect.transform,
+          };
+          return (
+            <div key={p.id} className="absolute" style={style}>
+              {p.designType === 'image' && p.designImageUrl ? (
+                <img src={p.designImageUrl} alt="Design" className="w-full h-full object-contain" />
+              ) : p.designType === 'text' && p.designText ? (
+                <div
+                  className="w-full h-full flex items-center justify-center text-center"
+                  style={{ color: p.designColor || '#000', fontFamily: p.designFont || 'Inter, system-ui, sans-serif' }}
+                >
+                  <span className="text-[clamp(12px,4vw,28px)] leading-tight px-1 bg-transparent">{p.designText}</span>
                 </div>
               ) : null}
             </div>

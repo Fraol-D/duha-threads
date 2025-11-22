@@ -28,7 +28,7 @@ export async function GET(req: NextRequest) {
       userId: o.userId?.toString() || null,
       status: o.status,
       baseColor: o.baseColor || o.baseShirt.color,
-      placement: o.placement || o.placements[0]?.placementKey,
+      placement: o.placement || o.legacyPlacements?.[0]?.placementKey || (o.placements?.find(p=>p.area==='front')?.area) || o.placements?.[0]?.area || null,
       verticalPosition: o.verticalPosition || null,
       designType: o.designType || (o.designAssets[0]?.type as ('text'|'image')|undefined) || null,
       designText: o.designText || o.designAssets.find(a=>a.type==='text')?.text || null,

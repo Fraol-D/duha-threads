@@ -31,7 +31,30 @@ interface CustomOrder {
   designFont?: string | null;
   designColor?: string | null;
   designImageUrl?: string | null;
-  placements: Array<{ placementKey: string; label: string }>;
+  sides?: {
+    front: {
+      enabled: boolean;
+      placement: 'front';
+      verticalPosition: 'upper' | 'center' | 'lower';
+      designType: 'text' | 'image';
+      designText?: string | null;
+      designFont?: string | null;
+      designColor?: string | null;
+      designImageUrl?: string | null;
+    };
+    back: {
+      enabled: boolean;
+      placement: 'back';
+      verticalPosition: 'upper' | 'center' | 'lower';
+      designType: 'text' | 'image';
+      designText?: string | null;
+      designFont?: string | null;
+      designColor?: string | null;
+      designImageUrl?: string | null;
+    };
+  };
+  legacyPlacements: Array<{ placementKey: string; label: string }>;
+  placements?: Array<{ id: string; area: 'front' | 'back' | 'left_chest' | 'right_chest'; verticalPosition: 'upper' | 'center' | 'lower'; designType: 'text' | 'image'; designText?: string | null; designFont?: string | null; designColor?: string | null; designImageUrl?: string | null; }>;
   designAssets: Array<{
     placementKey: string;
     type: "image" | "text";
@@ -307,9 +330,59 @@ export default function AdminCustomOrderDetailPage() {
 
       <Card className="p-6 space-y-4">
         <h2 className="text-xl font-semibold">Design Overview</h2>
+        {order.sides && (
+          <div className="space-y-4 mb-4">
+            <div className="grid md:grid-cols-2 gap-4">
+              <Card className="p-4 space-y-2">
+                <h3 className="text-sm font-semibold">Front Print</h3>
+                <div className="text-xs"><span className="text-muted">Enabled:</span> {order.sides.front.enabled ? 'Yes' : 'No'}</div>
+                {order.sides.front.enabled && (
+                  <>
+                    <div className="text-xs"><span className="text-muted">Vertical Position:</span> {order.sides.front.verticalPosition}</div>
+                    <div className="text-xs"><span className="text-muted">Design Type:</span> {order.sides.front.designType}</div>
+                    {order.sides.front.designType==='text' ? (
+                      <div className="space-y-1 text-xs">
+                        <div><span className="text-muted">Text:</span> {order.sides.front.designText || '—'}</div>
+                        <div><span className="text-muted">Font:</span> {order.sides.front.designFont || '—'}</div>
+                        <div className="flex items-center gap-2"><span className="text-muted">Color:</span><span className="inline-block w-4 h-4 rounded border" style={{ backgroundColor: order.sides.front.designColor || '#000' }} /></div>
+                      </div>
+                    ) : (
+                      <div className="text-xs flex items-center gap-2">
+                        <span className="text-muted">Image:</span>
+                        {order.sides.front.designImageUrl ? <Image src={order.sides.front.designImageUrl} alt="Front design" width={64} height={64} className="w-16 h-16 object-contain border rounded" /> : '—'}
+                      </div>
+                    )}
+                  </>
+                )}
+              </Card>
+              <Card className="p-4 space-y-2">
+                <h3 className="text-sm font-semibold">Back Print</h3>
+                <div className="text-xs"><span className="text-muted">Enabled:</span> {order.sides.back.enabled ? 'Yes' : 'No'}</div>
+                {order.sides.back.enabled && (
+                  <>
+                    <div className="text-xs"><span className="text-muted">Vertical Position:</span> {order.sides.back.verticalPosition}</div>
+                    <div className="text-xs"><span className="text-muted">Design Type:</span> {order.sides.back.designType}</div>
+                    {order.sides.back.designType==='text' ? (
+                      <div className="space-y-1 text-xs">
+                        <div><span className="text-muted">Text:</span> {order.sides.back.designText || '—'}</div>
+                        <div><span className="text-muted">Font:</span> {order.sides.back.designFont || '—'}</div>
+                        <div className="flex items-center gap-2"><span className="text-muted">Color:</span><span className="inline-block w-4 h-4 rounded border" style={{ backgroundColor: order.sides.back.designColor || '#000' }} /></div>
+                      </div>
+                    ) : (
+                      <div className="text-xs flex items-center gap-2">
+                        <span className="text-muted">Image:</span>
+                        {order.sides.back.designImageUrl ? <Image src={order.sides.back.designImageUrl} alt="Back design" width={64} height={64} className="w-16 h-16 object-contain border rounded" /> : '—'}
+                      </div>
+                    )}
+                  </>
+                )}
+              </Card>
+            </div>
+          </div>
+        )}
         <div className="grid md:grid-cols-2 gap-3 text-sm">
           <div><span className="text-muted">Base Color:</span> {order.baseColor || order.baseShirt.color}</div>
-          <div><span className="text-muted">Placement:</span> {order.placement ? order.placement.replace(/_/g,' ') : (order.placements[0]?.label || order.placements[0]?.placementKey)}</div>
+          <div><span className="text-muted">Placement:</span> {order.placement ? order.placement.replace(/_/g,' ') : (order.legacyPlacements?.[0]?.label || order.legacyPlacements?.[0]?.placementKey || '—')}</div>
           <div><span className="text-muted">Vertical Position:</span> {order.verticalPosition ? order.verticalPosition.replace(/_/g,' ') : '—'}</div>
           <div><span className="text-muted">Design Type:</span> {order.designType || order.designAssets[0]?.type || '—'}</div>
           {(order.designType === 'text' || order.designAssets[0]?.type === 'text') && (
@@ -328,16 +401,44 @@ export default function AdminCustomOrderDetailPage() {
         </div>
       </Card>
 
-      <Card className="p-6 space-y-4">
-        <h2 className="text-xl font-semibold">Placements</h2>
-        <div className="flex gap-2 flex-wrap">
-          {order.placements.map((p, i) => (
-            <span key={i} className="soft-3d px-4 py-2 rounded-full text-sm">
-              {p.label}
-            </span>
-          ))}
-        </div>
-      </Card>
+      {Array.isArray(order.placements) && order.placements.length > 0 && (order.placements[0] as { area?: string }).area && (
+        <Card className="p-6 space-y-4">
+          <h2 className="text-xl font-semibold">Placements (Advanced)</h2>
+          <div className="space-y-3">
+            {order.placements.map((p: { id?: string; area?: string; verticalPosition?: string; designType?: string; designText?: string | null; designFont?: string | null; designColor?: string | null; designImageUrl?: string | null }) => p && p.area ? (
+              <div key={p.id || p.area} className="border border-muted rounded p-3 text-xs grid md:grid-cols-6 gap-2 items-center">
+                <div className="font-medium md:col-span-1">{p.area.replace(/_/g,' ')}</div>
+                <div className="md:col-span-1">{p.verticalPosition}</div>
+                <div className="md:col-span-1">{p.designType}</div>
+                {p.designType==='text' ? (
+                  <div className="md:col-span-3 flex flex-col gap-1">
+                    <span className="truncate">{p.designText || '—'}</span>
+                    <span className="text-[10px] text-muted">Font: {p.designFont || '—'}</span>
+                    <span className="flex items-center gap-1 text-[10px]">Color: <span className="inline-block w-4 h-4 rounded border" style={{ backgroundColor: p.designColor || '#000' }} /></span>
+                  </div>
+                ) : (
+                  <div className="md:col-span-3 flex items-center gap-2">
+                    {p.designImageUrl ? <Image src={p.designImageUrl} alt="Design" width={64} height={64} className="w-16 h-16 object-contain border rounded" /> : '—'}
+                  </div>
+                )}
+              </div>
+            ) : null)}
+          </div>
+        </Card>
+      )}
+
+      {order.legacyPlacements && order.legacyPlacements.length > 0 && (
+        <Card className="p-6 space-y-4">
+          <h2 className="text-xl font-semibold">Legacy Placements</h2>
+          <div className="flex gap-2 flex-wrap">
+            {order.legacyPlacements.map((p, i) => (
+              <span key={i} className="soft-3d px-4 py-2 rounded-full text-sm">
+                {p.label}
+              </span>
+            ))}
+          </div>
+        </Card>
+      )}
 
       {order.designAssets.length > 0 && (
         <Card className="p-6 space-y-4">
@@ -347,7 +448,7 @@ export default function AdminCustomOrderDetailPage() {
               <div key={i} className="border border-muted rounded-lg p-4 space-y-2">
                 <div className="flex items-center justify-between">
                   <span className="font-medium">
-                    {order.placements.find((p) => p.placementKey === asset.placementKey)?.label || asset.placementKey}
+                    {order.legacyPlacements.find((p) => p.placementKey === asset.placementKey)?.label || asset.placementKey}
                   </span>
                   <Badge>{asset.type}</Badge>
                 </div>

@@ -25,8 +25,78 @@ const DesignAssetSchema = z.object({
   templateId: z.string().optional(),
 });
 
-// New builder schema supporting flattened design fields (still accept legacy structure for backward compatibility)
-const CreateCustomOrderSchema = z.object({
+// Builder schemas (single-side & multi-side) plus legacy
+const SideSchema = z.object({
+  enabled: z.boolean(),
+  placement: z.enum(['front','back']),
+  verticalPosition: z.enum(['upper','center','lower']),
+  designType: z.enum(['text','image']),
+  designText: z.string().optional().nullable(),
+  designFont: z.string().optional().nullable(),
+  designColor: z.string().optional().nullable(),
+  designImageUrl: z.string().optional().nullable(),
+});
+
+const PlacementConfigSchema = z.object({
+  id: z.string().min(1),
+  area: z.enum(['front','back','left_chest','right_chest']),
+  verticalPosition: z.enum(['upper','center','lower']),
+  designType: z.enum(['text','image']),
+  designText: z.string().optional().nullable(),
+  designFont: z.string().optional().nullable(),
+  designColor: z.string().optional().nullable(),
+  designImageUrl: z.string().optional().nullable(),
+});
+
+const MultiSideBuilderSchema = z.object({
+  baseColor: z.enum(['white','black']),
+  quantity: z.number().int().min(1).max(20).default(1),
+  deliveryName: z.string().min(1),
+  deliveryAddress: z.string().min(1),
+  phoneNumber: z.string().min(1),
+  notes: z.string().optional().nullable(),
+  // new flexible multi-placement array
+  placements: z.array(PlacementConfigSchema).min(1),
+  // still accept sides for transitional compatibility
+  sides: z.object({
+    front: SideSchema.extend({ placement: z.literal('front') }),
+    back: SideSchema.extend({ placement: z.literal('back') }),
+  }).optional(),
+});
+
+// Side-only transitional builder (front/back) without new placements array
+interface SideOnlyBuilder {
+  baseColor: 'white' | 'black';
+  quantity: number;
+  deliveryName: string;
+  deliveryAddress: string;
+  phoneNumber: string;
+  notes?: string | null;
+  sides: {
+    front: {
+      enabled: boolean;
+      placement: 'front';
+      verticalPosition: 'upper' | 'center' | 'lower';
+      designType: 'text' | 'image';
+      designText?: string | null;
+      designFont?: string | null;
+      designColor?: string | null;
+      designImageUrl?: string | null;
+    };
+    back: {
+      enabled: boolean;
+      placement: 'back';
+      verticalPosition: 'upper' | 'center' | 'lower';
+      designType: 'text' | 'image';
+      designText?: string | null;
+      designFont?: string | null;
+      designColor?: string | null;
+      designImageUrl?: string | null;
+    };
+  };
+}
+
+const SingleSideBuilderSchema = z.object({
   baseColor: z.enum(['white','black']),
   placement: z.enum(['front','back','chest_left','chest_right']),
   verticalPosition: z.enum(['upper','center','lower']),
@@ -40,8 +110,9 @@ const CreateCustomOrderSchema = z.object({
   deliveryAddress: z.string().min(1),
   phoneNumber: z.string().min(1),
   notes: z.string().optional().nullable(),
-}).or(z.object({
-  // Legacy shape used earlier in UI
+});
+
+const LegacySchema = z.object({
   baseShirt: z.object({
     productId: z.string().min(1),
     color: z.string().min(1),
@@ -56,7 +127,13 @@ const CreateCustomOrderSchema = z.object({
     phone: z.string().min(1),
     email: z.string().email(),
   }),
-}));
+});
+
+const CreateCustomOrderSchema = z.union([
+  MultiSideBuilderSchema,
+  SingleSideBuilderSchema,
+  LegacySchema,
+]);
 
 // Pricing rules
 const BASE_PLACEMENT_COST = 15; // $15 per placement
@@ -96,37 +173,35 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    type LegacyShape = {
-      baseShirt: { productId: string; color: string; size: string; quantity: number };
-      placements: { placementKey: string; label: string }[];
-      designAssets: Array<{
-        placementKey: string; type: 'image' | 'text'; sourceType: 'uploaded' | 'template' | 'ai_generated'; imageUrl?: string; text?: string; font?: string; color?: string;
-      }>;
-      notes: string;
-      delivery: { address: string; phone: string; email: string };
-    };
-    type NewShape = {
-      baseColor: 'white' | 'black'; placement: 'front' | 'back' | 'chest_left' | 'chest_right'; verticalPosition: 'upper' | 'center' | 'lower';
-      designType: 'text' | 'image'; designText?: string | null; designFont?: string | null; designColor?: string | null; designImageUrl?: string | null;
-      quantity: number;
-      deliveryName: string; deliveryAddress: string; phoneNumber: string; notes?: string | null;
-    };
-    const data: LegacyShape | NewShape = validationResult.data as (LegacyShape | NewShape);
+    type LegacyShape = z.infer<typeof LegacySchema>;
+    type SingleBuilderShape = z.infer<typeof SingleSideBuilderSchema>;
+    type MultiBuilderShape = z.infer<typeof MultiSideBuilderSchema>;
+    const data = validationResult.data as LegacyShape | SingleBuilderShape | MultiBuilderShape;
 
     // Connect to database
     await getDb();
 
     // Detect builder (flattened) vs legacy shape
-    const isBuilderShape = !('baseShirt' in data) && 'baseColor' in data && 'placement' in data && 'designType' in data;
+    const isBuilderShape = !('baseShirt' in data) && 'baseColor' in data;
+    const isMultiSide = isBuilderShape && 'sides' in data && !('placements' in data);
+    const isMultiPlacement = isBuilderShape && 'placements' in data;
 
     let basePrice: number;
     let quantity: number;
     let placementCount: number;
     if (isBuilderShape) {
-      // Builder orders do NOT reference a Product document
-      basePrice = MIN_BASE_PRICE; // flat base price for custom builder shirts
-      quantity = (data as NewShape).quantity || 1;
-      placementCount = 1; // single placement per builder submission currently
+      basePrice = MIN_BASE_PRICE;
+      const builder = data as (SingleBuilderShape | MultiBuilderShape);
+      // Builder union both have quantity
+      quantity = (builder as SingleBuilderShape).quantity || (builder as MultiBuilderShape).quantity || 1;
+      if (isMultiPlacement) {
+        placementCount = (builder as MultiBuilderShape).placements.length;
+      } else if (isMultiSide) {
+        const sidesData = (builder as MultiBuilderShape).sides;
+        placementCount = sidesData ? [sidesData.front, sidesData.back].filter(s => s.enabled).length || 1 : 1;
+      } else {
+        placementCount = 1;
+      }
     } else {
       // Legacy path: attempt Product lookup
       const productId = (data as LegacyShape).baseShirt.productId;
@@ -154,47 +229,131 @@ export async function POST(req: NextRequest) {
     // Create custom order
     // Normalize to legacy storage shape for now while supporting new flattened inputs
     let baseShirt: LegacyShape['baseShirt'];
-    let placements: LegacyShape['placements'];
+    let legacyPlacements: LegacyShape['placements'];
+    let newPlacements: MultiBuilderShape['placements'] | undefined;
     let designAssets: LegacyShape['designAssets'];
     let notes: string; let delivery: LegacyShape['delivery'];
     if (!isBuilderShape && 'baseShirt' in data) {
       baseShirt = data.baseShirt;
-      placements = data.placements;
+      // legacy placements
+      legacyPlacements = (data as LegacyShape).placements;
       designAssets = data.designAssets;
       notes = data.notes;
       delivery = data.delivery;
-    } else {
-      baseShirt = { productId: 'base-shirt-simple', color: data.baseColor, size: 'standard', quantity: (data as NewShape).quantity || 1 };
-      placements = [{ placementKey: data.placement, label: data.placement.replace(/_/g,' ') }];
+    } else if (isMultiPlacement) {
+      const multi = data as MultiBuilderShape;
+      baseShirt = { productId: 'base-shirt-simple', color: multi.baseColor, size: 'standard', quantity: multi.quantity || 1 };
+      // Build legacyPlacements from new placements for preview/backward compatibility
+      legacyPlacements = multi.placements.map(p => ({ placementKey: p.area === 'left_chest' ? 'chest_left' : p.area === 'right_chest' ? 'chest_right' : p.area, label: p.area.replace(/_/g,' ') }));
+      newPlacements = multi.placements;
+      designAssets = multi.placements.map(p => {
+        if (p.designType === 'text') {
+          return { placementKey: p.area === 'left_chest' ? 'chest_left' : p.area === 'right_chest' ? 'chest_right' : p.area, type: 'text', sourceType: 'uploaded', text: p.designText || undefined, font: p.designFont || undefined, color: p.designColor || undefined };
+        }
+        return { placementKey: p.area === 'left_chest' ? 'chest_left' : p.area === 'right_chest' ? 'chest_right' : p.area, type: 'image', sourceType: 'uploaded', imageUrl: p.designImageUrl || undefined };
+      });
+      notes = multi.notes || '';
+      delivery = { address: multi.deliveryAddress, phone: multi.phoneNumber, email: multi.deliveryName + ' <no-reply@example.com>' };
+    } else if (isMultiSide) {
+      const multi = data as SideOnlyBuilder;
+      baseShirt = { productId: 'base-shirt-simple', color: multi.baseColor, size: 'standard', quantity: multi.quantity || 1 };
+      legacyPlacements = [];
       designAssets = [];
-      if (data.designType === 'text' && data.designText) {
-        designAssets.push({ placementKey: data.placement, type: 'text', sourceType: 'uploaded', text: data.designText, font: data.designFont || undefined, color: data.designColor || undefined });
-      } else if (data.designType === 'image' && data.designImageUrl) {
-        designAssets.push({ placementKey: data.placement, type: 'image', sourceType: 'uploaded', imageUrl: data.designImageUrl });
+      if (multi.sides && multi.sides.front.enabled) {
+        legacyPlacements.push({ placementKey: 'front', label: 'front' });
+        if (multi.sides.front.designType === 'text' && multi.sides.front.designText) {
+          designAssets.push({ placementKey: 'front', type: 'text', sourceType: 'uploaded', text: multi.sides.front.designText, font: multi.sides.front.designFont || undefined, color: multi.sides.front.designColor || undefined });
+        } else if (multi.sides.front.designType === 'image' && multi.sides.front.designImageUrl) {
+          designAssets.push({ placementKey: 'front', type: 'image', sourceType: 'uploaded', imageUrl: multi.sides.front.designImageUrl });
+        }
       }
-      notes = data.notes || '';
-      delivery = { address: data.deliveryAddress, phone: data.phoneNumber, email: data.deliveryName + ' <no-reply@example.com>' };
+      if (multi.sides && multi.sides.back.enabled) {
+        legacyPlacements.push({ placementKey: 'back', label: 'back' });
+        if (multi.sides.back.designType === 'text' && multi.sides.back.designText) {
+          designAssets.push({ placementKey: 'back', type: 'text', sourceType: 'uploaded', text: multi.sides.back.designText, font: multi.sides.back.designFont || undefined, color: multi.sides.back.designColor || undefined });
+        } else if (multi.sides.back.designType === 'image' && multi.sides.back.designImageUrl) {
+          designAssets.push({ placementKey: 'back', type: 'image', sourceType: 'uploaded', imageUrl: multi.sides.back.designImageUrl });
+        }
+      }
+      notes = multi.notes || '';
+      delivery = { address: multi.deliveryAddress, phone: multi.phoneNumber, email: multi.deliveryName + ' <no-reply@example.com>' };
+    } else {
+      const single = data as SingleBuilderShape;
+      baseShirt = { productId: 'base-shirt-simple', color: single.baseColor, size: 'standard', quantity: single.quantity || 1 };
+      legacyPlacements = [{ placementKey: single.placement, label: single.placement.replace(/_/g,' ') }];
+      designAssets = [];
+      if (single.designType === 'text' && single.designText) {
+        designAssets.push({ placementKey: single.placement, type: 'text', sourceType: 'uploaded', text: single.designText, font: single.designFont || undefined, color: single.designColor || undefined });
+      } else if (single.designType === 'image' && single.designImageUrl) {
+        designAssets.push({ placementKey: single.placement, type: 'image', sourceType: 'uploaded', imageUrl: single.designImageUrl });
+      }
+      notes = single.notes || '';
+      delivery = { address: single.deliveryAddress, phone: single.phoneNumber, email: single.deliveryName + ' <no-reply@example.com>' };
     }
 
-    const flattenedFields = 'baseShirt' in data ? {} : {
-      baseColor: data.baseColor,
-      placement: data.placement,
-      verticalPosition: data.verticalPosition,
-      designType: data.designType,
-      designText: data.designType === 'text' ? data.designText || null : null,
-      designFont: data.designType === 'text' ? data.designFont || null : null,
-      designColor: data.designType === 'text' ? data.designColor || null : null,
-      designImageUrl: data.designType === 'image' ? data.designImageUrl || null : null,
-      quantity: (data as NewShape).quantity || 1,
-      deliveryName: 'deliveryName' in data ? data.deliveryName : undefined,
-      phoneNumber: 'phoneNumber' in data ? data.phoneNumber : undefined,
-      priceEstimate: pricing.estimatedTotal,
-    };
+    let flattenedFields: Record<string, unknown> = {};
+    if (!('baseShirt' in data)) {
+      if (isMultiPlacement) {
+        const multi = data as MultiBuilderShape;
+        // Choose primary placement for legacy flattened fields preference: first front else first
+        const primary = multi.placements.find(p => p.area === 'front') || multi.placements[0];
+        flattenedFields = {
+          baseColor: multi.baseColor,
+          placement: primary ? (primary.area === 'left_chest' ? 'chest_left' : primary.area === 'right_chest' ? 'chest_right' : primary.area) : undefined,
+          verticalPosition: primary?.verticalPosition,
+          designType: primary?.designType,
+          designText: primary?.designType === 'text' ? primary.designText || null : null,
+          designFont: primary?.designType === 'text' ? primary.designFont || null : null,
+          designColor: primary?.designType === 'text' ? primary.designColor || null : null,
+          designImageUrl: primary?.designType === 'image' ? primary.designImageUrl || null : null,
+          quantity: multi.quantity || 1,
+          deliveryName: multi.deliveryName,
+          phoneNumber: multi.phoneNumber,
+          priceEstimate: pricing.estimatedTotal,
+          placements: multi.placements,
+        };
+      } else if (isMultiSide) {
+        const multi = data as SideOnlyBuilder;
+        const primary = multi.sides ? (multi.sides.front.enabled ? multi.sides.front : multi.sides.back) : undefined;
+        flattenedFields = {
+          baseColor: multi.baseColor,
+          placement: primary?.placement,
+          verticalPosition: primary?.verticalPosition,
+          designType: primary?.designType,
+          designText: primary?.designType === 'text' ? primary?.designText || null : null,
+          designFont: primary?.designType === 'text' ? primary?.designFont || null : null,
+          designColor: primary?.designType === 'text' ? primary?.designColor || null : null,
+          designImageUrl: primary?.designType === 'image' ? primary?.designImageUrl || null : null,
+          quantity: multi.quantity || 1,
+          deliveryName: multi.deliveryName,
+          phoneNumber: multi.phoneNumber,
+          priceEstimate: pricing.estimatedTotal,
+          sides: multi.sides,
+        };
+      } else {
+        const single = data as SingleBuilderShape;
+        flattenedFields = {
+          baseColor: single.baseColor,
+          placement: single.placement,
+          verticalPosition: single.verticalPosition,
+          designType: single.designType,
+          designText: single.designType === 'text' ? single.designText || null : null,
+          designFont: single.designType === 'text' ? single.designFont || null : null,
+          designColor: single.designType === 'text' ? single.designColor || null : null,
+          designImageUrl: single.designType === 'image' ? single.designImageUrl || null : null,
+          quantity: single.quantity || 1,
+          deliveryName: single.deliveryName,
+          phoneNumber: single.phoneNumber,
+          priceEstimate: pricing.estimatedTotal,
+        };
+      }
+    }
 
     const customOrder = await CustomOrderModel.create({
       userId: authResult.user.id,
       baseShirt,
-      placements,
+      legacyPlacements,
+      placements: newPlacements,
       designAssets,
       notes,
       delivery,

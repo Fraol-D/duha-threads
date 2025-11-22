@@ -137,10 +137,11 @@ export default async function CustomOrderDetailPage({
       <Card className="p-6 space-y-4">
         <h2 className="text-xl font-semibold">Placements</h2>
         <div className="flex gap-2 flex-wrap">
-          {customOrder.placements.map((p, i) => (
-            <span key={i} className="soft-3d px-4 py-2 rounded-full text-sm">
-              {p.label}
-            </span>
+          {customOrder.legacyPlacements?.map((p: { placementKey: string; label: string }, i: number) => (
+            <span key={i} className="soft-3d px-4 py-2 rounded-full text-sm">{p.label}</span>
+          ))}
+          {!customOrder.legacyPlacements?.length && customOrder.placements?.map((p: { id: string; area: string }) => (
+            <span key={p.id} className="soft-3d px-4 py-2 rounded-full text-sm">{p.area.replace(/_/g,' ')}</span>
           ))}
         </div>
       </Card>
@@ -153,7 +154,7 @@ export default async function CustomOrderDetailPage({
               <div key={i} className="border border-muted rounded-lg p-4 space-y-2">
                 <div className="flex items-center justify-between">
                   <span className="font-medium">
-                    {customOrder.placements.find((p) => p.placementKey === asset.placementKey)?.label || asset.placementKey}
+                    {customOrder.legacyPlacements?.find((p: { placementKey: string; label: string }) => p.placementKey === asset.placementKey)?.label || asset.placementKey}
                   </span>
                   <Badge>{asset.type}</Badge>
                 </div>

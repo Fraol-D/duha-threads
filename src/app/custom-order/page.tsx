@@ -37,14 +37,24 @@ export default function CustomOrderBuilderPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedBaseColor, setSelectedBaseColor] = useState<BaseShirtColor>('white');
-  const [selectedPlacement, setSelectedPlacement] = useState<'front'|'back'|'chest_left'|'chest_right'>('front');
-  const [verticalPosition, setVerticalPosition] = useState<'upper'|'center'|'lower'>('upper');
-  const [designType, setDesignType] = useState<'text'|'image'>('text');
-  const [designText, setDesignText] = useState('');
-  const [designFont, setDesignFont] = useState<keyof typeof FONT_MAP>('sans');
-  const [designTextColor, setDesignTextColor] = useState('#000000');
-  const [designImagePreviewUrl, setDesignImagePreviewUrl] = useState<string | null>(null);
-  const [uploadedImageUrl, setUploadedImageUrl] = useState<string | null>(null);
+  type PlacementArea = 'front' | 'back' | 'left_chest' | 'right_chest';
+  interface PlacementConfig {
+    id: string;
+    area: PlacementArea;
+    verticalPosition: 'upper' | 'center' | 'lower';
+    designType: 'text' | 'image';
+    designText?: string;
+    designFont?: keyof typeof FONT_MAP;
+    designColor?: string;
+    designImageUrl?: string | null;
+    localImagePreviewUrl?: string | null;
+  }
+  const [enabledAreas, setEnabledAreas] = useState<PlacementArea[]>(['front']);
+  const [placements, setPlacements] = useState<PlacementConfig[]>([{
+    id: 'front-1', area: 'front', verticalPosition: 'upper', designType: 'text', designText: '', designFont: 'sans', designColor: '#000000'
+  }]);
+  const [activePlacementId, setActivePlacementId] = useState<string | null>('front-1');
+  const [previewMode, setPreviewMode] = useState<'front'|'back'>('front');
   const [quantity, setQuantity] = useState<number>(1);
   const [deliveryName, setDeliveryName] = useState('');
   const [deliveryAddress, setDeliveryAddress] = useState('');
@@ -77,10 +87,12 @@ export default function CustomOrderBuilderPage() {
   function goToStep(s: BuilderStep) { setCurrentStep(s); }
 
   function handleNext() {
-    if (currentStep === 'placements' && !selectedPlacement) { setError('Choose a placement'); return; }
     if (currentStep === 'design') {
-      if (designType === 'text' && designText.trim().length === 0) { setError('Add some text'); return; }
-      if (designType === 'image' && !uploadedImageUrl) { setError('Upload an image'); return; }
+      if (placements.length === 0) { setError('Enable at least one placement'); return; }
+      for (const p of placements) {
+        if (p.designType === 'text' && (!p.designText || p.designText.trim() === '')) { setError(`Add text for ${p.area} or switch type`); return; }
+        if (p.designType === 'image' && !p.designImageUrl) { setError(`Upload image for ${p.area} or switch type`); return; }
+      }
     }
     setError(null);
     const order: BuilderStep[] = ['baseShirt','placements','design','review'];
@@ -95,18 +107,22 @@ export default function CustomOrderBuilderPage() {
       if (currentStep !== 'review') { setError('Go to Review to submit'); setLoading(false); return; }
       const payload = {
         baseColor: selectedBaseColor,
-        placement: selectedPlacement,
-        verticalPosition,
-        designType,
-        designText: designType==='text' ? designText.trim() || null : null,
-        designFont: designType==='text' ? FONT_MAP[designFont].family : null,
-        designColor: designType==='text' ? designTextColor : null,
-        designImageUrl: designType==='image' ? (uploadedImageUrl || null) : null,
         quantity,
         deliveryName: deliveryName || 'Customer',
         deliveryAddress,
         phoneNumber: deliveryPhone,
         notes: notes || null,
+        placements: placements.map(p => ({
+          id: p.id,
+          area: p.area,
+          verticalPosition: p.verticalPosition,
+          designType: p.designType,
+          designText: p.designType==='text' ? (p.designText ?? '').trim() || null : null,
+          designFont: p.designType==='text' ? FONT_MAP[(p.designFont ?? 'sans')].family : null,
+          designColor: p.designType==='text' ? p.designColor || null : null,
+          designImageUrl: p.designType==='image' ? p.designImageUrl || null : null,
+        })
+        ),
       };
       const res = await fetch('/api/custom-orders', { method: 'POST', headers: { 'Content-Type':'application/json' }, body: JSON.stringify(payload) });
       if (!res.ok) { const data = await res.json().catch(()=>({})); throw new Error(data.error || 'Failed to create custom order'); }
@@ -120,11 +136,31 @@ export default function CustomOrderBuilderPage() {
   function applyTemplatePlacements(payload: { placements: { placementKey: string; type: string; imageUrl?: string | null; text?: string | null; font?: string | null; color?: string | null }[] }) {
     const first = payload.placements[0];
     if (!first) return;
-    if (['front','back','chest_left','chest_right'].includes(first.placementKey)) {
-      setSelectedPlacement(first.placementKey as 'front'|'back'|'chest_left'|'chest_right');
-    }
-    if (first.type==='image' && first.imageUrl) { setDesignType('image'); setUploadedImageUrl(first.imageUrl); setDesignImagePreviewUrl(first.imageUrl); }
-    else if (first.type==='text' && first.text) { setDesignType('text'); setDesignText(first.text); setDesignTextColor(first.color || '#000000'); }
+    // Map template to first existing placement (front if present else create front)
+    setPlacements(prev => {
+      const frontIdx = prev.findIndex(p=>p.area==='front');
+      if (frontIdx >=0) {
+        const updated = [...prev];
+        if (first.type==='image' && first.imageUrl) {
+          updated[frontIdx].designType='image';
+          updated[frontIdx].designImageUrl=first.imageUrl;
+          updated[frontIdx].localImagePreviewUrl=first.imageUrl;
+        } else if (first.type==='text' && first.text) {
+          updated[frontIdx].designType='text';
+          updated[frontIdx].designText=first.text;
+          updated[frontIdx].designColor=first.color || '#000000';
+        }
+        return updated;
+      }
+      const newPlacement: PlacementConfig = {
+        id: 'front-1', area:'front', verticalPosition:'upper', designType: first.type==='image'?'image':'text',
+        designText: first.type==='text'? first.text || '' : '',
+        designFont: 'sans', designColor: first.type==='text' ? first.color || '#000000' : '#000000',
+        designImageUrl: first.type==='image'? first.imageUrl || null : null,
+        localImagePreviewUrl: first.type==='image'? first.imageUrl || null : null,
+      };
+      return [...prev, newPlacement];
+    });
     setCurrentStep('design');
   }
 
@@ -157,66 +193,187 @@ export default function CustomOrderBuilderPage() {
               </div>
             )}
             {currentStep==='placements' && (
-              <div className="space-y-4">
-                <h2 className="text-section-title">Choose Placement</h2>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                  {(['front','back','chest_left','chest_right'] as Array<'front'|'back'|'chest_left'|'chest_right'>).map(p => (
-                    <button key={p} type="button" onClick={()=>setSelectedPlacement(p)} className={`soft-3d px-3 py-2 rounded text-sm ${selectedPlacement===p?'ring-2 ring-token':''}`}>{p==='front'?'Front':p==='back'?'Back':p==='chest_left'?'Left chest':'Right chest'}</button>
+              <div className="space-y-6">
+                <h2 className="text-section-title">Placements</h2>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  {(['front','back','left_chest','right_chest'] as PlacementArea[]).map(area => {
+                    const enabled = enabledAreas.includes(area);
+                    return (
+                      <label key={area} className={`soft-3d px-3 py-2 rounded text-xs flex items-center gap-2 cursor-pointer ${enabled?'ring-2 ring-token':''}`}>
+                        <input
+                          type="checkbox"
+                          checked={enabled}
+                          onChange={() => {
+                            setEnabledAreas(prev => prev.includes(area) ? prev.filter(a=>a!==area) : [...prev, area]);
+                            setPlacements(prev => {
+                              const exists = prev.find(p=>p.area===area);
+                              if (exists) {
+                                if (enabled) { // turning off
+                                  return prev.filter(p=>p.area!==area);
+                                }
+                                return prev; // already exists and enabling again
+                              } else {
+                                if (!enabled) { // turning on
+                                  const newP: PlacementConfig = { id: `${area}-1`, area, verticalPosition: 'upper', designType:'text', designText:'', designFont:'sans', designColor:'#000000', designImageUrl: null, localImagePreviewUrl: null };
+                                  setActivePlacementId(newP.id);
+                                  if (area === 'back') setPreviewMode('back'); else setPreviewMode('front');
+                                  return [...prev, newP];
+                                }
+                              }
+                              return prev;
+                            });
+                            // Auto-switch preview when enabling a side
+                            if (!enabled) {
+                              if (area === 'back') setPreviewMode('back');
+                              else if (area === 'front' || area === 'left_chest' || area === 'right_chest') setPreviewMode('front');
+                            }
+                          }}
+                          className="accent-current"
+                        />
+                        {area==='left_chest'?'Left chest': area==='right_chest'?'Right chest': area==='front'?'Front':'Back'}
+                      </label>
+                    );
+                  })}
+                </div>
+                <div className="space-y-4">
+                  {placements.map(p => (
+                    <Card
+                      key={p.id}
+                      className="p-4 space-y-3"
+                      onClick={() => { setActivePlacementId(p.id); if (p.area === 'back') setPreviewMode('back'); else setPreviewMode('front'); }}
+                    >
+                      <div className="flex items-center justify-between">
+                        <h3 className="text-xs font-semibold uppercase tracking-wide">{p.area.replace(/_/g,' ')}</h3>
+                        <div className="flex gap-2">
+                          <button type="button" onClick={()=>setPlacements(prev => prev.map(x => x.id===p.id ? { ...x, designType:'text', designText: x.designText ?? '', designFont: x.designFont ?? 'sans', designColor: x.designColor ?? '#000000' } : x))} className={`px-2 py-1 rounded text-[10px] soft-3d ${p.designType==='text'?'ring-2 ring-token':''}`}>Text</button>
+                          <button type="button" onClick={()=>setPlacements(prev => prev.map(x => x.id===p.id ? { ...x, designType:'image', designImageUrl: x.designImageUrl ?? null } : x))} className={`px-2 py-1 rounded text-[10px] soft-3d ${p.designType==='image'?'ring-2 ring-token':''}`}>Image</button>
+                        </div>
+                      </div>
+                      {(p.area==='front' || p.area==='back') && (
+                        <div className="flex gap-2 flex-wrap">
+                          {(['upper','center','lower'] as const).map(v => (
+                            <button key={v} type="button" onClick={()=>setPlacements(prev => prev.map(x => x.id===p.id ? { ...x, verticalPosition:v } : x))} className={`soft-3d px-2 py-1 rounded text-[10px] ${p.verticalPosition===v?'ring-2 ring-token':''}`}>{v}</button>
+                          ))}
+                        </div>
+                      )}
+                      {p.designType==='text' && (
+                        <div className="space-y-3">
+                          <div className="space-y-1"><label className="text-[10px] font-medium">Text</label><Input value={p.designText ?? ''} onFocus={()=>setActivePlacementId(p.id)} onChange={(e)=>{ const val = e.currentTarget.value; setPlacements(prev => prev.map(x => x.id===p.id ? { ...x, designText: val } : x)); }} placeholder={`Text for ${p.area}`} /></div>
+                          <div className="space-y-1"><label className="text-[10px] font-medium">Font</label><div className="flex flex-wrap gap-1">{(Object.keys(FONT_MAP) as Array<keyof typeof FONT_MAP>).map(k => (
+                            <button key={k} type="button" onClick={()=>setPlacements(prev => prev.map(x => x.id===p.id ? { ...x, designFont:k } : x))} className={`soft-3d px-2 py-1 rounded text-[10px] ${p.designFont===k?'ring-2 ring-token':''}`}>{FONT_MAP[k].label}</button>
+                          ))}</div></div>
+                          <div className="space-y-1"><label className="text-[10px] font-medium">Color</label><div className="flex flex-wrap gap-1">{TEXT_COLORS.map(c => (
+                            <button key={c.value} type="button" onClick={()=>setPlacements(prev => prev.map(x => x.id===p.id ? { ...x, designColor:c.value } : x))} className={`h-7 w-7 rounded-full flex items-center justify-center ${p.designColor===c.value?'ring-2 ring-token':''}`}><span className={`block h-5 w-5 rounded-full ${c.swatch}`}></span></button>
+                          ))}</div></div>
+                        </div>
+                      )}
+                      {p.designType==='image' && (
+                        <div className="space-y-2">
+                          <label className="text-[10px] font-medium">Upload Image</label>
+                          <input type="file" accept="image/*" onChange={async (e)=>{
+                            const file = e.target.files?.[0];
+                            if (!file) return;
+                            const localUrl = URL.createObjectURL(file);
+                            setPlacements(prev => prev.map(x => x.id===p.id ? { ...x, localImagePreviewUrl: localUrl } : x));
+                            setLoading(true);
+                            const fd = new FormData();
+                            fd.append('file', file);
+                            fd.append('placementKey', p.area);
+                            try {
+                              const res = await fetch('/api/uploads/custom-design', { method:'POST', body: fd });
+                              if (!res.ok) throw new Error('Upload failed');
+                              const data = await res.json();
+                              setPlacements(prev => prev.map(x => x.id===p.id ? { ...x, designImageUrl: data.imageUrl } : x));
+                            } catch { setError('Image upload failed'); } finally { setLoading(false); }
+                          }} />
+                          {p.localImagePreviewUrl && (<Image src={p.localImagePreviewUrl} alt="Preview" width={64} height={64} className="w-16 h-16 object-contain" />)}
+                        </div>
+                      )}
+                    </Card>
                   ))}
                 </div>
-                {(selectedPlacement==='front' || selectedPlacement==='back') && (
-                  <div className="space-y-2 pt-2">
-                    <label className="text-xs font-medium">Vertical position</label>
-                    <div className="flex gap-2 flex-wrap">
-                      {([
-                        { key: 'upper', label: selectedPlacement==='front' ? 'Upper chest' : 'Upper back' },
-                        { key: 'center', label: selectedPlacement==='front' ? 'Center' : 'Center back' },
-                        { key: 'lower', label: selectedPlacement==='front' ? 'Lower' : 'Lower back' },
-                      ] as const).map(v => (
-                        <button
-                          key={v.key}
-                          type="button"
-                          onClick={()=>setVerticalPosition(v.key)}
-                          className={`soft-3d px-3 py-1.5 rounded text-xs ${verticalPosition===v.key?'ring-2 ring-token':''}`}
-                        >{v.label}</button>
-                      ))}
-                    </div>
-                  </div>
-                )}
-                <p className="text-xs text-muted">Switch placement and vertical position to see the marker move.</p>
               </div>
             )}
             {currentStep==='design' && (
-              <div className="space-y-6">
-                <h2 className="text-section-title">Design Your Print</h2>
-                <div className="flex gap-2">
-                  <button type="button" onClick={()=>setDesignType('text')} className={`soft-3d px-3 py-1.5 rounded text-sm ${designType==='text'?'ring-2 ring-token':''}`}>Text design</button>
-                  <button type="button" onClick={()=>setDesignType('image')} className={`soft-3d px-3 py-1.5 rounded text-sm ${designType==='image'?'ring-2 ring-token':''}`}>Image design</button>
+              <div className="space-y-8">
+                <h2 className="text-section-title">Design Summary</h2>
+                <div className="space-y-2 text-xs">
+                  {placements.map(p => (
+                    <div key={p.id} className="flex justify-between border-b border-muted pb-1">
+                      <span>{p.area.replace(/_/g,' ')}: {p.designType==='text' ? (p.designText?.slice(0,18) || 'text') : 'image'}</span>
+                      <span>{p.verticalPosition}</span>
+                    </div>
+                  ))}
                 </div>
-                {designType==='text' && (
-                  <div className="space-y-4">
-                    <div className="space-y-2"><label className="text-sm font-medium">Text</label><Input value={designText} onChange={(e)=>setDesignText(e.currentTarget.value)} placeholder="Your phrase" /></div>
-                    <div className="space-y-2"><label className="text-sm font-medium">Font Style</label><div className="flex flex-wrap gap-2">{(Object.keys(FONT_MAP) as Array<keyof typeof FONT_MAP>).map(k => (<button key={k} type="button" onClick={()=>setDesignFont(k)} className={`soft-3d px-3 py-1.5 rounded text-xs ${designFont===k?'ring-2 ring-token':''}`}>{FONT_MAP[k].label}</button>))}</div></div>
-                    <div className="space-y-2"><label className="text-sm font-medium">Text Color</label><div className="flex gap-2 flex-wrap">{TEXT_COLORS.map(c => (<button key={c.value} type="button" onClick={()=>setDesignTextColor(c.value)} className={`h-8 w-8 rounded-full flex items-center justify-center ${designTextColor===c.value?'ring-2 ring-token':''}`}> <span className={`block h-6 w-6 rounded-full ${c.swatch}`}></span></button>))}</div></div>
-                  </div>
-                )}
-                {designType==='image' && (
-                  <div className="space-y-3">
-                    <label className="text-sm font-medium">Upload Image</label>
-                    <input type="file" accept="image/*" onChange={async (e) => { const file = e.target.files?.[0]; if (!file) return; const localUrl = URL.createObjectURL(file); setDesignImagePreviewUrl(localUrl); setLoading(true); const fd = new FormData(); fd.append('file', file); fd.append('placementKey', selectedPlacement); try { const res = await fetch('/api/uploads/custom-design', { method: 'POST', body: fd }); if (!res.ok) throw new Error('Upload failed'); const data = await res.json(); setUploadedImageUrl(data.imageUrl); } catch { setError('Image upload failed'); } finally { setLoading(false); } }} />
-                    {designImagePreviewUrl && (<Image src={designImagePreviewUrl} alt="Preview" width={96} height={96} className="w-24 h-24 object-contain" />)}
-                  </div>
-                )}
               </div>
             )}
             {currentStep==='review' && (
               <div className="space-y-6">
                 <h2 className="text-section-title">Review & Delivery</h2>
-                <Card variant="soft3D" className="p-4 space-y-3">
+                <Card variant="soft3D" className="p-4 space-y-4">
                   <div className="text-sm"><span className="font-medium">Base Shirt:</span> {selectedBaseColor==='black'?'Black':'White'}</div>
-                  <div className="text-sm"><span className="font-medium">Placement:</span> {selectedPlacement.replace(/_/g,' ')}</div>
-                  <div className="text-sm"><span className="font-medium">Design:</span> {designType==='text'?`Text (${designText.slice(0,20)||'None'})`: uploadedImageUrl ? 'Image uploaded':'None'}</div>
-                  <div className="text-sm flex items-center gap-2"><span className="font-medium">Quantity:</span>
+                  <div className="space-y-2 text-xs">
+                    <div className="font-medium">Placements:</div>
+                    {placements.map(p => (
+                      <div key={p.id} className="flex justify-between border-b border-muted pb-1">
+                        <span>{p.area.replace(/_/g,' ')}: {p.designType==='text' ? (p.designText?.slice(0,24)||'Text') : (p.designImageUrl ? 'Image' : 'Image (pending)')} </span>
+                        <span>{(p.area==='front' || p.area==='back') ? p.verticalPosition : 'fixed'}</span>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="grid grid-cols-2 gap-4 pt-2">
+                    <div>
+                      <div className="text-[10px] font-medium mb-1">Front Preview</div>
+                      <DesignPreview
+                        baseColor={selectedBaseColor}
+                        mode="front"
+                        placements={placements.map(p => ({
+                          id:p.id,
+                          area:p.area,
+                          verticalPosition:p.verticalPosition,
+                          designType:p.designType,
+                          designText:p.designType==='text'?(p.designText ?? '') : null,
+                          designFont:p.designType==='text'?FONT_MAP[(p.designFont ?? 'sans')].family: null,
+                          designColor:p.designType==='text'?p.designColor: null,
+                          designImageUrl:p.designType==='image'? (p.designImageUrl || p.localImagePreviewUrl || null) : null,
+                        }))}
+                        overlayPlacementKey={(function(){
+                          const active = placements.find(pl=>pl.id===activePlacementId);
+                          if (!active) return undefined;
+                          if (active.area==='back') return undefined;
+                          return active.area==='left_chest' ? 'chest_left' : active.area==='right_chest' ? 'chest_right' : active.area;
+                        })()}
+                        overlayType={'placeholder'}
+                        overlayVerticalPosition={placements.find(pl=>pl.id===activePlacementId)?.verticalPosition ?? 'upper'}
+                      />
+                    </div>
+                    <div>
+                      <div className="text-[10px] font-medium mb-1">Back Preview</div>
+                      <DesignPreview
+                        baseColor={selectedBaseColor}
+                        mode="back"
+                        placements={placements.map(p => ({
+                          id:p.id,
+                          area:p.area,
+                          verticalPosition:p.verticalPosition,
+                          designType:p.designType,
+                          designText:p.designType==='text'?(p.designText ?? '') : null,
+                          designFont:p.designType==='text'?FONT_MAP[(p.designFont ?? 'sans')].family: null,
+                          designColor:p.designType==='text'?p.designColor: null,
+                          designImageUrl:p.designType==='image'? (p.designImageUrl || p.localImagePreviewUrl || null) : null,
+                        }))}
+                        overlayPlacementKey={(function(){
+                          const active = placements.find(pl=>pl.id===activePlacementId);
+                          if (!active) return undefined;
+                          if (active.area!=='back') return undefined;
+                          return 'back';
+                        })()}
+                        overlayType={'placeholder'}
+                        overlayVerticalPosition={placements.find(pl=>pl.id===activePlacementId)?.verticalPosition ?? 'upper'}
+                      />
+                    </div>
+                  </div>
+                  <div className="text-sm flex items-center gap-2 pt-2"><span className="font-medium">Quantity:</span>
                     <div className="inline-flex items-center gap-2">
                       <button type="button" disabled={quantity<=1} onClick={()=>setQuantity(q=>Math.max(1,q-1))} className="px-2 py-1 rounded border border-muted text-xs">-</button>
                       <span className="min-w-[2ch] text-center font-medium">{quantity}</span>
@@ -242,19 +399,38 @@ export default function CustomOrderBuilderPage() {
           </Card>
         </div>
         <div className="lg:w-1/2 space-y-6 order-first lg:order-0">
-          <Card variant="soft3D" className="p-4 space-y-2">
-            <div className="font-medium">Live Preview</div>
+          <Card variant="soft3D" className="p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="font-medium">Live Preview</span>
+              <div className="flex gap-2">
+                <button type="button" onClick={()=>setPreviewMode('front')} className={`px-2 py-1 rounded text-xs soft-3d ${previewMode==='front'?'ring-2 ring-token':''}`}>Front</button>
+                <button type="button" onClick={()=>setPreviewMode('back')} className={`px-2 py-1 rounded text-xs soft-3d ${previewMode==='back'?'ring-2 ring-token':''}`}>Back</button>
+              </div>
+            </div>
             <DesignPreview
               baseColor={selectedBaseColor}
-              overlayPlacementKey={selectedPlacement}
-              overlayType={currentStep==='placements' ? 'placeholder' : designType==='text' && designText.trim() ? 'text' : designType==='image' && (designImagePreviewUrl || uploadedImageUrl) ? 'image' : (currentStep==='design' ? 'placeholder' : null)}
-              overlayText={designType==='text' ? designText : undefined}
-              overlayImageUrl={designType==='image' ? (designImagePreviewUrl || uploadedImageUrl) : undefined}
-              overlayColor={designTextColor}
-              overlayFont={FONT_MAP[designFont].family}
-              overlayVerticalPosition={verticalPosition}
+              mode={previewMode}
+              placements={placements.map(p => ({
+                id: p.id,
+                area: p.area,
+                verticalPosition: p.verticalPosition,
+                designType: p.designType,
+                designText: p.designType==='text' ? (p.designText ?? '') : null,
+                designFont: p.designType==='text' ? FONT_MAP[(p.designFont ?? 'sans')].family : null,
+                designColor: p.designType==='text' ? p.designColor : null,
+                designImageUrl: p.designType==='image' ? p.designImageUrl || p.localImagePreviewUrl || null : null,
+              }))}
+              overlayPlacementKey={(function(){
+                const active = placements.find(pl=>pl.id===activePlacementId);
+                if (!active) return undefined;
+                if (previewMode==='front' && active.area==='back') return undefined;
+                if (previewMode==='back' && active.area!=='back') return undefined;
+                return active.area==='left_chest' ? 'chest_left' : active.area==='right_chest' ? 'chest_right' : active.area;
+              })()}
+              overlayType={'placeholder'}
+              overlayVerticalPosition={placements.find(pl=>pl.id===activePlacementId)?.verticalPosition ?? 'upper'}
             />
-            <div className="pt-3 flex gap-2">
+            <div className="pt-2 flex gap-2">
               {(['white','black'] as BaseShirtColor[]).map(c => (
                 <button key={c} type="button" onClick={()=>setSelectedBaseColor(c)} className={`h-9 w-9 rounded-full flex items-center justify-center border ${selectedBaseColor===c?'ring-2 ring-token border-token':'border-muted'} bg-[--surface]`}>
                   <span className={`block h-5 w-5 rounded-full ${c==='white'?'bg-white border border-muted':'bg-black'}`}></span>

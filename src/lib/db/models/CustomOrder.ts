@@ -1,8 +1,19 @@
 import mongoose, { Schema, Document, Model } from "mongoose";
 
-export interface IPlacement {
+export interface ILegacyPlacement {
   placementKey: string;
   label: string;
+}
+
+export interface INewPlacementConfig {
+  id: string; // e.g. front-1, back-1
+  area: 'front' | 'back' | 'left_chest' | 'right_chest';
+  verticalPosition: 'upper' | 'center' | 'lower';
+  designType: 'text' | 'image';
+  designText?: string | null;
+  designFont?: string | null;
+  designColor?: string | null;
+  designImageUrl?: string | null;
 }
 
 export interface IDesignAsset {
@@ -68,9 +79,33 @@ export interface CustomOrderDocument extends Document {
   designColor?: string | null;
   designImageUrl?: string | null;
   previewImageUrl?: string | null;
+  // Multi-side (front/back) design support
+  sides?: {
+    front: {
+      enabled: boolean;
+      placement: 'front';
+      verticalPosition: 'upper' | 'center' | 'lower';
+      designType: 'text' | 'image';
+      designText?: string | null;
+      designFont?: string | null;
+      designColor?: string | null;
+      designImageUrl?: string | null;
+    };
+    back: {
+      enabled: boolean;
+      placement: 'back';
+      verticalPosition: 'upper' | 'center' | 'lower';
+      designType: 'text' | 'image';
+      designText?: string | null;
+      designFont?: string | null;
+      designColor?: string | null;
+      designImageUrl?: string | null;
+    };
+  };
   deliveryName?: string;
   phoneNumber?: string;
-  placements: IPlacement[];
+  legacyPlacements: ILegacyPlacement[]; // existing legacy storage
+  placements?: INewPlacementConfig[]; // new flexible multi-placement storage
   designAssets: IDesignAsset[];
   notes: string;
   delivery: IDelivery;
@@ -83,9 +118,20 @@ export interface CustomOrderDocument extends Document {
   updatedAt: Date;
 }
 
-const PlacementSchema = new Schema<IPlacement>({
+const LegacyPlacementSchema = new Schema<ILegacyPlacement>({
   placementKey: { type: String, required: true },
   label: { type: String, required: true },
+}, { _id: false });
+
+const NewPlacementSchema = new Schema<INewPlacementConfig>({
+  id: { type: String, required: true },
+  area: { type: String, enum: ['front','back','left_chest','right_chest'], required: true },
+  verticalPosition: { type: String, enum: ['upper','center','lower'], required: true },
+  designType: { type: String, enum: ['text','image'], required: true },
+  designText: { type: String },
+  designFont: { type: String },
+  designColor: { type: String },
+  designImageUrl: { type: String },
 }, { _id: false });
 
 const DesignAssetSchema = new Schema<IDesignAsset>({
@@ -139,9 +185,35 @@ const CustomOrderSchema = new Schema<CustomOrderDocument>(
     designImageUrl: { type: String },
     previewImageUrl: { type: String },
     quantity: { type: Number, min: 1, default: 1 },
+    sides: {
+      type: {
+        front: {
+          enabled: { type: Boolean, required: true, default: true },
+          placement: { type: String, required: true, default: 'front' },
+          verticalPosition: { type: String, enum: ['upper','center','lower'], required: true, default: 'upper' },
+          designType: { type: String, enum: ['text','image'], required: true, default: 'text' },
+          designText: { type: String },
+          designFont: { type: String },
+          designColor: { type: String },
+          designImageUrl: { type: String },
+        },
+        back: {
+          enabled: { type: Boolean, required: true, default: false },
+          placement: { type: String, required: true, default: 'back' },
+          verticalPosition: { type: String, enum: ['upper','center','lower'], required: true, default: 'upper' },
+          designType: { type: String, enum: ['text','image'], required: true, default: 'text' },
+          designText: { type: String },
+          designFont: { type: String },
+          designColor: { type: String },
+          designImageUrl: { type: String },
+        },
+      },
+      _id: false,
+    },
     deliveryName: { type: String },
     phoneNumber: { type: String },
-    placements: { type: [PlacementSchema], required: true },
+    legacyPlacements: { type: [LegacyPlacementSchema], required: true },
+    placements: { type: [NewPlacementSchema], required: false },
     designAssets: { type: [DesignAssetSchema], required: true },
     notes: { type: String, default: "" },
     delivery: { type: DeliverySchema, required: true },
