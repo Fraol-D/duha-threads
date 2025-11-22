@@ -164,7 +164,13 @@ export default function CustomOrderBuilderPage() {
     setCurrentStep('design');
   }
 
-  const estimatedTotal = useMemo(()=>20+15,[]); // static demo pricing
+  // Dynamic pricing: base per-shirt plus per-placement cost
+  const unitEstimate = useMemo(() => {
+    const BASE_PRICE = 20; // base shirt cost
+    const PLACEMENT_COST = 15; // per placement
+    return BASE_PRICE + (PLACEMENT_COST * placements.length);
+  }, [placements.length]);
+  const estimatedTotal = useMemo(() => unitEstimate * quantity, [unitEstimate, quantity]);
 
   return (
     <div className="py-8">
@@ -380,7 +386,10 @@ export default function CustomOrderBuilderPage() {
                       <button type="button" disabled={quantity>=20} onClick={()=>setQuantity(q=>Math.min(20,q+1))} className="px-2 py-1 rounded border border-muted text-xs">+</button>
                     </div>
                   </div>
-                  <div className="text-sm"><span className="font-medium">Estimated Total:</span> ${estimatedTotal.toFixed(2)}</div>
+                  <div className="text-sm space-y-1">
+                    <div><span className="font-medium">Estimated Per-Shirt:</span> ${unitEstimate.toFixed(2)}</div>
+                    <div><span className="font-medium">Estimated Total:</span> ${estimatedTotal.toFixed(2)}</div>
+                  </div>
                 </Card>
                 <div className="space-y-3">
                   <div className="space-y-1"><label className="text-xs font-medium">Delivery Name</label><Input value={deliveryName} onChange={(e)=>setDeliveryName(e.currentTarget.value)} placeholder="Name" /></div>

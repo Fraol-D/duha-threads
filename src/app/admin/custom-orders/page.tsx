@@ -19,14 +19,32 @@ interface AdminOrderItem {
   quantity?: number;
   status: string;
   createdAt: string;
+  areas?: string[];
 }
 
-function placementLabel(p?: string) { return p ? p.replace(/_/g,' ') : '—'; }
-function verticalLabel(p?: string, placement?: string) {
-  if (!p) return '—';
-  if (placement === 'front') return p==='upper'?'Upper chest':p==='center'?'Center':p==='lower'?'Lower':'';
-  if (placement === 'back') return p==='upper'?'Upper back':p==='center'?'Center back':p==='lower'?'Lower back':'';
-  return p;
+function formatArea(area?: string | null) {
+  if (!area) return '—';
+  switch (area) {
+    case 'front': return 'Front';
+    case 'back': return 'Back';
+    case 'left_chest': return 'Left chest';
+    case 'right_chest': return 'Right chest';
+    default: return (area ?? '').toString().replace(/_/g,' ');
+  }
+}
+function formatVertical(pos?: string | null, placement?: string | null) {
+  if (!pos) return '—';
+  if (placement === 'front') return pos==='upper'?'Upper chest':pos==='center'?'Center':pos==='lower'?'Lower':'';
+  if (placement === 'back') return pos==='upper'?'Upper back':pos==='center'?'Center back':pos==='lower'?'Lower back':'';
+  return pos;
+}
+function summarizeAreas(areas?: string[] | null, fallbackPlacement?: string | null) {
+  if (Array.isArray(areas) && areas.length > 0) {
+    const unique = Array.from(new Set(areas.filter(Boolean)));
+    return unique.map(a => formatArea(a)).join(' + ');
+  }
+  if (fallbackPlacement) return formatArea(fallbackPlacement);
+  return 'No placements';
 }
 
 export default function AdminCustomOrdersPage() {
@@ -101,7 +119,7 @@ export default function AdminCustomOrdersPage() {
               <th className="p-2 font-medium">Created</th>
               <th className="p-2 font-medium">User</th>
               <th className="p-2 font-medium">Base</th>
-              <th className="p-2 font-medium">Placement</th>
+              <th className="p-2 font-medium">Placements</th>
               <th className="p-2 font-medium">Vertical</th>
               <th className="p-2 font-medium">Design</th>
               <th className="p-2 font-medium">Qty</th>
@@ -115,8 +133,8 @@ export default function AdminCustomOrdersPage() {
                 <td className="p-2 whitespace-nowrap">{new Date(o.createdAt).toLocaleDateString()}</td>
                 <td className="p-2 max-w-40 truncate" title={o.userId || ''}>{o.userId ? o.userId.slice(-6) : '—'}</td>
                 <td className="p-2">{o.baseColor || '—'}</td>
-                <td className="p-2">{placementLabel(o.placement)}</td>
-                <td className="p-2">{verticalLabel(o.verticalPosition, o.placement)}</td>
+                <td className="p-2">{summarizeAreas(o.areas, o.placement)}</td>
+                <td className="p-2">{formatVertical(o.verticalPosition, o.placement)}</td>
                 <td className="p-2">{o.designType === 'text' ? (o.designText?.slice(0,14) || 'Text') : o.designType === 'image' ? 'Image' : '—'}</td>
                 <td className="p-2">{o.quantity || 1}</td>
                 <td className="p-2"><Badge>{o.status.replace(/_/g,' ')}</Badge></td>

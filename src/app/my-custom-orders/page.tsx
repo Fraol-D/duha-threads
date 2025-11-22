@@ -5,6 +5,16 @@ import { Card } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 
+interface PlacementConfigItem {
+  id?: string;
+  area: 'front' | 'back' | 'left_chest' | 'right_chest';
+  verticalPosition: 'upper' | 'center' | 'lower';
+  designType: 'text' | 'image';
+  designText?: string | null;
+  designFont?: string | null;
+  designColor?: string | null;
+  designImageUrl?: string | null;
+}
 interface UserOrderItem {
   id: string;
   status: string;
@@ -17,24 +27,41 @@ interface UserOrderItem {
   quantity?: number;
   previewImageUrl?: string | null;
   createdAt: string;
+  placements?: PlacementConfigItem[];
+  areas?: string[];
 }
 
-function placementLabel(p?: string) {
-  if (!p) return '—';
-  return p.replace(/_/g,' ');
-}
-function verticalLabel(p?: string, placement?: string) {
-  if (!p) return '—';
-  if (placement === 'front') {
-    if (p === 'upper') return 'Upper chest';
-    if (p === 'center') return 'Center';
-    if (p === 'lower') return 'Lower';
-  } else if (placement === 'back') {
-    if (p === 'upper') return 'Upper back';
-    if (p === 'center') return 'Center back';
-    if (p === 'lower') return 'Lower back';
+function formatArea(area?: string | null) {
+  if (!area) return '—';
+  switch (area) {
+    case 'front': return 'Front';
+    case 'back': return 'Back';
+    case 'left_chest': return 'Left chest';
+    case 'right_chest': return 'Right chest';
+    default: return (area ?? '').toString().replace(/_/g,' ');
   }
-  return p;
+}
+function formatVertical(pos?: string | null, placement?: string | null) {
+  if (!pos) return '—';
+  if (placement === 'front') {
+    if (pos === 'upper') return 'Upper chest';
+    if (pos === 'center') return 'Center';
+    if (pos === 'lower') return 'Lower';
+  }
+  if (placement === 'back') {
+    if (pos === 'upper') return 'Upper back';
+    if (pos === 'center') return 'Center back';
+    if (pos === 'lower') return 'Lower back';
+  }
+  return pos;
+}
+function summarizeAreas(areas?: string[] | null, fallbackPlacement?: string | null) {
+  if (Array.isArray(areas) && areas.length > 0) {
+    const unique = Array.from(new Set(areas.filter(Boolean)));
+    return unique.map(a => formatArea(a)).join(' + ');
+  }
+  if (fallbackPlacement) return formatArea(fallbackPlacement);
+  return 'No placements specified';
 }
 
 export default function MyCustomOrdersPage() {
@@ -102,8 +129,8 @@ export default function MyCustomOrdersPage() {
               )}
               <div className="flex-1 space-y-1 text-sm">
                 <div><span className="text-muted">Base:</span> {o.baseColor || '—'}</div>
-                <div><span className="text-muted">Placement:</span> {placementLabel(o.placement)}</div>
-                <div><span className="text-muted">Vertical:</span> {verticalLabel(o.verticalPosition, o.placement)}</div>
+                <div><span className="text-muted">Placements:</span> {summarizeAreas(o.areas, o.placement)}</div>
+                <div><span className="text-muted">Vertical:</span> {formatVertical(o.verticalPosition, o.placement)}</div>
                 <div><span className="text-muted">Design:</span> {o.designType === 'text' ? (o.designText?.slice(0,18) || 'Text') : o.designType === 'image' ? 'Image design' : '—'}</div>
                 <div><span className="text-muted">Qty:</span> {o.quantity || 1}</div>
               </div>

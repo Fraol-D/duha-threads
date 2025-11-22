@@ -413,19 +413,26 @@ export async function GET(req: NextRequest) {
       .sort({ createdAt: -1 })
       .lean();
 
-    const orders = customOrders.map((order) => ({
-      id: order._id.toString(),
-      status: order.status,
-      baseColor: order.baseColor,
-      placement: order.placement,
-      verticalPosition: order.verticalPosition,
-      designType: order.designType,
-      designText: order.designText,
-      designImageUrl: order.designImageUrl,
-      quantity: order.quantity || order.baseShirt?.quantity || 1,
-      previewImageUrl: order.previewImageUrl || null,
-      createdAt: order.createdAt,
-    }));
+    const orders = customOrders.map((order) => {
+      const placements = Array.isArray(order.placements) ? order.placements : [];
+      const legacyAreas = Array.isArray(order.legacyPlacements) ? order.legacyPlacements.map(p=>p.placementKey) : [];
+      const areas = placements.length > 0 ? placements.map(p=> p.area === 'left_chest' ? 'left_chest' : p.area === 'right_chest' ? 'right_chest' : p.area ) : legacyAreas;
+      return {
+        id: order._id.toString(),
+        status: order.status,
+        baseColor: order.baseColor,
+        placement: order.placement, // legacy primary
+        verticalPosition: order.verticalPosition,
+        designType: order.designType,
+        designText: order.designText,
+        designImageUrl: order.designImageUrl,
+        quantity: order.quantity || order.baseShirt?.quantity || 1,
+        previewImageUrl: order.previewImageUrl || null,
+        createdAt: order.createdAt,
+        placements, // full placement configs
+        areas, // simplified area summary
+      };
+    });
 
     return NextResponse.json({ orders });
   } catch (error) {

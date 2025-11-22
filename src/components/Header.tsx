@@ -11,7 +11,9 @@ import {
   LayoutDashboard,
   Sun,
   Moon,
+  List,
 } from "lucide-react";
+import { isAdminEmail } from "@/config/admin-public";
  
 
 type NavItem = { href: string; label: string; icon: React.ComponentType<{ className?: string }>; title?: string };
@@ -22,6 +24,7 @@ const baseNav: NavItem[] = [
   { href: "/wishlist", label: "Wishlist", icon: Heart },
   { href: "/cart", label: "Cart", icon: ShoppingCart },
   { href: "/custom-order", label: "Custom Builder", icon: Package },
+  { href: "/my-custom-orders", label: "My Orders", icon: List },
 ];
 
 export function Header() {
@@ -38,8 +41,8 @@ export function Header() {
         if (!active) return;
         if (res.ok) {
           const json = await res.json();
-            // json.user.role may exist; fallback to env-based logic was handled server-side
-          setIsAdmin(json.user?.role === "admin");
+          const email: string | undefined = json.user?.email;
+          setIsAdmin(isAdminEmail(email));
         }
       } catch {
         // ignore
@@ -67,13 +70,8 @@ export function Header() {
     if (typeof localStorage !== "undefined") localStorage.setItem("theme-preference", next);
   }
 
-  const navItems: NavItem[] = isAdmin
-    ? [
-        ...baseNav,
-        { href: "/admin/dashboard", label: "Dashboard", icon: LayoutDashboard },
-        { href: "/admin/orders", label: "Orders", icon: Package },
-      ]
-    : baseNav;
+  // Public nav items
+  const navItems: NavItem[] = baseNav;
 
   function toggleTheme() {
     applyTheme(theme === "dark" ? "light" : "dark");
@@ -101,10 +99,20 @@ export function Header() {
               </Link>
             );
           })}
+          {loaded && isAdmin && (
+            <Link
+              href="/admin/dashboard"
+              aria-label="Admin dashboard"
+              title="Admin dashboard"
+              className="rounded-lg p-2 hover:bg-[--surface] focus:outline-none focus:ring-2 focus:ring-foreground/40"
+            >
+              <LayoutDashboard className="h-5 w-5" />
+              <span className="sr-only">Admin dashboard</span>
+            </Link>
+          )}
           {!loaded && <span className="text-muted-foreground animate-pulse">…</span>}
         </nav>
         <div className="flex items-center gap-2">
-          {/* Theme toggle icon */}
           <button
             aria-label="Toggle theme"
             title="Toggle theme"
@@ -113,14 +121,14 @@ export function Header() {
           >
             {theme === "dark" ? <Moon className="h-5 w-5" /> : <Sun className="h-5 w-5" />}
           </button>
-          {/* Profile icon navigates to profile page */}
           <Link
             href="/profile"
-            aria-label="Open profile"
+            aria-label="Profile"
             title="Profile"
             className="inline-flex items-center justify-center rounded-full p-2 hover:bg-[--surface] focus:outline-none focus:ring-2 focus:ring-foreground/40"
           >
             <UserIcon className="h-5 w-5" />
+            <span className="sr-only">Profile</span>
           </Link>
         </div>
       </div>

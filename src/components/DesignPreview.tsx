@@ -75,7 +75,8 @@ export function DesignPreview({ baseColor, assets = [], mode = 'front', placemen
             <div key={idx} className="absolute" style={style}>
               {a.type === 'image' && a.imageUrl ? (
                 // Use img for simplicity; could use next/image with fill if URLs are absolute/public
-                <img src={a.imageUrl} alt="Design" className="w-full h-full object-contain" loading="lazy" />
+                <img src={a.imageUrl
+                } alt="Design" className="w-full h-full object-contain" loading="lazy" />
               ) : a.type === 'text' && a.text ? (
                 <div
                   className="w-full h-full flex items-center justify-center text-center"
@@ -142,7 +143,14 @@ export function DesignPreview({ baseColor, assets = [], mode = 'front', placemen
           };
           // Contrast-aware marker styling
           const isDark = baseColor === 'black';
-          if (!overlayType || overlayType === 'placeholder') {
+          // Determine if corresponding placement already has content; if so, suppress placeholder.
+          const mappedKey = overlayPlacementKey === 'chest_left' ? 'left_chest' : overlayPlacementKey === 'chest_right' ? 'right_chest' : overlayPlacementKey;
+          const existingPlacement = placements.find(p => p.area === mappedKey);
+          const hasContent = existingPlacement && (
+            (existingPlacement.designType === 'text' && existingPlacement.designText && existingPlacement.designText.trim().length > 0) ||
+            (existingPlacement.designType === 'image' && existingPlacement.designImageUrl)
+          );
+          if ((!overlayType || overlayType === 'placeholder') && !hasContent) {
             return (
               <div
                 className={`absolute rounded flex items-center justify-center text-[10px] uppercase tracking-wide font-medium ${isDark ? 'border border-white border-dashed bg-white/5 text-white/80 shadow-[0_0_0_1px_rgba(255,255,255,0.3)]' : 'border border-black border-dashed bg-black/5 text-black/70 shadow-[0_0_0_1px_rgba(0,0,0,0.15)]'}`}

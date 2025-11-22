@@ -39,6 +39,12 @@ export async function GET(req: NextRequest) {
       finalTotal: o.pricing.finalTotal ?? null,
       createdAt: o.createdAt,
       delivery: o.delivery,
+      // Multi-placement summary
+      areas: (Array.isArray(o.placements) && o.placements.length > 0)
+        ? o.placements.map(p => p.area)
+        : (Array.isArray(o.legacyPlacements) && o.legacyPlacements.length > 0)
+          ? o.legacyPlacements.map(lp => lp.placementKey)
+          : [],
     }));
     return NextResponse.json({ page, pageSize, total, totalPages: Math.ceil(total / pageSize), orders });
   } catch (e) {
