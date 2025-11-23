@@ -24,6 +24,8 @@ export default function ProductActionsClient({ productId, sizes, colors }: { pro
       setError(data.error || "Failed to add to cart");
       return;
     }
+    // Optimistic cart badge update
+    window.dispatchEvent(new CustomEvent('cart:updated', { detail: { type: 'optimistic-add', productId, size, color, quantity: 1 } }));
     router.push("/cart");
   }
 

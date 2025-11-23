@@ -5,6 +5,14 @@ const nextConfig: NextConfig = {
   // Next.js 16+ native/server deps config
   serverExternalPackages: ["canvas"],
   turbopack: {},
+  images: {
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'res.cloudinary.com',
+      },
+    ],
+  },
   webpack: (config, { isServer }) => {
     if (isServer) {
       // Ensure webpack doesn't try to bundle 'canvas' on the server

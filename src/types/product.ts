@@ -17,6 +17,7 @@ export interface ProductDocument {
   isActive: boolean;
   salesCount: number;
   viewCount: number;
+  sku?: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -32,6 +33,7 @@ export interface PublicProduct {
   sizes: string[];
   images: ProductImageDocument[];
   salesCount: number;
+  sku?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -44,6 +46,7 @@ export interface ProductListItem {
   category: string;
   primaryImage?: ProductImageDocument;
   salesCount: number;
+  sku?: string;
 }
 
 export interface ProductFilters {
@@ -76,6 +79,7 @@ export function toPublicProduct(doc: ProductDocument): PublicProduct {
     sizes: doc.sizes,
     images: doc.images,
     salesCount: doc.salesCount,
+    sku: doc.sku,
     createdAt: doc.createdAt.toISOString(),
     updatedAt: doc.updatedAt.toISOString(),
   };
@@ -91,5 +95,6 @@ export function toProductListItem(doc: ProductDocument): ProductListItem {
     category: doc.category,
     primaryImage,
     salesCount: doc.salesCount,
+    sku: doc.sku,
   };
 }

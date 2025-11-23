@@ -14,6 +14,7 @@ import {
   List,
 } from "lucide-react";
 import { isAdminEmail } from "@/config/admin-public";
+import { useCart } from "./CartProvider";
  
 
 type NavItem = { href: string; label: string; icon: React.ComponentType<{ className?: string }>; title?: string };
@@ -31,6 +32,7 @@ export function Header() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [loaded, setLoaded] = useState(false);
   const [theme, setTheme] = useState<"light" | "dark">("light");
+  const { totalQuantity } = useCart();
   
 
   useEffect(() => {
@@ -78,7 +80,7 @@ export function Header() {
   }
 
   return (
-    <header className="border-b border-muted bg-[--bg]/70 backdrop-blur">
+    <header className="fixed top-0 inset-x-0 z-40 border-b border-muted bg-[--bg]/80 backdrop-blur supports-backdrop-filter:bg-[--bg]/60">
       <div className="mx-auto max-w-7xl px-4 py-4 flex items-center justify-between">
         <Link href="/" className="text-xl font-semibold tracking-tight">
           Duha Threads
@@ -92,9 +94,12 @@ export function Header() {
                 href={item.href}
                 aria-label={item.label}
                 title={item.label}
-                className="rounded-lg p-2 hover:bg-[--surface] focus:outline-none focus:ring-2 focus:ring-foreground/40"
+                className="relative rounded-lg p-2 hover:bg-[--surface] focus:outline-none focus:ring-2 focus:ring-foreground/40"
               >
                 <Icon className="h-5 w-5" />
+                {item.href === '/cart' && totalQuantity > 0 && (
+                  <span className="absolute -top-1 -right-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-accent text-accent-foreground text-[11px] font-semibold leading-none px-1 shadow-md animate-in fade-in zoom-in" aria-label={`Cart items: ${totalQuantity}`}>{totalQuantity}</span>
+                )}
                 <span className="sr-only">{item.label}</span>
               </Link>
             );

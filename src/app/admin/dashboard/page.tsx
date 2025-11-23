@@ -1,4 +1,5 @@
 import { BentoGrid, BentoTile } from "@/components/ui/BentoGrid";
+import { Button } from "@/components/ui/Button";
 import { getCurrentUser } from "@/lib/auth/session";
 import { isAdmin } from "@/lib/auth/admin";
 import Link from "next/link";
@@ -132,6 +133,13 @@ export default async function AdminDashboardPage() {
             <p><span className="text-muted-foreground">Orders:</span> {kpis.totals.orders}</p>
             <p><span className="text-muted-foreground">Custom Orders:</span> {kpis.totals.customOrders}</p>
           </div>
+        </BentoTile>
+        <BentoTile variant="soft3D">
+          <h2 className="text-sm font-medium mb-1">Products</h2>
+          <p className="text-xs text-muted-foreground mb-4">Add and manage tees</p>
+          <Link href="/admin/products" className="inline-block">
+            <Button variant="secondary">Manage products</Button>
+          </Link>
         </BentoTile>
         <BentoTile span="2" rowSpan="2" variant="soft3D">
           <h2 className="text-sm text-muted-foreground mb-4">Recent Orders</h2>

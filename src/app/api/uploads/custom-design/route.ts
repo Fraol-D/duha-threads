@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { writeFile } from "fs/promises";
-import path from "path";
 import { verifyAuth } from "@/lib/auth/session";
+import { uploadBufferToCloudinary } from "@/lib/cloudinary";
 
 // Allowed file types
 const ALLOWED_TYPES = ["image/jpeg", "image/jpg", "image/png", "image/webp", "image/gif"];
@@ -49,17 +48,13 @@ export async function POST(req: NextRequest) {
     const sanitizedName = sanitizeFilename(file.name);
     const filename = `${timestamp}_${sanitizedName}`;
 
-    // Convert file to buffer
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
-
-    // Save to public/uploads/custom
-    const uploadDir = path.join(process.cwd(), "public", "uploads", "custom");
-    const filePath = path.join(uploadDir, filename);
-    await writeFile(filePath, buffer);
-
-    // Return public URL
-    const imageUrl = `/uploads/custom/${filename}`;
+    const result = await uploadBufferToCloudinary(buffer, 'duha/custom-designs', filename) as { secure_url?: string };
+    if (!result.secure_url) {
+      return NextResponse.json({ error: 'Upload failed' }, { status: 500 });
+    }
+    const imageUrl = result.secure_url;
 
     return NextResponse.json({
       success: true,

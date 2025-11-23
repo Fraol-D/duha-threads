@@ -23,6 +23,7 @@ const ProductSchema = new Schema<ProductDocument>(
     isActive: { type: Boolean, default: true, index: true },
     salesCount: { type: Number, default: 0, index: true },
     viewCount: { type: Number, default: 0 },
+    sku: { type: String, required: false },
   },
   { timestamps: true }
 );

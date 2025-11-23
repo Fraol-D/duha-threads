@@ -74,9 +74,9 @@ export function DesignPreview({ baseColor, assets = [], mode = 'front', placemen
           return (
             <div key={idx} className="absolute" style={style}>
               {a.type === 'image' && a.imageUrl ? (
-                // Use img for simplicity; could use next/image with fill if URLs are absolute/public
-                <img src={a.imageUrl
-                } alt="Design" className="w-full h-full object-contain" loading="lazy" />
+                <div className="relative w-full h-full">
+                  <Image src={a.imageUrl} alt="Design" fill sizes="(max-width: 768px) 80vw, 320px" className="object-contain" />
+                </div>
               ) : a.type === 'text' && a.text ? (
                 <div
                   className="w-full h-full flex items-center justify-center text-center"
@@ -113,7 +113,9 @@ export function DesignPreview({ baseColor, assets = [], mode = 'front', placemen
           return (
             <div key={p.id} className="absolute" style={style}>
               {p.designType === 'image' && p.designImageUrl ? (
-                <img src={p.designImageUrl} alt="Design" className="w-full h-full object-contain" />
+                <div className="relative w-full h-full">
+                  <Image src={p.designImageUrl} alt="Design" fill sizes="(max-width: 768px) 80vw, 320px" className="object-contain" />
+                </div>
               ) : p.designType === 'text' && p.designText ? (
                 <div
                   className="w-full h-full flex items-center justify-center text-center"
@@ -163,7 +165,9 @@ export function DesignPreview({ baseColor, assets = [], mode = 'front', placemen
           if (overlayType === 'image' && overlayImageUrl) {
             return (
               <div className="absolute" style={style}>
-                <img src={overlayImageUrl} alt="Design" className="w-full h-full object-contain" />
+                <div className="relative w-full h-full">
+                  <Image src={overlayImageUrl} alt="Design" fill sizes="(max-width: 768px) 80vw, 320px" className="object-contain" />
+                </div>
               </div>
             );
           }
