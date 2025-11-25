@@ -15,6 +15,8 @@ interface CartContextValue {
   totalQuantity: number;
   refresh: () => Promise<void>;
   optimisticIncrement: (productId: string, size: string, color: string, quantity: number) => void;
+  optimisticDecrement: (productId: string, size: string, color: string, quantity: number) => void;
+  reset: () => void;
 }
 
 const CartContext = createContext<CartContextValue | undefined>(undefined);
@@ -50,6 +52,25 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     });
   }, []);
 
+  const optimisticDecrement = useCallback((productId: string, size: string, color: string, quantity: number) => {
+    setItems(prev => {
+      const idx = prev.findIndex(i => i.productId === productId && i.size === size && i.color === color);
+      if (idx >= 0) {
+        const copy = [...prev];
+        const nextQty = Math.max(0, copy[idx].quantity - quantity);
+        if (nextQty === 0) {
+          copy.splice(idx,1);
+          return copy;
+        }
+        copy[idx] = { ...copy[idx], quantity: nextQty };
+        return copy;
+      }
+      return prev;
+    });
+  }, []);
+
+  const reset = useCallback(() => { setItems([]); }, []);
+
   useEffect(() => { refresh(); }, [refresh]);
 
   // Listen for global cart update events
@@ -58,19 +79,31 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       const detail = (e as CustomEvent).detail as { productId?: string; size?: string; color?: string; quantity?: number; type?: string } | undefined;
       if (detail?.type === 'optimistic-add' && detail.productId && detail.size && detail.color && detail.quantity) {
         optimisticIncrement(detail.productId, detail.size, detail.color, detail.quantity);
+      } else if (detail?.type === 'optimistic-remove' && detail.productId && detail.size && detail.color && detail.quantity) {
+        optimisticDecrement(detail.productId, detail.size, detail.color, detail.quantity);
+      } else if (detail?.type === 'reset') {
+        reset();
       } else {
-        // Full refresh for unknown change type
         refresh();
       }
     }
+    function onAuth(e: Event) {
+      const detail = (e as CustomEvent).detail as { state?: 'login'|'logout' } | undefined;
+      if (detail?.state === 'login') refresh();
+      if (detail?.state === 'logout') reset();
+    }
     window.addEventListener('cart:updated', onUpdated as EventListener);
-    return () => window.removeEventListener('cart:updated', onUpdated as EventListener);
-  }, [optimisticIncrement, refresh]);
+    window.addEventListener('auth:state', onAuth as EventListener);
+    return () => {
+      window.removeEventListener('cart:updated', onUpdated as EventListener);
+      window.removeEventListener('auth:state', onAuth as EventListener);
+    };
+  }, [optimisticIncrement, optimisticDecrement, reset, refresh]);
 
   const totalQuantity = items.reduce((sum, i) => sum + i.quantity, 0);
 
   return (
-    <CartContext.Provider value={{ items, totalQuantity, refresh, optimisticIncrement }}>{children}</CartContext.Provider>
+    <CartContext.Provider value={{ items, totalQuantity, refresh, optimisticIncrement, optimisticDecrement, reset }}>{children}</CartContext.Provider>
   );
 }
 

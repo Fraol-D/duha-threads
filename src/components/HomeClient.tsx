@@ -1,5 +1,6 @@
 "use client";
 import Link from "next/link";
+import Image from "next/image";
 import { BentoGrid, BentoTile } from "@/components/ui/BentoGrid";
 import { Button } from "@/components/ui/Button";
 import { MascotSlot } from "@/components/ui/MascotSlot";
@@ -8,38 +9,81 @@ import { fadeInUp, staggerChildren } from "@/lib/motion";
 import { useEffect, useState } from "react";
 
 interface PopularTemplate { _id: string; name: string; usageCount: number; description?: string }
+interface FeaturedProduct { id: string; slug: string; name: string; basePrice: number; description: string; primaryImage?: { url: string; alt: string } | null; featuredRank: number | null }
 
 export default function HomeClient() {
   const [popular, setPopular] = useState<PopularTemplate[]>([]);
+  const [featured, setFeatured] = useState<FeaturedProduct[]>([]);
+  const [activeIndex, setActiveIndex] = useState(0);
   useEffect(() => {
     let active = true;
     (async () => {
       try {
-        const res = await fetch("/api/templates?limit=6");
+        const [templatesRes, featuredRes] = await Promise.all([
+          fetch("/api/templates?limit=6"),
+          fetch("/api/products/featured")
+        ]);
         if (!active) return;
-        if (res.ok) {
-          const json = await res.json();
+        if (templatesRes.ok) {
+          const json = await templatesRes.json();
           setPopular(json.templates || []);
         }
-      } catch {/* ignore */}
+        if (featuredRes.ok) {
+          const json = await featuredRes.json();
+          setFeatured(json.products || []);
+        }
+      } catch { /* ignore */ }
     })();
     return () => { active = false; };
   }, []);
   return (
     <motion.div initial="initial" animate="animate" variants={staggerChildren} className="py-8 md:py-12 space-y-8">
       <BentoGrid>
+        {/* Hero Main Featured */}
         <motion.div variants={fadeInUp}>
-          <BentoTile span="2" rowSpan="2" variant="glass">
-            <div className="h-full flex flex-col justify-between gap-6">
-              <div className="space-y-4">
-                <h1 className="text-hero">Wear Your Story</h1>
-                <p className="text-lg text-muted max-w-lg">Premium custom tees with bold designs. High-contrast, minimalist aesthetics. Made to order.</p>
-                <div className="flex gap-3 pt-4">
-                  <Link href="/products"><Button>Browse collection</Button></Link>
-                  <Link href="/custom-order"><Button variant="secondary">Design your own</Button></Link>
+          <BentoTile span="2" rowSpan="2" variant="glass" className="relative overflow-hidden">
+            {featured.length > 0 ? (
+              <div className="h-full flex flex-col gap-6">
+                <div className="flex-1 grid md:grid-cols-2 gap-6">
+                  <div className="relative aspect-square md:aspect-auto rounded-lg overflow-hidden bg-muted">
+                    {featured[activeIndex]?.primaryImage && (
+                      <Image src={featured[activeIndex]!.primaryImage!.url} alt={featured[activeIndex]!.primaryImage!.alt || featured[activeIndex]!.name} fill sizes="(max-width:768px) 90vw, 480px" className="object-cover" />
+                    )}
+                  </div>
+                  <div className="flex flex-col justify-center space-y-4">
+                    <h1 className="text-3xl md:text-4xl font-semibold leading-tight">{featured[activeIndex].name}</h1>
+                    <p className="text-sm text-muted max-w-md line-clamp-4">{featured[activeIndex].description}</p>
+                    <div className="text-lg font-medium">${featured[activeIndex].basePrice.toFixed(2)}</div>
+                    <div className="flex gap-3 pt-2">
+                      <Link href={`/products/${featured[activeIndex].slug}`}><Button>View product</Button></Link>
+                      <Link href="/products"><Button variant="secondary">Browse all</Button></Link>
+                    </div>
+                    <div className="flex gap-2 pt-2">
+                      {featured.map((_, i) => (
+                        <button
+                          key={i}
+                          onClick={() => setActiveIndex(i)}
+                          aria-label={`Show featured product ${i+1}`}
+                          className={`h-2 w-8 rounded-full transition ${i === activeIndex ? 'bg-foreground' : 'bg-muted hover:bg-foreground/50'}`}
+                        />
+                      ))}
+                    </div>
+                  </div>
                 </div>
               </div>
-            </div>
+            ) : (
+              <div className="h-full flex flex-col justify-between gap-6">
+                <div className="space-y-4">
+                  <h1 className="text-hero">Wear Your Story</h1>
+                  <p className="text-lg text-muted max-w-lg">Premium custom tees with bold designs. High-contrast, minimalist aesthetics. Made to order.</p>
+                  <div className="flex gap-3 pt-4">
+                    <Link href="/products"><Button>Browse collection</Button></Link>
+                    <Link href="/custom-order"><Button variant="secondary">Design your own</Button></Link>
+                  </div>
+                  <p className="text-[11px] text-muted pt-2">No featured products configured yet.</p>
+                </div>
+              </div>
+            )}
           </BentoTile>
         </motion.div>
         <motion.div variants={fadeInUp}>
@@ -47,8 +91,22 @@ export default function HomeClient() {
         </motion.div>
         <motion.div variants={fadeInUp}>
           <BentoTile span="2" variant="flat">
-            <h2 className="text-section-title mb-2">Featured designs</h2>
-            <p className="text-muted mb-4 text-sm">Explore our curated collection of best-sellers.</p>
+            <h2 className="text-section-title mb-2">More featured</h2>
+            <p className="text-muted mb-4 text-sm">Explore the rest of the spotlight picks.</p>
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-4">
+              {featured.slice(1,5).map(fp => (
+                <Link key={fp.id} href={`/products/${fp.slug}`} className="group rounded-lg border border-muted/40 p-3 bg-[--surface]/40 hover:bg-[--surface]/70 transition flex flex-col gap-2">
+                  <div className="relative aspect-square rounded overflow-hidden bg-muted">
+                    {fp.primaryImage && (
+                      <Image src={fp.primaryImage.url} alt={fp.primaryImage.alt || fp.name} fill sizes="180px" className="object-cover group-hover:scale-105 transition-transform" />
+                    )}
+                  </div>
+                  <div className="text-xs font-medium line-clamp-1" title={fp.name}>{fp.name}</div>
+                  <div className="text-[11px] opacity-60">${fp.basePrice.toFixed(2)}</div>
+                </Link>
+              ))}
+              {featured.length <= 1 && <div className="text-xs opacity-60">No additional featured products.</div>}
+            </div>
             <Link href="/products" className="underline text-xs">View all products →</Link>
           </BentoTile>
         </motion.div>

@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/Input';
 import { Textarea } from '@/components/ui/Textarea';
 import { Badge } from '@/components/ui/Badge';
 
-interface ProductListItem { id: string; name: string; slug: string; basePrice: number; category: string; primaryImage?: { url: string; alt: string }; salesCount: number; }
+interface ProductListItem { id: string; name: string; slug: string; basePrice: number; category: string; primaryImage?: { url: string; alt: string }; salesCount: number; isFeatured?: boolean; featuredRank?: number | null }
 
 export default function AdminProductsPage() {
   const [products, setProducts] = useState<ProductListItem[]>([]);
@@ -221,9 +221,37 @@ export default function AdminProductsPage() {
               )}
             </div>
             <div className="space-y-1">
-              <div className="font-medium flex items-center gap-2">{p.name} <Badge>{p.category}</Badge></div>
+              <div className="font-medium flex items-center gap-2">{p.name} <Badge>{p.category}</Badge>{p.isFeatured && <span className="text-[10px] px-2 py-0.5 rounded bg-yellow-500/20 text-yellow-600">Featured</span>}</div>
               <div className="text-sm">${p.basePrice.toFixed(2)}</div>
               <div className="text-xs text-muted">Sales: {p.salesCount}</div>
+              <div className="flex items-center gap-2 pt-1">
+                <label className="flex items-center gap-1 text-[11px]">
+                  <input
+                    type="checkbox"
+                    checked={!!p.isFeatured}
+                    onChange={async (e) => {
+                      const isFeatured = e.currentTarget.checked;
+                      await fetch(`/api/admin/products/${p.id}/featured`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ isFeatured, featuredRank: isFeatured ? (p.featuredRank ?? 1) : null }) });
+                      load();
+                    }}
+                  />
+                  <span>Featured</span>
+                </label>
+                {p.isFeatured && (
+                  <input
+                    type="number"
+                    className="w-16 border rounded px-1 py-0.5 text-[11px]"
+                    defaultValue={p.featuredRank ?? 1}
+                    min={1}
+                    onBlur={async (e) => {
+                      const rank = parseInt(e.currentTarget.value, 10) || 1;
+                      await fetch(`/api/admin/products/${p.id}/featured`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ isFeatured: true, featuredRank: rank }) });
+                      load();
+                    }}
+                    aria-label="Featured rank"
+                  />
+                )}
+              </div>
               <div className="pt-2 flex gap-2">
                 <Button variant="secondary" onClick={()=>openEdit(p.id)}>Edit</Button>
                 <Button variant="ghost" onClick={()=>handleDelete(p.id)}>Delete</Button>

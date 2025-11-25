@@ -1,7 +1,8 @@
-import { NextResponse } from "next/server";
+import { NextResponse, NextRequest } from "next/server";
 import { verifyAuth } from "@/lib/auth/session";
 import { isAdmin } from "@/lib/auth/admin";
 import { OrderModel } from "@/lib/db/models/Order";
+import { ProductModel } from "@/lib/db/models/Product";
 import { z } from "zod";
 
 const patchSchema = z.object({
@@ -11,29 +12,53 @@ const patchSchema = z.object({
 });
 
 export async function GET(
-  _request: Request,
+  _request: NextRequest,
   { params }: { params: { orderId: string } }
 ) {
   try {
-    const authResult = await verifyAuth();
+    const authResult = await verifyAuth(_request);
     if (!authResult.user || !isAdmin(authResult.user)) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    const order = await OrderModel.findById(params.orderId).lean();
+    const lookupId = params.orderId;
+    const order: any = await OrderModel.findById(lookupId).lean();
     if (!order) {
-      return NextResponse.json({ error: "Not Found" }, { status: 404 });
+      console.warn('[ADMIN_ORDER_DETAIL_NOT_FOUND]', { lookupId });
+      return NextResponse.json({ error: 'Not Found' }, { status: 404 });
     }
 
+    // Build line items (imageUrl already stored if created via new pipeline; fallback compute if missing)
+    const productIds = [...new Set(order.items.map((it: any) => it.productId?.toString()).filter(Boolean))];
+    let imageMap = new Map<string, string | null>();
+    if (productIds.length) {
+      const productDocs = await ProductModel.find({ _id: { $in: productIds } }, { images: 1 }).lean();
+      imageMap = new Map(productDocs.map(p => [p._id.toString(), (p as any).images?.[0]?.url || null]));
+    }
+    const lineItems = order.items.map((it: any) => ({
+      productId: it.productId?.toString(),
+      name: it.name,
+      quantity: it.quantity,
+      unitPrice: it.unitPrice || it.price,
+      subtotal: it.subtotal || ( (it.unitPrice || it.price) * it.quantity ),
+      imageUrl: it.imageUrl || imageMap.get(it.productId?.toString()) || null,
+    }));
     return NextResponse.json({
       order: {
         id: order._id.toString(),
-        total: order.total,
+        isCustomOrder: !!order.isCustomOrder,
+        orderNumber: order._id.toString().slice(-6),
         status: order.status,
-        notes: order.notes,
+        totalAmount: order.totalAmount ?? order.total ?? 0,
+        subtotal: order.subtotal,
+        currency: order.currency || 'USD',
+        email: order.email,
+        phone: order.phone || order.deliveryInfo?.phone,
+        deliveryAddress: order.deliveryAddress || order.deliveryInfo?.address,
         createdAt: order.createdAt,
         updatedAt: order.updatedAt,
-      },
+        lineItems,
+      }
     });
   } catch (err: any) {
     console.error("[ADMIN_ORDER_DETAIL_GET]", err);
@@ -42,11 +67,11 @@ export async function GET(
 }
 
 export async function PATCH(
-  request: Request,
+  request: NextRequest,
   { params }: { params: { orderId: string } }
 ) {
   try {
-    const authResult = await verifyAuth();
+    const authResult = await verifyAuth(request);
     if (!authResult.user || !isAdmin(authResult.user)) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
@@ -58,33 +83,26 @@ export async function PATCH(
     }
     const data = parsed.data;
 
-    const order = await OrderModel.findById(params.orderId);
+    const order: any = await OrderModel.findById(params.orderId);
     if (!order) {
-      return NextResponse.json({ error: "Not Found" }, { status: 404 });
+      return NextResponse.json({ error: 'Not Found' }, { status: 404 });
     }
 
-    if (data.status) {
-      order.status = data.status as any; // Assume enum validated client-side
-    }
-
+    if (data.status) order.status = data.status as any;
     const noteToAppend = data.adminNotes || data.adminNote;
     if (noteToAppend) {
-      order.notes = order.notes
-        ? `${order.notes}\n\nAdmin Note: ${noteToAppend}`
-        : `Admin Note: ${noteToAppend}`;
+      // Persist notes inside deliveryInfo.notes for standard orders (simple approach)
+      order.deliveryInfo = order.deliveryInfo || {};
+      order.deliveryInfo.notes = (order.deliveryInfo.notes ? `${order.deliveryInfo.notes}\n\nAdmin Note: ${noteToAppend}` : `Admin Note: ${noteToAppend}`);
     }
-
     await order.save();
-
     return NextResponse.json({
       order: {
         id: order._id.toString(),
-        total: order.total,
+        isCustomOrder: !!order.isCustomOrder,
         status: order.status,
-        notes: order.notes,
-        createdAt: order.createdAt,
         updatedAt: order.updatedAt,
-      },
+      }
     });
   } catch (err: any) {
     console.error("[ADMIN_ORDER_DETAIL_PATCH]", err);

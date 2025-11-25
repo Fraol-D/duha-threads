@@ -17,7 +17,25 @@ export async function GET() {
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   await getDb();
   const items = await CartItemModel.find({ userId: user.id }).lean();
-  return NextResponse.json({ items });
+  const productIds = items.map(i => i.productId);
+  const products = await ProductModel.find({ _id: { $in: productIds } }).lean();
+  const productMap = new Map<string, any>(products.map(p => [p._id.toString(), p]));
+  const enriched = items.map(i => {
+    const prod = productMap.get(i.productId.toString());
+    return {
+      ...i,
+      product: prod ? {
+        id: prod._id.toString(),
+        name: prod.name,
+        slug: prod.slug,
+        description: prod.description,
+        basePrice: prod.basePrice,
+        images: prod.images || [],
+        primaryImage: (prod.images || []).find((img: any) => img.isPrimary) || (prod.images || [])[0] || null,
+      } : null,
+    };
+  });
+  return NextResponse.json({ items: enriched });
 }
 
 export async function POST(req: Request) {

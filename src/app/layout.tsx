@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { Header } from "@/components/Header";
 import { CartProvider } from "@/components/CartProvider";
+import { WishlistProvider } from "@/components/WishlistProvider";
 import { Footer } from "@/components/Footer";
 import { Container } from "@/components/Container";
 
@@ -30,11 +31,13 @@ export default function RootLayout({
     <html lang="en" className="h-full">
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-screen flex flex-col bg-[--bg] text-[--fg]`}>
         <CartProvider>
-          <Header />
-          <main className="flex-1 pt-20">
-            <Container>{children}</Container>
-          </main>
-          <Footer />
+          <WishlistProvider>
+            <Header />
+            <main className="flex-1 pt-20">
+              <Container>{children}</Container>
+            </main>
+            <Footer />
+          </WishlistProvider>
         </CartProvider>
       </body>
     </html>

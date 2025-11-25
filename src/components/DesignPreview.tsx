@@ -38,9 +38,10 @@ interface Props {
   overlayColor?: string;
   overlayFont?: string;
   overlayVerticalPosition?: VerticalPosition;
+  builderStep?: string; // 'baseShirt' | 'placements' | 'design' | 'review'
 }
 
-export function DesignPreview({ baseColor, assets = [], mode = 'front', placements = [], overlayPlacementKey, overlayType, overlayText, overlayImageUrl, overlayColor, overlayFont, overlayVerticalPosition = 'upper' }: Props) {
+export function DesignPreview({ baseColor, assets = [], mode = 'front', placements = [], overlayPlacementKey, overlayType, overlayText, overlayImageUrl, overlayColor, overlayFont, overlayVerticalPosition = 'upper', builderStep }: Props) {
   // Determine base image depending on mode (front/back)
   const baseImg = mode === 'front' ? (FRONT_BASE_SHIRTS[baseColor] || BASE_SHIRTS[baseColor]) : (BACK_BASE_SHIRTS[baseColor] || BASE_SHIRTS[baseColor]);
   return (
@@ -90,45 +91,54 @@ export function DesignPreview({ baseColor, assets = [], mode = 'front', placemen
         })}
 
         {/* New placements rendering based on mode */}
-        {placements.filter(p => mode === 'front' ? (p.area === 'front' || p.area === 'left_chest' || p.area === 'right_chest') : p.area === 'back').map(p => {
-          // Map area names to existing placement rect keys
-          const keyMap: Record<string,string> = {
-            left_chest: 'chest_left',
-            right_chest: 'chest_right',
-          };
-          const mappedKey = p.area === 'left_chest' || p.area === 'right_chest' ? keyMap[p.area] : p.area;
-          const baseRect = PLACEMENT_RECTS[mappedKey as keyof typeof PLACEMENT_RECTS];
-          if (!baseRect) return null;
-          const rect = { ...baseRect };
-          if ((p.area === 'front' || p.area === 'back') && p.verticalPosition) {
-            rect.topPercent = p.verticalPosition === 'upper' ? 22 : p.verticalPosition === 'center' ? 32 : 42;
-          }
-          const style: React.CSSProperties = {
-            top: `${rect.topPercent}%`,
-            left: `${rect.leftPercent}%`,
-            width: `${rect.widthPercent}%`,
-            height: `${rect.heightPercent}%`,
-            transform: rect.transform,
-          };
-          return (
-            <div key={p.id} className="absolute" style={style}>
-              {p.designType === 'image' && p.designImageUrl ? (
-                <div className="relative w-full h-full">
-                  <Image src={p.designImageUrl} alt="Design" fill sizes="(max-width: 768px) 80vw, 320px" className="object-contain" />
+        {(() => {
+          const showGuides = builderStep === 'baseShirt' || builderStep === 'placements';
+          return placements
+            .filter(p => mode === 'front' ? (p.area === 'front' || p.area === 'left_chest' || p.area === 'right_chest') : p.area === 'back')
+            .map(p => {
+              const keyMap: Record<string,string> = { left_chest: 'chest_left', right_chest: 'chest_right' };
+              const mappedKey = p.area === 'left_chest' || p.area === 'right_chest' ? keyMap[p.area] : p.area;
+              const baseRect = PLACEMENT_RECTS[mappedKey as keyof typeof PLACEMENT_RECTS];
+              if (!baseRect) return null;
+              const rect = { ...baseRect };
+              if ((p.area === 'front' || p.area === 'back') && p.verticalPosition) {
+                rect.topPercent = p.verticalPosition === 'upper' ? 22 : p.verticalPosition === 'center' ? 32 : 42;
+              }
+              const style: React.CSSProperties = {
+                top: `${rect.topPercent}%`,
+                left: `${rect.leftPercent}%`,
+                width: `${rect.widthPercent}%`,
+                height: `${rect.heightPercent}%`,
+                transform: rect.transform,
+              };
+              const isActive = overlayPlacementKey === mappedKey;
+              const baseBoxClasses = "absolute rounded border border-dashed";
+              const faintBox = baseColor === 'black' ? "border-white/40 bg-transparent" : "border-black/30 bg-transparent";
+              const activeBox = baseColor === 'black' ? "border-white bg-white/5 shadow-[0_0_0_1px_rgba(255,255,255,0.4)]" : "border-black bg-black/5 shadow-[0_0_0_1px_rgba(0,0,0,0.2)]";
+              return (
+                <div key={p.id} className="absolute" style={style}>
+                  {showGuides && (
+                    <div className={`${baseBoxClasses} ${isActive ? activeBox : faintBox} w-full h-full pointer-events-none`} />
+                  )}
+                  {p.designType === 'image' && p.designImageUrl ? (
+                    <div className="absolute inset-0">
+                      <Image src={p.designImageUrl} alt="Design" fill sizes="(max-width: 768px) 80vw, 320px" className="object-contain" />
+                    </div>
+                  ) : p.designType === 'text' && p.designText ? (
+                    <div
+                      className="absolute inset-0 flex items-center justify-center text-center"
+                      style={{ color: p.designColor || '#000', fontFamily: p.designFont || 'Inter, system-ui, sans-serif' }}
+                    >
+                      <span className="text-[clamp(12px,4vw,28px)] leading-tight px-1 bg-transparent">{p.designText}</span>
+                    </div>
+                  ) : null}
                 </div>
-              ) : p.designType === 'text' && p.designText ? (
-                <div
-                  className="w-full h-full flex items-center justify-center text-center"
-                  style={{ color: p.designColor || '#000', fontFamily: p.designFont || 'Inter, system-ui, sans-serif' }}
-                >
-                  <span className="text-[clamp(12px,4vw,28px)] leading-tight px-1 bg-transparent">{p.designText}</span>
-                </div>
-              ) : null}
-            </div>
-          );
-        })}
+              );
+            });
+        })()}
 
         {overlayPlacementKey && (() => {
+          const showGuides = builderStep === 'baseShirt' || builderStep === 'placements';
           const baseRect = PLACEMENT_RECTS[overlayPlacementKey as keyof typeof PLACEMENT_RECTS];
           if (!baseRect) return null;
           const rect = { ...baseRect };
@@ -152,7 +162,7 @@ export function DesignPreview({ baseColor, assets = [], mode = 'front', placemen
             (existingPlacement.designType === 'text' && existingPlacement.designText && existingPlacement.designText.trim().length > 0) ||
             (existingPlacement.designType === 'image' && existingPlacement.designImageUrl)
           );
-          if ((!overlayType || overlayType === 'placeholder') && !hasContent) {
+          if (showGuides && (!overlayType || overlayType === 'placeholder') && !hasContent) {
             return (
               <div
                 className={`absolute rounded flex items-center justify-center text-[10px] uppercase tracking-wide font-medium ${isDark ? 'border border-white border-dashed bg-white/5 text-white/80 shadow-[0_0_0_1px_rgba(255,255,255,0.3)]' : 'border border-black border-dashed bg-black/5 text-black/70 shadow-[0_0_0_1px_rgba(0,0,0,0.15)]'}`}

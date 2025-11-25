@@ -24,6 +24,9 @@ const ProductSchema = new Schema<ProductDocument>(
     salesCount: { type: Number, default: 0, index: true },
     viewCount: { type: Number, default: 0 },
     sku: { type: String, required: false },
+    // Featured product controls
+    isFeatured: { type: Boolean, default: false, index: true },
+    featuredRank: { type: Number, required: false, default: null },
   },
   { timestamps: true }
 );
@@ -33,6 +36,8 @@ ProductSchema.index({ isActive: 1, category: 1 });
 ProductSchema.index({ isActive: 1, salesCount: -1 });
 ProductSchema.index({ isActive: 1, createdAt: -1 });
 ProductSchema.index({ isActive: 1, basePrice: 1 });
+// Featured query optimization
+ProductSchema.index({ isFeatured: 1, featuredRank: 1 });
 
 export const ProductModel =
   mongoose.models.Product || mongoose.model<ProductDocument>("Product", ProductSchema);

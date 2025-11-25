@@ -1,9 +1,11 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
+import { Shirt, Filter } from "lucide-react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { motion } from "framer-motion";
+import { Heart } from "lucide-react";
+import { useWishlist } from "@/components/WishlistProvider";
 import { Card } from "@/components/ui/Card";
-import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
 import { Button } from "@/components/ui/Button";
 import { fadeInUp, staggerChildren } from "@/lib/motion";
@@ -16,6 +18,10 @@ interface ProductListItem {
   category: string;
   salesCount: number;
   primaryImage?: { url: string; alt: string; isPrimary: boolean };
+  colors?: string[];
+  sizes?: string[];
+  rating?: number;
+  ratingCount?: number;
 }
 
 interface ProductListResponse {
@@ -39,6 +45,9 @@ export default function ProductsClient() {
   const params = useSearchParams();
   const [data, setData] = useState<ProductListResponse | null>(null);
   const [loading, setLoading] = useState(true);
+  const [addingId, setAddingId] = useState<string | null>(null);
+  const [addedIds, setAddedIds] = useState<Set<string>>(new Set());
+  const { productIds, toggleWishlist } = useWishlist();
 
   const query = useMemo(() => {
     const q = new URLSearchParams(params.toString());
@@ -84,26 +93,94 @@ export default function ProductsClient() {
     router.push(`/products?${q.toString()}`);
   }
 
+  async function quickAddToCart(p: ProductListItem) {
+    if (addingId) return; // prevent parallel adds
+    const size = (p.sizes && p.sizes[0]) || "Default";
+    const color = (p.colors && p.colors[0]) || "Default";
+    setAddingId(p.id);
+    try {
+      const res = await fetch("/api/cart", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ productId: p.id, size, color, quantity: 1 }),
+      });
+      if (res.status === 401) {
+        router.push("/login");
+        return;
+      }
+      if (!res.ok) {
+        // failure: silently ignore; could surface toast later
+        return;
+      }
+      setAddedIds(prev => {
+        const next = new Set(prev);
+        next.add(p.id);
+        return next;
+      });
+      window.dispatchEvent(new CustomEvent('cart:updated', { detail: { type: 'optimistic-add', productId: p.id, size, color, quantity: 1 } }));
+      // revert "Added!" label after short delay
+      setTimeout(() => {
+        setAddedIds(prev => {
+          const next = new Set(prev);
+          next.delete(p.id);
+          return next;
+        });
+      }, 1500);
+    } finally {
+      setAddingId(null);
+    }
+  }
+
   return (
-    <div className="py-8 space-y-6">
-      <Card variant="glass" className="p-4">
+    <div className="py-10 space-y-6 max-w-7xl mx-auto">
+      <div className="flex items-center justify-between flex-wrap gap-4">
+        <div className="flex items-center gap-2">
+          <Shirt className="h-5 w-5 text-muted-foreground" />
+          <h1 className="text-2xl font-semibold tracking-tight">Products</h1>
+        </div>
+        <div className="text-xs text-muted-foreground">Browse catalog & filter styles</div>
+      </div>
+      <Card variant="glass" className="p-4 space-y-4">
         <div className="flex flex-col md:flex-row md:items-end gap-4">
-          <div className="flex gap-2 flex-1">
-            <Input placeholder="Category" defaultValue={params.get("category") || ""} onBlur={(e) => setParam("category", e.currentTarget.value || undefined)} />
-            <Input placeholder="Color" defaultValue={params.get("color") || ""} onBlur={(e) => setParam("color", e.currentTarget.value || undefined)} />
-            <Input placeholder="Size" defaultValue={params.get("size") || ""} onBlur={(e) => setParam("size", e.currentTarget.value || undefined)} />
+          <div className="flex gap-2 flex-1 items-end">
+            <div className="flex flex-1 gap-2">
+              <Select value={params.get("category") || ""} onChange={(e) => setParam("category", e.currentTarget.value || undefined)}>
+                <option value="">All categories</option>
+                <option value="minimal">Minimal</option>
+                <option value="anime">Anime</option>
+                <option value="typography">Typography</option>
+                <option value="abstract">Abstract</option>
+              </Select>
+              <Select value={params.get("color") || ""} onChange={(e) => setParam("color", e.currentTarget.value || undefined)}>
+                <option value="">All colors</option>
+                <option value="black">Black</option>
+                <option value="white">White</option>
+                <option value="other">Other</option>
+              </Select>
+              <Select value={params.get("size") || ""} onChange={(e) => setParam("size", e.currentTarget.value || undefined)}>
+                <option value="">All sizes</option>
+                <option value="S">S</option>
+                <option value="M">M</option>
+                <option value="L">L</option>
+                <option value="XL">XL</option>
+              </Select>
+            </div>
+            <div className="flex gap-2">
+              <Select value={params.get("sort") || "newest"} onChange={(e) => setParam("sort", e.currentTarget.value)}>
+                {sortOptions.map((o) => (
+                  <option key={o.value} value={o.value}>{o.label}</option>
+                ))}
+              </Select>
+              <Select value={params.get("pageSize") || "12"} onChange={(e) => setParam("pageSize", e.currentTarget.value)}>
+                {pageSizeOptions.map((n) => (
+                  <option key={n} value={n}>{n} / page</option>
+                ))}
+              </Select>
+            </div>
           </div>
-          <div className="flex gap-2">
-            <Select value={params.get("sort") || "newest"} onChange={(e) => setParam("sort", e.currentTarget.value)}>
-              {sortOptions.map((o) => (
-                <option key={o.value} value={o.value}>{o.label}</option>
-              ))}
-            </Select>
-            <Select value={params.get("pageSize") || "12"} onChange={(e) => setParam("pageSize", e.currentTarget.value)}>
-              {pageSizeOptions.map((n) => (
-                <option key={n} value={n}>{n} / page</option>
-              ))}
-            </Select>
+          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+            <Filter className="h-4 w-4" />
+            <span>Adjust filters to refine results</span>
           </div>
         </div>
       </Card>
@@ -119,17 +196,58 @@ export default function ProductsClient() {
           >
             {data.products.map((p) => (
               <motion.a key={p.id} href={`/products/${p.slug}`} variants={fadeInUp}>
-                <Card interactive className="overflow-hidden group">
+                <Card interactive className="overflow-hidden group relative">
                   <div className="aspect-square bg-muted">
                     {p.primaryImage ? (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img src={p.primaryImage.url} alt={p.primaryImage.alt} className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" />
                     ) : null}
                   </div>
+                  {/* Wishlist heart */}
+                  <button
+                    type="button"
+                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); toggleWishlist(p.id); }}
+                    aria-label={productIds.has(p.id) ? `Remove ${p.name} from wishlist` : `Add ${p.name} to wishlist`}
+                    className="absolute top-2 right-2 rounded-full backdrop-blur bg-black/40 text-white p-2 transition-all duration-200 hover:scale-110 focus:outline-none focus:ring-2 ring-white/50"
+                  >
+                    <Heart className={`h-4 w-4 ${productIds.has(p.id) ? 'fill-red-500 text-red-500' : 'text-white'}`} />
+                  </button>
                   <div className="p-3 space-y-1">
-                    <div className="text-sm text-muted">{p.category}</div>
-                    <div className="font-medium">{p.name}</div>
-                    <div className="text-sm">${p.basePrice.toFixed(2)}</div>
+                    <div className="font-medium line-clamp-1" title={p.name}>{p.name}</div>
+                    {/* Rating display */}
+                    {p.rating != null && p.ratingCount != null ? (
+                      <div className="flex items-center gap-1 text-xs text-yellow-500" aria-label={`Rating ${p.rating} out of 5`}>
+                        {Array.from({ length: 5 }).map((_, i) => {
+                          const ratingValue = p.rating ?? 0; // ensure number for Math.round
+                          return <span key={i}>{i < Math.round(ratingValue) ? '★' : '☆'}</span>;
+                        })}
+                        <span className="text-muted ml-1">{(p.rating ?? 0).toFixed(1)} ({p.ratingCount})</span>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-1 text-xs text-muted" aria-label="No ratings yet">
+                        {Array.from({ length: 5 }).map((_, i) => (
+                          <span key={i} className="text-yellow-500">☆</span>
+                        ))}
+                        <span className="ml-1">No ratings yet</span>
+                      </div>
+                    )}
+                    {/* Price */}
+                    <div className="text-sm font-semibold">${p.basePrice.toFixed(2)}</div>
+                    {/* Hover Add to Cart button (desktop), always visible on mobile */}
+                    <div className="pt-1 min-h-9">
+                      <button
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          quickAddToCart(p);
+                        }}
+                        aria-label={`Add ${p.name} to cart`}
+                        className="w-full text-xs rounded bg-black text-white px-3 py-2 transition-all duration-200 opacity-100 md:opacity-0 md:translate-y-1 md:pointer-events-none md:group-hover:opacity-100 md:group-hover:translate-y-0 md:group-hover:pointer-events-auto hover:shadow-md active:shadow-sm disabled:opacity-50"
+                        disabled={addingId === p.id}
+                      >
+                        {addedIds.has(p.id) ? 'Added!' : (addingId === p.id ? 'Adding…' : 'Add to Cart')}
+                      </button>
+                    </div>
                   </div>
                 </Card>
               </motion.a>

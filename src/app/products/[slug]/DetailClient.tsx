@@ -4,6 +4,8 @@ import type { PublicProduct } from '@/types/product';
 import Link from 'next/link';
 import Image from 'next/image';
 import { Card } from '@/components/ui/Card';
+import { Heart } from 'lucide-react';
+import { useWishlist } from '@/components/WishlistProvider';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
@@ -16,6 +18,7 @@ export default function DetailClient({ product }: { product: PublicProduct }) {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [activeImage, setActiveImage] = useState<string | null>(product.images.find(i => i.isPrimary)?.url || product.images[0]?.url || null);
+  const { productIds, toggleWishlist } = useWishlist();
 
   async function addToCart() {
     setError(null); setSuccess(null); setAdding(true);
@@ -75,7 +78,17 @@ export default function DetailClient({ product }: { product: PublicProduct }) {
           </Card>
         </div>
         <div className="space-y-5">
-          <h1 className="text-3xl font-semibold tracking-tight">{product.name}</h1>
+          <div className="flex items-start justify-between gap-4">
+            <h1 className="text-3xl font-semibold tracking-tight">{product.name}</h1>
+            <button
+              type="button"
+              onClick={() => toggleWishlist(product.id)}
+              aria-label={productIds.has(product.id) ? 'Remove from wishlist' : 'Add to wishlist'}
+              className="rounded-full p-2 bg-black/40 backdrop-blur text-white hover:scale-110 transition-transform focus:outline-none focus:ring-2 ring-white/50"
+            >
+              <Heart className={`h-5 w-5 ${productIds.has(product.id) ? 'fill-red-500 text-red-500' : 'text-white'}`} />
+            </button>
+          </div>
           {product.sku && <div className="text-xs text-muted">SKU: <span className="font-mono">{product.sku}</span></div>}
           <div className="text-sm text-muted leading-relaxed whitespace-pre-line">{product.description}</div>
           <div className="flex items-center gap-3 text-sm">

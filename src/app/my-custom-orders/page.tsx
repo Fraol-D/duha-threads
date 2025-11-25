@@ -1,9 +1,9 @@
 "use client";
 import { useEffect, useState } from 'react';
-import Image from 'next/image';
+import { Brush } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
-import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
+import { OrderListCard } from '@/components/orders/OrderListCard';
 
 interface PlacementConfigItem {
   id?: string;
@@ -29,6 +29,7 @@ interface UserOrderItem {
   createdAt: string;
   placements?: PlacementConfigItem[];
   areas?: string[];
+  totalAmount?: number;
 }
 
 function formatArea(area?: string | null) {
@@ -40,20 +41,6 @@ function formatArea(area?: string | null) {
     case 'right_chest': return 'Right chest';
     default: return (area ?? '').toString().replace(/_/g,' ');
   }
-}
-function formatVertical(pos?: string | null, placement?: string | null) {
-  if (!pos) return '—';
-  if (placement === 'front') {
-    if (pos === 'upper') return 'Upper chest';
-    if (pos === 'center') return 'Center';
-    if (pos === 'lower') return 'Lower';
-  }
-  if (placement === 'back') {
-    if (pos === 'upper') return 'Upper back';
-    if (pos === 'center') return 'Center back';
-    if (pos === 'lower') return 'Lower back';
-  }
-  return pos;
 }
 function summarizeAreas(areas?: string[] | null, fallbackPlacement?: string | null) {
   if (Array.isArray(areas) && areas.length > 0) {
@@ -93,50 +80,56 @@ export default function MyCustomOrdersPage() {
   });
 
   return (
-    <div className="py-8 space-y-6">
+    <div className="py-10 space-y-6 max-w-6xl mx-auto">
       <div className="flex items-center justify-between flex-wrap gap-4">
-        <h1 className="text-hero">My Custom Orders</h1>
-        <Button variant="secondary" onClick={()=>window.location.href='/custom-order'}>Create New</Button>
+        <div className="flex items-center gap-2">
+          <Brush className="h-5 w-5 text-muted-foreground" />
+          <h1 className="text-2xl font-semibold tracking-tight">My custom orders</h1>
+        </div>
+        <Button variant="secondary" onClick={()=>window.location.href='/custom-order'}>Create new</Button>
       </div>
-      <div className="flex gap-3 flex-wrap">
-        <select value={statusFilter} onChange={e=>setStatusFilter(e.target.value)} className="border rounded px-2 py-1 text-sm">
-          <option value="">All Statuses</option>
-          {['PENDING_REVIEW','APPROVED','IN_DESIGN','IN_PRINTING','READY_FOR_PICKUP','OUT_FOR_DELIVERY','DELIVERED','CANCELLED'].map(s => <option key={s} value={s}>{s.replace(/_/g,' ')}</option>)}
-        </select>
-        <select value={designTypeFilter} onChange={e=>setDesignTypeFilter(e.target.value)} className="border rounded px-2 py-1 text-sm">
-          <option value="">All Design Types</option>
-          <option value="text">Text</option>
-          <option value="image">Image</option>
-        </select>
-      </div>
-      {loading && <div>Loading custom orders...</div>}
-      {error && <div className="text-red-600 text-sm">{error}</div>}
-      {!loading && !error && filtered.length === 0 && (
-        <Card className="p-6"><p className="text-sm">No custom orders yet.</p></Card>
-      )}
-      <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-4">
-        {filtered.map(o => (
-          <Card key={o.id} variant="glass" className="p-4 space-y-3 hover:ring-2 ring-token transition cursor-pointer" onClick={()=>window.location.href=`/custom-order/confirmation/${o.id}`}>            
-            <div className="flex justify-between items-center">
-              <div className="text-xs text-muted">{new Date(o.createdAt).toLocaleDateString()}</div>
-              <Badge>{o.status.replace(/_/g,' ')}</Badge>
-            </div>
-            <div className="flex gap-3">
-              {o.previewImageUrl || o.designImageUrl ? (
-                <Image src={o.previewImageUrl || o.designImageUrl!} alt="Preview" width={96} height={128} className="w-24 h-32 object-cover rounded border" />
-              ) : (
-                <div className="w-24 h-32 flex items-center justify-center text-xs text-muted bg-[--surface] rounded border">No Preview</div>
-              )}
-              <div className="flex-1 space-y-1 text-sm">
-                <div><span className="text-muted">Base:</span> {o.baseColor || '—'}</div>
-                <div><span className="text-muted">Placements:</span> {summarizeAreas(o.areas, o.placement)}</div>
-                <div><span className="text-muted">Vertical:</span> {formatVertical(o.verticalPosition, o.placement)}</div>
-                <div><span className="text-muted">Design:</span> {o.designType === 'text' ? (o.designText?.slice(0,18) || 'Text') : o.designType === 'image' ? 'Image design' : '—'}</div>
-                <div><span className="text-muted">Qty:</span> {o.quantity || 1}</div>
-              </div>
-            </div>
-          </Card>
-        ))}
+      <Card variant="glass" className="p-4 space-y-4">
+        <div className="flex gap-3 flex-wrap">
+          <select value={statusFilter} onChange={e=>setStatusFilter(e.target.value)} className="border rounded px-2 py-1 text-sm">
+            <option value="">All statuses</option>
+            {['PENDING_REVIEW','APPROVED','IN_DESIGN','IN_PRINTING','READY_FOR_PICKUP','OUT_FOR_DELIVERY','DELIVERED','CANCELLED'].map(s => <option key={s} value={s}>{s.replace(/_/g,' ')}</option>)}
+          </select>
+          <select value={designTypeFilter} onChange={e=>setDesignTypeFilter(e.target.value)} className="border rounded px-2 py-1 text-sm">
+            <option value="">All design types</option>
+            <option value="text">Text</option>
+            <option value="image">Image</option>
+          </select>
+        </div>
+        {loading && <div className="text-sm">Loading custom orders...</div>}
+        {error && <div className="text-sm text-red-600">{error}</div>}
+        {!loading && !error && filtered.length === 0 && (
+          <div className="text-sm text-muted-foreground">No custom orders yet.</div>
+        )}
+      </Card>
+      <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        {filtered.map(o => {
+          const placementsCount = Array.isArray(o.areas) ? new Set(o.areas).size : (Array.isArray(o.placements) ? o.placements.length : (o.placement ? 1 : 0));
+          const title = o.designType === 'text' && o.designText ? o.designText.slice(0,28) : o.designType === 'image' ? 'Image design' : `Custom design (${placementsCount} placement${placementsCount === 1 ? '' : 's'})`;
+          const subtitleParts: string[] = [];
+          subtitleParts.push(summarizeAreas(o.areas, o.placement));
+          if (o.baseColor) subtitleParts.push(`Base ${o.baseColor}`);
+          subtitleParts.push(new Date(o.createdAt).toLocaleDateString());
+          if (o.quantity) subtitleParts.push(`Qty ${o.quantity}`);
+          const subtitle = subtitleParts.filter(Boolean).join(' · ');
+          return (
+            <OrderListCard
+              key={o.id}
+              id={o.id}
+              type="custom"
+              createdAt={o.createdAt}
+              status={o.status}
+              title={title}
+              subtitle={subtitle}
+              thumbnailUrl={o.previewImageUrl || o.designImageUrl || null}
+              totalAmount={typeof o.totalAmount === 'number' ? o.totalAmount : undefined}
+            />
+          );
+        })}
       </div>
     </div>
   );

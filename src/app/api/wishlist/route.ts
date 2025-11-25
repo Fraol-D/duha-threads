@@ -11,7 +11,32 @@ export async function GET() {
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   await getDb();
-  const items = await WishlistItemModel.find({ userId: user.id }).lean();
+  const docs = await WishlistItemModel.find({ userId: user.id }).lean();
+  const productIds = docs.map(d => d.productId);
+  const products = await ProductModel.find({ _id: { $in: productIds } }).lean();
+  const productMap = new Map<string, any>(products.map(p => [p._id.toString(), p]));
+  const items = docs.map(d => {
+    const prod = productMap.get(d.productId.toString());
+    return {
+      _id: d._id.toString(),
+      productId: d.productId.toString(),
+      createdAt: d.createdAt,
+      product: prod ? {
+        id: prod._id.toString(),
+        name: prod.name,
+        slug: prod.slug,
+        basePrice: prod.basePrice,
+        description: prod.description,
+        images: prod.images || [],
+        primaryImage: (prod.images || []).find((img: any) => img.isPrimary) || (prod.images || [])[0] || null,
+        colors: prod.colors || [],
+        sizes: prod.sizes || [],
+        // Placeholder rating fields (future expansion)
+        rating: prod.rating || null,
+        ratingCount: prod.ratingCount || null,
+      } : null,
+    };
+  });
   return NextResponse.json({ items });
 }
 
@@ -29,5 +54,18 @@ export async function POST(req: Request) {
     { $setOnInsert: { userId: user.id, productId: parsed.data.productId } },
     { upsert: true, new: true }
   ).lean();
-  return NextResponse.json({ item: doc });
+  return NextResponse.json({ item: { _id: doc._id.toString(), productId: doc.productId.toString() } });
+}
+
+// DELETE body { productId }
+export async function DELETE(req: Request) {
+  const user = await getCurrentUser();
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const body = await req.json().catch(() => null);
+  const parsed = postSchema.safeParse(body); // reuse schema for productId
+  if (!parsed.success) return NextResponse.json({ error: "Invalid input" }, { status: 400 });
+  await getDb();
+  const res = await WishlistItemModel.deleteOne({ userId: user.id, productId: parsed.data.productId });
+  if (res.deletedCount === 0) return NextResponse.json({ error: "Not found" }, { status: 404 });
+  return NextResponse.json({ ok: true });
 }

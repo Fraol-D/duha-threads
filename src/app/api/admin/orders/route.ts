@@ -1,66 +1,72 @@
-import { NextResponse } from "next/server";
+import { NextResponse, NextRequest } from "next/server";
 import { verifyAuth } from "@/lib/auth/session";
 import { isAdmin } from "@/lib/auth/admin";
 import { OrderModel } from "@/lib/db/models/Order";
-import { z } from "zod";
+import { UserModel } from "@/lib/db/models/User";
+// Lenient parsing: avoid 400s from strict schema; coerce/fallback manually.
 
-const querySchema = z.object({
-  page: z.coerce.number().min(1).default(1),
-  pageSize: z.coerce.number().min(1).max(100).default(20),
-  status: z.string().optional(),
-  userEmail: z.string().email().optional(),
-});
-
-export async function GET(request: Request) {
+export async function GET(request: NextRequest) {
   try {
-    const authResult = await verifyAuth();
+    const authResult = await verifyAuth(request);
     if (!authResult.user || !isAdmin(authResult.user)) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
     const url = new URL(request.url);
-    const parsedQuery = querySchema.safeParse({
-      page: url.searchParams.get("page"),
-      pageSize: url.searchParams.get("pageSize"),
-      status: url.searchParams.get("status"),
-      userEmail: url.searchParams.get("userEmail"),
-    });
-    if (!parsedQuery.success) {
-      return NextResponse.json({ error: "Invalid query parameters" }, { status: 400 });
-    }
-    const { page, pageSize, status, userEmail } = parsedQuery.data;
+    let page = Number(url.searchParams.get("page") || 1);
+    let pageSize = Number(url.searchParams.get("pageSize") || 20);
+    const status = url.searchParams.get("status") || undefined;
+    const q = url.searchParams.get("q") || undefined; // unified search param
+    if (!Number.isFinite(page) || page < 1) page = 1;
+    if (!Number.isFinite(pageSize) || pageSize < 1 || pageSize > 100) pageSize = 20;
 
     const filter: any = {};
     if (status) filter.status = status;
-    // userEmail filtering would require a join; omitted unless we store email on order.
+    if (q) {
+      filter.$or = [
+        { email: { $regex: q, $options: 'i' } },
+        { 'deliveryInfo.address': { $regex: q, $options: 'i' } },
+        { _id: { $regex: q, $options: 'i' } },
+      ];
+    }
 
+    const totalCount = await OrderModel.countDocuments(filter);
     const skip = (page - 1) * pageSize;
-    const [orders, total] = await Promise.all([
-      OrderModel.find(filter, {
-        total: 1,
-        status: 1,
-        createdAt: 1,
-        updatedAt: 1,
-      })
-        .sort({ createdAt: -1 })
-        .skip(skip)
-        .limit(pageSize)
-        .lean(),
-      OrderModel.countDocuments(filter),
-    ]);
+    const docs = await OrderModel.find(filter)
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(pageSize)
+      .lean();
 
+    const pageSlice = docs.map((o: any) => ({
+      id: o._id.toString(),
+      orderNumber: o._id.toString().slice(-6),
+      userId: o.userId?.toString() || null,
+      customerEmail: o.email || o.deliveryInfo?.address || null,
+      customerName: null,
+      totalAmount: o.totalAmount ?? o.total ?? 0,
+      currency: o.currency || 'USD',
+      status: o.status,
+      createdAt: o.createdAt,
+      updatedAt: o.updatedAt,
+      isCustomOrder: !!o.isCustomOrder,
+      itemCount: Array.isArray(o.items) ? o.items.reduce((s: number, it: any) => s + (it.quantity || 0), 0) : 0,
+    }));
+    // Fetch user names for visible slice
+    const userIds = [...new Set(pageSlice.filter(r => r.userId).map(r => r.userId))];
+    if (userIds.length) {
+      const userDocs = await UserModel.find({ _id: { $in: userIds } }, { name: 1, email: 1 }).lean();
+      const userMap = new Map(userDocs.map(u => [u._id.toString(), u.name]));
+      pageSlice.forEach(r => { if (r.userId && userMap.has(r.userId)) r.customerName = userMap.get(r.userId)!; });
+    }
+
+    const effectiveTotal = totalCount;
     return NextResponse.json({
       page,
       pageSize,
-      total,
-      totalPages: Math.ceil(total / pageSize),
-      orders: orders.map((o: any) => ({
-        id: o._id.toString(),
-        total: o.total,
-        status: o.status,
-        createdAt: o.createdAt,
-        updatedAt: o.updatedAt,
-      })),
+      totalCount: effectiveTotal,
+      totalPages: Math.ceil(effectiveTotal / pageSize),
+      orders: pageSlice,
     });
   } catch (err: any) {
     console.error("[ADMIN_ORDERS_LIST_GET]", err);

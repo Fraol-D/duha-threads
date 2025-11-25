@@ -18,6 +18,8 @@ export interface ProductDocument {
   salesCount: number;
   viewCount: number;
   sku?: string;
+  isFeatured?: boolean;
+  featuredRank?: number | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -34,6 +36,8 @@ export interface PublicProduct {
   images: ProductImageDocument[];
   salesCount: number;
   sku?: string;
+  isFeatured?: boolean;
+  featuredRank?: number | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -47,6 +51,14 @@ export interface ProductListItem {
   primaryImage?: ProductImageDocument;
   salesCount: number;
   sku?: string;
+  // Added for product card quick add defaults
+  colors?: string[];
+  sizes?: string[];
+  // Optional rating fields (future-proof)
+  rating?: number;
+  ratingCount?: number;
+  isFeatured?: boolean;
+  featuredRank?: number | null;
 }
 
 export interface ProductFilters {
@@ -80,6 +92,8 @@ export function toPublicProduct(doc: ProductDocument): PublicProduct {
     images: doc.images,
     salesCount: doc.salesCount,
     sku: doc.sku,
+    isFeatured: doc.isFeatured,
+    featuredRank: doc.featuredRank ?? null,
     createdAt: doc.createdAt.toISOString(),
     updatedAt: doc.updatedAt.toISOString(),
   };
@@ -96,5 +110,9 @@ export function toProductListItem(doc: ProductDocument): ProductListItem {
     primaryImage,
     salesCount: doc.salesCount,
     sku: doc.sku,
+    colors: doc.colors,
+    sizes: doc.sizes,
+    isFeatured: doc.isFeatured,
+    featuredRank: doc.featuredRank ?? null,
   };
 }

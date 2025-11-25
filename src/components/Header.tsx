@@ -6,7 +6,7 @@ import {
   Shirt,
   Heart,
   ShoppingCart,
-  Package,
+  Brush,
   User as UserIcon,
   LayoutDashboard,
   Sun,
@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { isAdminEmail } from "@/config/admin-public";
 import { useCart } from "./CartProvider";
+import { useWishlist } from "./WishlistProvider";
  
 
 type NavItem = { href: string; label: string; icon: React.ComponentType<{ className?: string }>; title?: string };
@@ -24,8 +25,8 @@ const baseNav: NavItem[] = [
   { href: "/products", label: "Products", icon: Shirt },
   { href: "/wishlist", label: "Wishlist", icon: Heart },
   { href: "/cart", label: "Cart", icon: ShoppingCart },
-  { href: "/custom-order", label: "Custom Builder", icon: Package },
-  { href: "/my-custom-orders", label: "My Orders", icon: List },
+  { href: "/custom-order", label: "Custom Builder", icon: Brush },
+  { href: "/my-orders", label: "My Orders", icon: List },
 ];
 
 export function Header() {
@@ -33,6 +34,7 @@ export function Header() {
   const [loaded, setLoaded] = useState(false);
   const [theme, setTheme] = useState<"light" | "dark">("light");
   const { totalQuantity } = useCart();
+  const { count: wishlistCount } = useWishlist();
   
 
   useEffect(() => {
@@ -99,6 +101,9 @@ export function Header() {
                 <Icon className="h-5 w-5" />
                 {item.href === '/cart' && totalQuantity > 0 && (
                   <span className="absolute -top-1 -right-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-accent text-accent-foreground text-[11px] font-semibold leading-none px-1 shadow-md animate-in fade-in zoom-in" aria-label={`Cart items: ${totalQuantity}`}>{totalQuantity}</span>
+                )}
+                {item.href === '/wishlist' && wishlistCount > 0 && (
+                  <span className="absolute -top-1 -right-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-accent/90 text-accent-foreground text-[11px] font-semibold leading-none px-1 shadow-md animate-in fade-in zoom-in" aria-label={`Wishlist items: ${wishlistCount}`}>{wishlistCount}</span>
                 )}
                 <span className="sr-only">{item.label}</span>
               </Link>

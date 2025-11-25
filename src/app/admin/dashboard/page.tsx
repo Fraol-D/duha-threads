@@ -1,4 +1,5 @@
 import { BentoGrid, BentoTile } from "@/components/ui/BentoGrid";
+import AnalyticsClient from "./AnalyticsClient";
 import { Button } from "@/components/ui/Button";
 import { getCurrentUser } from "@/lib/auth/session";
 import { isAdmin } from "@/lib/auth/admin";
@@ -178,6 +179,13 @@ export default async function AdminDashboardPage() {
           </div>
         </BentoTile>
       </BentoGrid>
+      <div className="mt-10 space-y-6">
+        <div className="flex items-center justify-between">
+          <h2 className="text-xl font-semibold tracking-tight">Analytics</h2>
+          <Link href="/admin/products" className="text-xs underline hover:opacity-80">Manage featured products</Link>
+        </div>
+        <AnalyticsClient />
+      </div>
     </div>
   );
 }
