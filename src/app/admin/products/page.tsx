@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/Input';
 import { Textarea } from '@/components/ui/Textarea';
 import { Badge } from '@/components/ui/Badge';
 
-interface ProductListItem { id: string; name: string; slug: string; basePrice: number; category: string; primaryImage?: { url: string; alt: string }; salesCount: number; isFeatured?: boolean; featuredRank?: number | null }
+interface ProductListItem { id: string; name: string; slug: string; basePrice: number; category: string; primaryImage?: { url: string; alt: string }; salesCount: number; isFeatured?: boolean; featuredRank?: number | null; displayOrder?: number | null }
 
 export default function AdminProductsPage() {
   const [products, setProducts] = useState<ProductListItem[]>([]);
@@ -26,6 +26,8 @@ export default function AdminProductsPage() {
   const [imageUrls, setImageUrls] = useState<string[]>([]);
   const [sku, setSku] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [orderDrafts, setOrderDrafts] = useState<Record<string, string>>({});
+  const [orderSavingId, setOrderSavingId] = useState<string | null>(null);
 
   useEffect(()=>{ load(); },[]);
 
@@ -36,7 +38,43 @@ export default function AdminProductsPage() {
       if (!res.ok) throw new Error('Failed to load products');
       const data = await res.json();
       setProducts(data.products || []);
+      setOrderDrafts({});
     } catch(e) { setError(e instanceof Error ? e.message : 'Failed to load products'); } finally { setLoading(false); }
+  }
+
+  async function updateDisplayOrder(productId: string) {
+    const draftValue = orderDrafts[productId];
+    const current = products.find((prod) => prod.id === productId)?.displayOrder ?? 0;
+    const parsed = draftValue != null && draftValue !== '' ? Number(draftValue) : current;
+    if (!Number.isFinite(parsed)) {
+      setError('Display order must be a valid number');
+      return;
+    }
+    setOrderSavingId(productId);
+    setError(null);
+    setSuccess(null);
+    try {
+      const res = await fetch(`/api/admin/products/${productId}/display-order`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ displayOrder: parsed }),
+      });
+      if (!res.ok) {
+        const j = await res.json().catch(()=>({}));
+        throw new Error(j.error || 'Failed to update display order');
+      }
+      setOrderDrafts((prev) => {
+        const next = { ...prev };
+        delete next[productId];
+        return next;
+      });
+      setSuccess('Display order updated');
+      await load();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to update display order');
+    } finally {
+      setOrderSavingId(null);
+    }
   }
 
   async function handleUploadFiles(files: FileList | null) {
@@ -224,6 +262,33 @@ export default function AdminProductsPage() {
               <div className="font-medium flex items-center gap-2">{p.name} <Badge>{p.category}</Badge>{p.isFeatured && <span className="text-[10px] px-2 py-0.5 rounded bg-yellow-500/20 text-yellow-600">Featured</span>}</div>
               <div className="text-sm">${p.basePrice.toFixed(2)}</div>
               <div className="text-xs text-muted">Sales: {p.salesCount}</div>
+              <div className="flex items-center gap-2 text-[11px]">
+                <label htmlFor={`display-order-${p.id}`} className="font-medium">Display order</label>
+                <input
+                  id={`display-order-${p.id}`}
+                  type="number"
+                  className="w-20 border rounded px-2 py-1 text-[11px]"
+                  value={orderDrafts[p.id] ?? String(p.displayOrder ?? 0)}
+                  onChange={(e) => {
+                    const value = e.currentTarget.value;
+                    setOrderDrafts((prev) => ({ ...prev, [p.id]: value }));
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      updateDisplayOrder(p.id);
+                    }
+                  }}
+                />
+                <Button
+                  variant="secondary"
+                  className="px-3 py-1 text-[11px]"
+                  onClick={() => updateDisplayOrder(p.id)}
+                  disabled={orderSavingId === p.id}
+                >
+                  {orderSavingId === p.id ? 'Saving…' : 'Save'}
+                </Button>
+              </div>
               <div className="flex items-center gap-2 pt-1">
                 <label className="flex items-center gap-1 text-[11px]">
                   <input

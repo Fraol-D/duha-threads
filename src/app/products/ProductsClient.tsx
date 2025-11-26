@@ -22,6 +22,7 @@ interface ProductListItem {
   sizes?: string[];
   rating?: number;
   ratingCount?: number;
+  displayOrder?: number | null;
 }
 
 interface ProductListResponse {

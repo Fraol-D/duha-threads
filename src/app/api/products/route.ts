@@ -31,6 +31,18 @@ function buildSort(sort: ProductSort): SortTuple[] {
   }
 }
 
+function composeSort(sort: ProductSort): Record<string, 1 | -1> {
+  const ordered = new Map<string, 1 | -1>();
+  ordered.set("displayOrder", -1);
+  for (const [field, direction] of buildSort(sort)) {
+    ordered.set(field, direction);
+  }
+  if (!ordered.has("createdAt")) {
+    ordered.set("createdAt", -1);
+  }
+  return Object.fromEntries(ordered);
+}
+
 export async function GET(req: Request) {
   const url = new URL(req.url);
   const parsed = querySchema.safeParse(Object.fromEntries(url.searchParams.entries()));
@@ -74,7 +86,7 @@ export async function GET(req: Request) {
   const skip = (page - 1) * pageSize;
   const [docs, total] = await Promise.all([
     ProductModel.find(filter)
-      .sort(buildSort(sort))
+      .sort(composeSort(sort))
       .skip(skip)
       .limit(pageSize)
       .lean(),

@@ -39,6 +39,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       sizes,
       imageUrls,
       isActive,
+      displayOrder,
     } = body;
     await getDb();
     const updates: Partial<ProductDocument> = {};
@@ -51,6 +52,9 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     if (typeof isActive === 'boolean') updates.isActive = isActive;
     if (Array.isArray(imageUrls) && imageUrls.length > 0) {
       updates.images = imageUrls.map((url: string, idx: number) => ({ url, alt: updates.name || name || 'Product', isPrimary: idx === 0 }));
+    }
+    if (typeof displayOrder === 'number' && Number.isFinite(displayOrder)) {
+      updates.displayOrder = displayOrder;
     }
     const doc = await ProductModel.findByIdAndUpdate(id, updates, { new: true });
     if (!doc) return NextResponse.json({ error: 'Not found' }, { status: 404 });

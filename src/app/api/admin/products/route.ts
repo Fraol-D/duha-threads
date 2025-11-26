@@ -21,7 +21,7 @@ export async function GET(req: NextRequest) {
     const pageSize = parseInt(searchParams.get('pageSize') || '20', 10);
     const skip = (page - 1) * pageSize;
     const [docs, total] = await Promise.all([
-      ProductModel.find({}).sort({ createdAt: -1 }).skip(skip).limit(pageSize),
+      ProductModel.find({}).sort({ displayOrder: -1, createdAt: -1 }).skip(skip).limit(pageSize),
       ProductModel.countDocuments({})
     ]);
     return NextResponse.json({
@@ -55,6 +55,7 @@ export async function POST(req: NextRequest) {
       imageUrls = [],
       isActive = true,
       sku,
+      displayOrder = 0,
     } = body;
     if (!name || typeof name !== 'string') return NextResponse.json({ error: 'Name required' }, { status: 400 });
     if (typeof basePrice !== 'number' || basePrice <= 0) return NextResponse.json({ error: 'basePrice must be > 0' }, { status: 400 });
@@ -78,6 +79,7 @@ export async function POST(req: NextRequest) {
       sku: sku && typeof sku === 'string' && sku.trim() ? sku.trim() : undefined,
       salesCount: 0,
       viewCount: 0,
+      displayOrder: typeof displayOrder === 'number' ? displayOrder : 0,
     });
     return NextResponse.json({ product: toPublicProduct(doc as ProductDocument) });
   } catch (e) {
