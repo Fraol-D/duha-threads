@@ -57,10 +57,11 @@ export function UserOrderDetail({ orderNumber, id, status, createdAt, items, sub
     const idx = flow.indexOf(status);
     return idx === -1 ? 0 : idx;
   }, [flow, status]);
-  const steps = useMemo(() => flow.map((s, i) => ({
+  type StepStatus = 'completed' | 'current' | 'upcoming';
+  const steps = useMemo<Array<{ key: string; label: string; status: StepStatus }>>(() => flow.map((s, i) => ({
     key: s,
     label: s.replace(/_/g,' '),
-    status: i < activeIndex ? 'completed' : i === activeIndex ? 'current' : 'upcoming'
+    status: (i < activeIndex ? 'completed' : i === activeIndex ? 'current' : 'upcoming') as StepStatus,
   })), [flow, activeIndex]);
 
   const formattedDate = useMemo(() => {

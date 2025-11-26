@@ -64,9 +64,12 @@ export function WishlistProvider({ children }: { children: React.ReactNode }) {
     load();
     const handler = (e: Event) => {
       const detail = (e as CustomEvent).detail as { productId?: string; type?: string } | undefined;
-      if (detail?.type === 'optimistic-add' && detail.productId) {
+      if (detail?.type === 'optimistic-add' && typeof detail.productId === 'string') {
+        const productId = detail.productId;
         // Optimistic add
-        setItems(prev => prev.some(i => i.productId === detail.productId) ? prev : [...prev, { _id: `optim-${detail.productId}`, productId: detail.productId, product: null }]);
+        setItems(prev => prev.some(i => i.productId === productId)
+          ? prev
+          : [...prev, { _id: `optim-${productId}`, productId, product: null }]);
       } else if (detail?.type === 'optimistic-remove' && detail.productId) {
         setItems(prev => prev.filter(i => i.productId !== detail.productId));
       } else if (detail?.type === 'reset') {

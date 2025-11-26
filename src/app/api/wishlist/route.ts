@@ -4,6 +4,13 @@ import { getCurrentUser } from "@/lib/auth/session";
 import { getDb } from "@/lib/db/connection";
 import { WishlistItemModel } from "@/lib/db/models/WishlistItem";
 import { ProductModel } from "@/lib/db/models/Product";
+import type { Types } from "mongoose";
+
+type LeanWishlistDoc = {
+  _id: Types.ObjectId;
+  productId: Types.ObjectId;
+  createdAt: Date;
+};
 
 const postSchema = z.object({ productId: z.string().min(1) });
 
@@ -12,18 +19,20 @@ export async function GET() {
     const user = await getCurrentUser();
     if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     await getDb();
-    const docs = await WishlistItemModel.find({ userId: user.id }).lean();
+    const docs = await WishlistItemModel
+      .find<LeanWishlistDoc>({ userId: user.id })
+      .lean();
     const productIds = docs.map(d => d.productId);
     const products = await ProductModel.find({ _id: { $in: productIds } }).lean();
-    const productMap = new Map<string, any>(products.map((p: any) => [p._id.toString(), p]));
+    const productMap = new Map<string, any>(products.map((p: any) => [String(p._id), p]));
     const items = docs.map(d => {
       const prod = productMap.get(d.productId.toString());
       return {
-        _id: d._id.toString(),
-        productId: d.productId.toString(),
+        _id: String(d._id),
+        productId: String(d.productId),
         createdAt: d.createdAt,
         product: prod ? {
-          id: prod._id.toString(),
+          id: String(prod._id),
           name: prod.name,
           slug: prod.slug,
           basePrice: prod.basePrice,
@@ -54,12 +63,19 @@ export async function POST(req: Request) {
     await getDb();
     const prod = await ProductModel.findOne({ _id: parsed.data.productId, isActive: true });
     if (!prod) return NextResponse.json({ error: "Product not found" }, { status: 404 });
-    const doc = await WishlistItemModel.findOneAndUpdate(
+    const doc = await WishlistItemModel.findOneAndUpdate<LeanWishlistDoc>(
       { userId: user.id, productId: parsed.data.productId },
       { $setOnInsert: { userId: user.id, productId: parsed.data.productId } },
       { upsert: true, new: true }
     ).lean();
-    return NextResponse.json({ item: { _id: doc._id.toString(), productId: doc.productId.toString() } });
+    if (!doc) {
+      return NextResponse.json({ error: "Unable to update wishlist" }, { status: 500 });
+    }
+    const item = {
+      _id: String(doc._id),
+      productId: String(doc.productId),
+    };
+    return NextResponse.json({ item });
   } catch (err) {
     console.error('[/api/wishlist] POST error:', err);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });

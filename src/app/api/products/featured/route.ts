@@ -13,7 +13,7 @@ export async function GET() {
     .limit(8)
     .lean();
   const products = docs.map(d => ({
-    id: d._id.toString(),
+    id: String(d._id),
     slug: d.slug,
     name: d.name,
     basePrice: d.basePrice,

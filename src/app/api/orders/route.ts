@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import crypto from 'crypto';
 import { getCurrentUser } from "@/lib/auth/session";
 import { getDb } from "@/lib/db/connection";
