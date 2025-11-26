@@ -2,12 +2,14 @@ import { NextRequest, NextResponse } from 'next/server';
 import { DesignTemplate } from '@/lib/db/models/DesignTemplate';
 import '@/lib/db/connection';
 import { assertAdmin } from '@/lib/auth/admin';
+import { verifyAuth } from '@/lib/auth/session';
 import { isValidObjectId } from 'mongoose';
 
-export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
+export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    await assertAdmin(req);
-    const { id } = params;
+    const auth = await verifyAuth(req);
+    assertAdmin(auth.user);
+    const { id } = await params;
     if (!isValidObjectId(id)) return NextResponse.json({ error: 'Invalid id' }, { status: 400 });
     const body = await req.json();
     const allowed = ['name','description','previewImageUrl','placements','tags','isFeatured','isActive'];
@@ -27,10 +29,11 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   }
 }
 
-export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
+export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    await assertAdmin(req);
-    const { id } = params;
+    const auth = await verifyAuth(req);
+    assertAdmin(auth.user);
+    const { id } = await params;
     if (!isValidObjectId(id)) return NextResponse.json({ error: 'Invalid id' }, { status: 400 });
     const doc = await DesignTemplate.findById(id);
     if (!doc) return NextResponse.json({ error: 'Template not found' }, { status: 404 });

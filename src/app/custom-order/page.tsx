@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import Image from "next/image";
@@ -10,8 +10,9 @@ import { Textarea } from "@/components/ui/Textarea";
 import { Stepper } from "@/components/ui/Stepper";
 import { MascotSlot } from "@/components/ui/MascotSlot";
 import { fadeInUp } from "@/lib/motion";
-import { DesignPreview } from "@/components/DesignPreview";
+import { DesignPreviewCanvas, type CanvasPlacement, PREVIEW_ASPECT_RATIO } from "@/components/preview/DesignPreviewCanvas";
 import { BaseShirtColor } from "@/config/baseShirts";
+import { resolveBasePreviewImage } from "@/lib/preview/baseImage";
 import { DesignAssistant } from "@/components/DesignAssistant";
 import { logEvent } from "@/lib/loggerEvents";
 
@@ -60,6 +61,43 @@ export default function CustomOrderBuilderPage() {
   }]);
   const [activePlacementId, setActivePlacementId] = useState<string | null>('front-1');
   const [previewMode, setPreviewMode] = useState<'front'|'back'>('front');
+  const previewContainerRef = useRef<HTMLDivElement | null>(null);
+  const [previewSize, setPreviewSize] = useState({ width: 0, height: 0 });
+  useEffect(() => {
+    const element = previewContainerRef.current;
+    if (!element) return;
+    const updateSize = () => {
+      const nextWidth = Math.min(Math.max(element.clientWidth, 240), 420);
+      setPreviewSize({ width: nextWidth, height: nextWidth * PREVIEW_ASPECT_RATIO });
+    };
+    updateSize();
+    const observer = new ResizeObserver(updateSize);
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, []);
+  const canvasPlacements = useMemo<CanvasPlacement[]>(() => placements.map((p) => ({
+    id: p.id,
+    area: p.area,
+    verticalPosition: p.verticalPosition,
+    designType: p.designType,
+    designText: p.designType === 'text' ? (p.designText ?? '') : null,
+    designFont: p.designType === 'text' ? FONT_MAP[p.designFont ?? 'sans'].family : null,
+    designColor: p.designType === 'text' ? (p.designColor || '#000000') : null,
+    designImageUrl: p.designType === 'image' ? (p.designImageUrl || p.localImagePreviewUrl || null) : null,
+  })), [placements]);
+  const frontCanvasPlacements = useMemo(() => filterPlacementsBySide(canvasPlacements, 'front'), [canvasPlacements]);
+  const backCanvasPlacements = useMemo(() => filterPlacementsBySide(canvasPlacements, 'back'), [canvasPlacements]);
+  const previewPlacements = previewMode === 'front' ? frontCanvasPlacements : backCanvasPlacements;
+  const previewBaseImageUrl = useMemo(() => resolveBasePreviewImage(selectedBaseColor, previewMode), [selectedBaseColor, previewMode]);
+  const showGuides = currentStep === 'placements';
+  const activePlacement = useMemo(() => placements.find((pl) => pl.id === activePlacementId) || null, [placements, activePlacementId]);
+  const highlightedPlacementId = useMemo(() => {
+    if (!showGuides || !activePlacement) return null;
+    if (activePlacement.area === 'back') return previewMode === 'back' ? activePlacement.id : null;
+    return previewMode === 'front' ? activePlacement.id : null;
+  }, [showGuides, activePlacement, previewMode]);
+  const reviewPreviewWidth = 200;
+  const reviewPreviewHeight = reviewPreviewWidth * PREVIEW_ASPECT_RATIO;
   const [quantity, setQuantity] = useState<number>(1);
   const [deliveryName, setDeliveryName] = useState('');
   const [deliveryAddress, setDeliveryAddress] = useState('');
@@ -415,44 +453,22 @@ export default function CustomOrderBuilderPage() {
                   <div className="grid grid-cols-2 gap-4 pt-2">
                     <div>
                       <div className="text-[10px] font-medium mb-1">Front Preview</div>
-                      <DesignPreview
-                        baseColor={selectedBaseColor}
-                        mode="front"
-                        placements={placements.map(p => ({
-                          id:p.id,
-                          area:p.area,
-                          verticalPosition:p.verticalPosition,
-                          designType:p.designType,
-                          designText:p.designType==='text'?(p.designText ?? '') : null,
-                          designFont:p.designType==='text'?FONT_MAP[(p.designFont ?? 'sans')].family: null,
-                          designColor:p.designType==='text'?p.designColor: null,
-                          designImageUrl:p.designType==='image'? (p.designImageUrl || p.localImagePreviewUrl || null) : null,
-                        }))}
-                        overlayPlacementKey={undefined}
-                        overlayType={undefined}
-                        overlayVerticalPosition={placements.find(pl=>pl.id===activePlacementId)?.verticalPosition ?? 'upper'}
-                        builderStep={currentStep}
+                      <DesignPreviewCanvas
+                        baseImageUrl={resolveBasePreviewImage(selectedBaseColor, 'front')}
+                        placements={frontCanvasPlacements}
+                        width={reviewPreviewWidth}
+                        height={reviewPreviewHeight}
+                        mode="full"
                       />
                     </div>
                     <div>
                       <div className="text-[10px] font-medium mb-1">Back Preview</div>
-                      <DesignPreview
-                        baseColor={selectedBaseColor}
-                        mode="back"
-                        placements={placements.map(p => ({
-                          id:p.id,
-                          area:p.area,
-                          verticalPosition:p.verticalPosition,
-                          designType:p.designType,
-                          designText:p.designType==='text'?(p.designText ?? '') : null,
-                          designFont:p.designType==='text'?FONT_MAP[(p.designFont ?? 'sans')].family: null,
-                          designColor:p.designType==='text'?p.designColor: null,
-                          designImageUrl:p.designType==='image'? (p.designImageUrl || p.localImagePreviewUrl || null) : null,
-                        }))}
-                        overlayPlacementKey={undefined}
-                        overlayType={undefined}
-                        overlayVerticalPosition={placements.find(pl=>pl.id===activePlacementId)?.verticalPosition ?? 'upper'}
-                        builderStep={currentStep}
+                      <DesignPreviewCanvas
+                        baseImageUrl={resolveBasePreviewImage(selectedBaseColor, 'back')}
+                        placements={backCanvasPlacements}
+                        width={reviewPreviewWidth}
+                        height={reviewPreviewHeight}
+                        mode="full"
                       />
                     </div>
                   </div>
@@ -502,30 +518,21 @@ export default function CustomOrderBuilderPage() {
                 <button type="button" onClick={()=>setPreviewMode('back')} className={`px-2 py-1 rounded text-xs soft-3d ${previewMode==='back'?'ring-2 ring-token':''}`}>Back</button>
               </div>
             </div>
-            <DesignPreview
-              baseColor={selectedBaseColor}
-              mode={previewMode}
-              placements={placements.map(p => ({
-                id: p.id,
-                area: p.area,
-                verticalPosition: p.verticalPosition,
-                designType: p.designType,
-                designText: p.designType==='text' ? (p.designText ?? '') : null,
-                designFont: p.designType==='text' ? FONT_MAP[(p.designFont ?? 'sans')].family : null,
-                designColor: p.designType==='text' ? p.designColor : null,
-                designImageUrl: p.designType==='image' ? p.designImageUrl || p.localImagePreviewUrl || null : null,
-              }))}
-              overlayPlacementKey={(function(){
-                const active = placements.find(pl=>pl.id===activePlacementId);
-                if (!active) return undefined;
-                if (previewMode==='front' && active.area==='back') return undefined;
-                if (previewMode==='back' && active.area!=='back') return undefined;
-                return active.area==='left_chest' ? 'chest_left' : active.area==='right_chest' ? 'chest_right' : active.area;
-              })()}
-              overlayType={currentStep==='placements' ? 'placeholder' : undefined}
-              overlayVerticalPosition={placements.find(pl=>pl.id===activePlacementId)?.verticalPosition ?? 'upper'}
-              builderStep={currentStep}
-            />
+            <div ref={previewContainerRef} className="w-full">
+              {previewSize.width > 0 ? (
+                <DesignPreviewCanvas
+                  baseImageUrl={previewBaseImageUrl}
+                  placements={previewPlacements}
+                  width={previewSize.width}
+                  height={previewSize.height}
+                  mode="full"
+                  showGuides={showGuides}
+                  activePlacementId={highlightedPlacementId}
+                />
+              ) : (
+                <div className="w-full rounded-xl bg-muted/30" style={{ aspectRatio: '3 / 4' }} />
+              )}
+            </div>
             <div className="pt-2 flex gap-2">
               {(['white','black'] as BaseShirtColor[]).map(c => (
                 <button key={c} type="button" onClick={()=>setSelectedBaseColor(c)} className={`h-9 w-9 rounded-full flex items-center justify-center border ${selectedBaseColor===c?'ring-2 ring-token border-token':'border-muted'} bg-[--surface]`}>
@@ -543,4 +550,9 @@ export default function CustomOrderBuilderPage() {
       </div>
     </div>
   );
+}
+
+function filterPlacementsBySide(placements: CanvasPlacement[], side: 'front' | 'back') {
+  if (side === 'back') return placements.filter((placement) => placement.area === 'back');
+  return placements.filter((placement) => placement.area !== 'back');
 }

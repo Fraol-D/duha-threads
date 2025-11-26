@@ -10,8 +10,10 @@ import { Select } from "@/components/ui/Select";
 import { Input } from "@/components/ui/Input";
 import { Textarea } from "@/components/ui/Textarea";
 import { Stepper } from "@/components/ui/Stepper";
+import { CustomOrderPreview } from "@/components/custom-order/CustomOrderPreview";
+import type { CustomOrder as BaseCustomOrder } from "@/types/custom-order";
 
-interface CustomOrder {
+interface AdminCustomOrder extends BaseCustomOrder {
   id: string;
   userId: string | null;
   status: string;
@@ -98,7 +100,7 @@ const STATUS_ORDER = [
 
 export default function AdminCustomOrderDetailPage() {
   const { id } = useParams() as { id: string };
-  const [order, setOrder] = useState<CustomOrder | null>(null);
+  const [order, setOrder] = useState<AdminCustomOrder | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [updating, setUpdating] = useState(false);
@@ -262,12 +264,10 @@ export default function AdminCustomOrderDetailPage() {
         {error && <p className="text-sm text-red-600">{error}</p>}
       </Card>
 
-      {order.previewImageUrl && (
-        <Card className="p-4">
-          <h2 className="text-xl font-semibold mb-3">Preview</h2>
-          <Image src={order.previewImageUrl} alt="Preview" width={480} height={640} className="w-full max-w-md h-auto rounded" />
-        </Card>
-      )}
+      <Card className="p-4">
+        <h2 className="text-xl font-semibold mb-3">Preview</h2>
+        <CustomOrderPreview order={order} size="lg" />
+      </Card>
 
       <Card variant="glass" className="p-6">
         <h2 className="text-xl font-semibold mb-4">Status Timeline</h2>

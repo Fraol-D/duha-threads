@@ -13,7 +13,7 @@ const patchSchema = z.object({
 
 export async function GET(
   _request: NextRequest,
-  { params }: { params: { orderId: string } }
+  { params }: { params: Promise<{ orderId: string }> }
 ) {
   try {
     const authResult = await verifyAuth(_request);
@@ -21,7 +21,8 @@ export async function GET(
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    const lookupId = params.orderId;
+    const resolvedParams = await params;
+    const lookupId = resolvedParams.orderId;
     const order: any = await OrderModel.findById(lookupId).lean();
     if (!order) {
       console.warn('[ADMIN_ORDER_DETAIL_NOT_FOUND]', { lookupId });
@@ -33,7 +34,7 @@ export async function GET(
     let imageMap = new Map<string, string | null>();
     if (productIds.length) {
       const productDocs = await ProductModel.find({ _id: { $in: productIds } }, { images: 1 }).lean();
-      imageMap = new Map(productDocs.map(p => [p._id.toString(), (p as any).images?.[0]?.url || null]));
+      imageMap = new Map(productDocs.map((p: any) => [p._id.toString(), (p as any).images?.[0]?.url || null]));
     }
     const lineItems = order.items.map((it: any) => ({
       productId: it.productId?.toString(),
@@ -68,7 +69,7 @@ export async function GET(
 
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { orderId: string } }
+  { params }: { params: Promise<{ orderId: string }> }
 ) {
   try {
     const authResult = await verifyAuth(request);
@@ -83,7 +84,8 @@ export async function PATCH(
     }
     const data = parsed.data;
 
-    const order: any = await OrderModel.findById(params.orderId);
+    const resolvedParams = await params;
+    const order: any = await OrderModel.findById(resolvedParams.orderId);
     if (!order) {
       return NextResponse.json({ error: 'Not Found' }, { status: 404 });
     }

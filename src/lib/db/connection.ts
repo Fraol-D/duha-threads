@@ -27,7 +27,17 @@ export async function getDb(): Promise<typeof mongoose> {
   if (globalCache.conn) return globalCache.conn;
   if (!globalCache.promise) {
     const uri = env.MONGODB_URI;
-    globalCache.promise = mongoose.connect(uri).then((m) => m);
+    if (!uri) {
+      throw new Error('MONGODB_URI environment variable is not set');
+    }
+    globalCache.promise = mongoose.connect(uri, {
+      serverSelectionTimeoutMS: 5000, // Fail fast if can't connect
+      socketTimeoutMS: 10000,
+    }).then((m) => m).catch((err) => {
+      // Reset promise so next call can retry
+      globalCache.promise = null;
+      throw err;
+    });
   }
   globalCache.conn = await globalCache.promise;
   return globalCache.conn;

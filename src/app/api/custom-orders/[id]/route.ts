@@ -40,6 +40,8 @@ export async function GET(
       previewImageUrl: customOrder.previewImageUrl || null,
       // Legacy/structured fields
       baseShirt: customOrder.baseShirt,
+      legacyPlacements: customOrder.legacyPlacements,
+      sides: customOrder.sides,
       placements: customOrder.placements,
       designAssets: customOrder.designAssets,
       notes: customOrder.notes,

@@ -1,26 +1,19 @@
 "use client";
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import Image from 'next/image';
 import { Badge } from '@/components/ui/Badge';
 import { Card } from '@/components/ui/Card';
 import { Select } from '@/components/ui/Select';
+import { CustomOrderPreview } from '@/components/custom-order/CustomOrderPreview';
+import type { CustomOrder } from '@/types/custom-order';
 
-interface AdminOrderItem {
-  id: string;
+type AdminOrderItem = CustomOrder & {
   userId?: string | null;
-  baseColor?: string;
-  placement?: string;
-  verticalPosition?: string;
-  designType?: 'text'|'image';
-  designText?: string | null;
-  designImageUrl?: string | null;
-  previewImageUrl?: string | null;
-  quantity?: number;
   status: string;
   createdAt: string;
   areas?: string[];
-}
+  estimatedTotal?: number;
+};
 
 function formatArea(area?: string | null) {
   if (!area) return '—';
@@ -139,9 +132,9 @@ export default function AdminCustomOrdersPage() {
                 <td className="p-2">{o.quantity || 1}</td>
                 <td className="p-2"><Badge>{o.status.replace(/_/g,' ')}</Badge></td>
                 <td className="p-2">
-                  {o.previewImageUrl || o.designImageUrl ? (
-                    <Image src={o.previewImageUrl || o.designImageUrl!} alt="Preview" width={40} height={56} className="w-10 h-14 object-cover rounded border" />
-                  ) : <span className="text-xs text-muted">—</span>}
+                  <div className="w-full max-w-[140px]">
+                    <CustomOrderPreview order={o} size="sm" />
+                  </div>
                 </td>
               </tr>
             ))}

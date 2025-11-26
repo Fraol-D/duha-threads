@@ -56,7 +56,12 @@ export default function AnalyticsClient() {
   if (error) return <div className="py-6 text-sm text-red-600">{error}</div>;
   if (!data) return null;
 
-  const formatCurrency = (n: number) => `$${n.toFixed(2)}`;
+  const toNumber = (value?: number) => (typeof value === 'number' && Number.isFinite(value) ? value : 0);
+  const formatCurrency = (value?: number) => new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
+    minimumFractionDigits: 2,
+  }).format(toNumber(value));
 
   const COLORS = ['#111111','#333333','#555555','#777777','#999999','#bbbbbb','#dddddd'];
   return (
@@ -124,7 +129,7 @@ export default function AnalyticsClient() {
             <div className="h-64">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
-                  <Pie data={data.orderStatusBreakdown} dataKey="count" nameKey="status" outerRadius={110} label={({name, percent}) => `${name} ${(percent*100).toFixed(0)}%`}>
+                  <Pie data={data.orderStatusBreakdown} dataKey="count" nameKey="status" outerRadius={110} label={({name, percent = 0}) => `${name} ${Math.round(percent*100)}%`}>
                     {data.orderStatusBreakdown.map((entry, index) => (
                       <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                     ))}

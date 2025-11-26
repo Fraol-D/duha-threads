@@ -46,7 +46,7 @@ export async function POST(req: NextRequest) {
 
   const productIds = cartItems.map(i => i.productId);
   const products = await ProductModel.find({ _id: { $in: productIds }, isActive: true }).lean();
-  const productMap = new Map(products.map(p => [p._id.toString(), p]));
+  const productMap = new Map(products.map((p: any) => [p._id.toString(), p]));
   for (const c of cartItems) {
     if (!productMap.get(c.productId.toString())) {
       return NextResponse.json({ error: 'Some items are unavailable' }, { status: 409 });

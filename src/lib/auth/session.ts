@@ -6,35 +6,45 @@ import { UserModel } from "@/lib/db/models/User";
 import { toPublicUser } from "@/types/user";
 
 export async function getCurrentUser() {
-  const store = await cookies();
-  const token = (store as any).get ? (store as any).get(COOKIE_NAME)?.value : undefined;
-  if (!token) return null;
-  const payload = verifyAuthToken(token);
-  if (!payload) return null;
-  await getDb();
-  const user = await UserModel.findById(payload.uid);
-  if (!user) return null;
-  return toPublicUser(user as any);
+  try {
+    const store = await cookies();
+    const token = (store as any).get ? (store as any).get(COOKIE_NAME)?.value : undefined;
+    if (!token) return null;
+    const payload = verifyAuthToken(token);
+    if (!payload) return null;
+    await getDb();
+    const user = await UserModel.findById(payload.uid);
+    if (!user) return null;
+    return toPublicUser(user as any);
+  } catch (err) {
+    console.error('[getCurrentUser] Error:', err);
+    return null;
+  }
 }
 
 export async function verifyAuth(req: NextRequest): Promise<{ user: { id: string; email: string; role: "user" | "admin" } | null }> {
-  const token = req.cookies.get(COOKIE_NAME)?.value;
-  if (!token) return { user: null };
-  
-  const payload = verifyAuthToken(token);
-  if (!payload) return { user: null };
-  
-  await getDb();
-  const user = await UserModel.findById(payload.uid);
-  if (!user) return { user: null };
-  
-  return {
-    user: {
-      id: user._id.toString(),
-      email: user.email,
-      role: (user as any).role || "user",
-    },
-  };
+  try {
+    const token = req.cookies.get(COOKIE_NAME)?.value;
+    if (!token) return { user: null };
+    
+    const payload = verifyAuthToken(token);
+    if (!payload) return { user: null };
+    
+    await getDb();
+    const user = await UserModel.findById(payload.uid);
+    if (!user) return { user: null };
+    
+    return {
+      user: {
+        id: user._id.toString(),
+        email: user.email,
+        role: (user as any).role || "user",
+      },
+    };
+  } catch (err) {
+    console.error('[verifyAuth] Error:', err);
+    return { user: null };
+  }
 }
 
 export async function setAuthCookie(userId: string) {

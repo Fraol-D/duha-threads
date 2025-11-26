@@ -5,14 +5,15 @@ import { ProductModel } from '@/lib/db/models/Product';
 import { isAdminEmail } from '@/config/admin-public';
 import { toPublicProduct, type ProductDocument } from '@/types/product';
 
-export async function GET(_req: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const auth = await verifyAuth(_req);
     if (!auth.user || !isAdminEmail(auth.user.email)) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
     await getDb();
-    const doc = await ProductModel.findById(params.id);
+    const { id } = await params;
+    const doc = await ProductModel.findById(id);
     if (!doc) return NextResponse.json({ error: 'Not found' }, { status: 404 });
     return NextResponse.json({ product: toPublicProduct(doc as ProductDocument) });
   } catch (e) {
@@ -21,12 +22,13 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
   }
 }
 
-export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
+export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const auth = await verifyAuth(req);
     if (!auth.user || !isAdminEmail(auth.user.email)) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
+    const { id } = await params;
     const body = await req.json();
     const {
       name,
@@ -50,7 +52,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     if (Array.isArray(imageUrls) && imageUrls.length > 0) {
       updates.images = imageUrls.map((url: string, idx: number) => ({ url, alt: updates.name || name || 'Product', isPrimary: idx === 0 }));
     }
-    const doc = await ProductModel.findByIdAndUpdate(params.id, updates, { new: true });
+    const doc = await ProductModel.findByIdAndUpdate(id, updates, { new: true });
     if (!doc) return NextResponse.json({ error: 'Not found' }, { status: 404 });
     return NextResponse.json({ product: toPublicProduct(doc as ProductDocument) });
   } catch (e) {
@@ -59,14 +61,15 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   }
 }
 
-export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
+export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const auth = await verifyAuth(req);
     if (!auth.user || !isAdminEmail(auth.user.email)) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
     await getDb();
-    const res = await ProductModel.findByIdAndDelete(params.id);
+    const { id } = await params;
+    const res = await ProductModel.findByIdAndDelete(id);
     if (!res) return NextResponse.json({ error: 'Not found' }, { status: 404 });
     return NextResponse.json({ ok: true });
   } catch (e) {

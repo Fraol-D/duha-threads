@@ -6,36 +6,18 @@ import Image from 'next/image';
 import { Card } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
-import { DesignPreview } from '@/components/DesignPreview';
+import { CustomOrderPreview } from '@/components/custom-order/CustomOrderPreview';
+import type { CustomOrder, CustomOrderPlacement } from '@/types/custom-order';
 
 // Legacy types retained for earlier implementation; no longer needed.
 
-interface PlacementSummaryItem {
-  id?: string;
-  area: 'front'|'back'|'left_chest'|'right_chest';
-  verticalPosition: 'upper'|'center'|'lower';
-  designType: 'text'|'image';
-  designText?: string | null;
-  designFont?: string | null;
-  designColor?: string | null;
-  designImageUrl?: string | null;
-}
-interface CustomOrderSummary {
-  id: string;
+type PlacementSummaryItem = CustomOrderPlacement & { id?: string };
+type CustomOrderSummary = CustomOrder & {
   status: string;
-  baseColor?: 'white'|'black';
-  placement?: string; // legacy primary
-  verticalPosition?: string; // legacy primary
-  designType?: 'text'|'image'; // legacy primary
-  designText?: string | null; // legacy primary
-  designFont?: string | null; // legacy primary
-  designColor?: string | null; // legacy primary
-  designImageUrl?: string | null; // legacy primary
-  quantity?: number;
-  previewImageUrl?: string | null;
-  placements?: PlacementSummaryItem[];
   pricing?: { basePrice: number; placementCost: number; quantityMultiplier: number; estimatedTotal: number; finalTotal?: number };
-}
+  delivery?: { address: string; phone: string; email: string };
+  placements?: PlacementSummaryItem[];
+};
 
 export default function CustomOrderConfirmationPage() {
   const params = useParams();
@@ -108,27 +90,37 @@ export default function CustomOrderConfirmationPage() {
             <h3 className="text-sm font-semibold">Placements</h3>
             {(order.placements && order.placements.length > 0) ? (
               <div className="space-y-2">
-                {order.placements.map(p => (
-                  <div key={p.id || p.area} className="border border-muted rounded p-3 text-xs flex flex-col gap-1">
-                    <div className="flex justify-between">
-                      <span className="font-medium">{p.area.replace(/_/g,' ')}</span>
-                      <span>{p.verticalPosition}</span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span>{p.designType === 'text' ? 'Text' : 'Image'}</span>
-                      {p.designType === 'text' && p.designText && <span className="truncate max-w-40">&quot;{p.designText}&quot;</span>}
-                      {p.designType === 'image' && p.designImageUrl && (
-                        <Image src={p.designImageUrl} alt="Design" width={48} height={48} className="w-12 h-12 object-contain border rounded" />
+                {order.placements.map((p, idx) => {
+                  const area = p.area ?? 'unknown_area';
+                  const verticalPosition = p.verticalPosition ?? 'center';
+                  const designType = p.designType ?? 'text';
+                  const designText = p.designText?.trim();
+                  const designFont = p.designFont ?? '—';
+                  const designColor = p.designColor ?? '#000000';
+                  const designImageUrl = p.designImageUrl ?? undefined;
+                  const placementKey = p.id || `${area}-${verticalPosition}-${designType}-${designImageUrl ?? designText ?? idx}`;
+                  return (
+                    <div key={placementKey} className="border border-muted rounded p-3 text-xs flex flex-col gap-1">
+                      <div className="flex justify-between">
+                        <span className="font-medium">{area.replace(/_/g,' ')}</span>
+                        <span>{verticalPosition}</span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span>{designType === 'text' ? 'Text' : 'Image'}</span>
+                        {designType === 'text' && designText && <span className="truncate max-w-40">&quot;{designText}&quot;</span>}
+                        {designType === 'image' && designImageUrl && (
+                          <Image src={designImageUrl} alt="Design" width={48} height={48} className="w-12 h-12 object-contain border rounded" />
+                        )}
+                      </div>
+                      {designType === 'text' && (
+                        <div className="flex items-center gap-3 text-[10px]">
+                          <span>Font: {designFont}</span>
+                          <span className="flex items-center gap-1">Color: <span className="inline-block w-4 h-4 rounded border" style={{ backgroundColor: designColor }} /></span>
+                        </div>
                       )}
                     </div>
-                    {p.designType==='text' && (
-                      <div className="flex items-center gap-3 text-[10px]">
-                        <span>Font: {p.designFont || '—'}</span>
-                        <span className="flex items-center gap-1">Color: <span className="inline-block w-4 h-4 rounded border" style={{ backgroundColor: p.designColor || '#000' }} /></span>
-                      </div>
-                    )}
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             ) : (
               <div className="text-xs text-muted">No placements found.</div>
@@ -137,46 +129,7 @@ export default function CustomOrderConfirmationPage() {
         </Card>
         <Card className="p-6 space-y-4">
           <h2 className="text-lg font-semibold">Preview</h2>
-          {order.previewImageUrl ? (
-            <Image src={order.previewImageUrl} alt="Preview" width={480} height={640} className="w-full max-w-md h-auto rounded" />
-          ) : (
-            <div className="grid sm:grid-cols-2 gap-4">
-              <div>
-                <div className="text-[10px] font-medium mb-1">Front</div>
-                <DesignPreview
-                  baseColor={order.baseColor || 'white'}
-                  mode="front"
-                  placements={(order.placements || []).map(p => ({
-                    id: p.id || `${p.area}-conf`,
-                    area: p.area,
-                    verticalPosition: p.verticalPosition,
-                    designType: p.designType,
-                    designText: p.designType==='text'? p.designText : undefined,
-                    designFont: p.designType==='text'? p.designFont : undefined,
-                    designColor: p.designType==='text'? p.designColor : undefined,
-                    designImageUrl: p.designType==='image'? p.designImageUrl : undefined,
-                  }))}
-                />
-              </div>
-              <div>
-                <div className="text-[10px] font-medium mb-1">Back</div>
-                <DesignPreview
-                  baseColor={order.baseColor || 'white'}
-                  mode="back"
-                  placements={(order.placements || []).map(p => ({
-                    id: p.id || `${p.area}-conf`,
-                    area: p.area,
-                    verticalPosition: p.verticalPosition,
-                    designType: p.designType,
-                    designText: p.designType==='text'? p.designText : undefined,
-                    designFont: p.designType==='text'? p.designFont : undefined,
-                    designColor: p.designType==='text'? p.designColor : undefined,
-                    designImageUrl: p.designType==='image'? p.designImageUrl : undefined,
-                  }))}
-                />
-              </div>
-            </div>
-          )}
+          <CustomOrderPreview order={order} size="lg" />
         </Card>
       </div>
 

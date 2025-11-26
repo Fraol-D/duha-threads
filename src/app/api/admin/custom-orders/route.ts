@@ -23,29 +23,41 @@ export async function GET(req: NextRequest) {
       CustomOrderModel.find(filter).sort({ createdAt: -1 }).skip(skip).limit(pageSize).lean(),
       CustomOrderModel.countDocuments(filter)
     ]);
-    const orders = ordersRaw.map(o => ({
-      id: o._id.toString(),
-      userId: o.userId?.toString() || null,
-      status: o.status,
-      baseColor: o.baseColor || o.baseShirt.color,
-      placement: o.placement || o.legacyPlacements?.[0]?.placementKey || (o.placements?.find(p=>p.area==='front')?.area) || o.placements?.[0]?.area || null,
-      verticalPosition: o.verticalPosition || null,
-      designType: o.designType || (o.designAssets[0]?.type as ('text'|'image')|undefined) || null,
-      designText: o.designText || o.designAssets.find(a=>a.type==='text')?.text || null,
-      designImageUrl: o.designImageUrl || o.designAssets.find(a=>a.type==='image')?.imageUrl || null,
-      quantity: o.quantity || o.baseShirt?.quantity || 1,
-      previewImageUrl: o.previewImageUrl || null,
-      estimatedTotal: o.pricing.estimatedTotal,
-      finalTotal: o.pricing.finalTotal ?? null,
-      createdAt: o.createdAt,
-      delivery: o.delivery,
-      // Multi-placement summary
-      areas: (Array.isArray(o.placements) && o.placements.length > 0)
-        ? o.placements.map(p => p.area)
-        : (Array.isArray(o.legacyPlacements) && o.legacyPlacements.length > 0)
-          ? o.legacyPlacements.map(lp => lp.placementKey)
-          : [],
-    }));
+    const orders = ordersRaw.map(o => {
+      const placements = Array.isArray(o.placements) ? o.placements : [];
+      const legacyPlacements = Array.isArray(o.legacyPlacements) ? o.legacyPlacements : [];
+      const designAssets = Array.isArray(o.designAssets) ? o.designAssets : [];
+      const firstTextAsset = designAssets.find(a => a.type === 'text');
+      const firstImageAsset = designAssets.find(a => a.type === 'image');
+      return {
+        id: o._id.toString(),
+        userId: o.userId?.toString() || null,
+        status: o.status,
+        baseColor: o.baseColor || o.baseShirt?.color,
+        baseShirt: o.baseShirt,
+        placement: o.placement || legacyPlacements[0]?.placementKey || placements.find(p=>p.area==='front')?.area || placements[0]?.area || null,
+        verticalPosition: o.verticalPosition || null,
+        designType: o.designType || (firstImageAsset ? 'image' : firstTextAsset ? 'text' : null),
+        designText: o.designText || firstTextAsset?.text || null,
+        designFont: o.designFont || firstTextAsset?.font || null,
+        designColor: o.designColor || firstTextAsset?.color || null,
+        designImageUrl: o.designImageUrl || firstImageAsset?.imageUrl || null,
+        quantity: o.quantity || o.baseShirt?.quantity || 1,
+        previewImageUrl: o.previewImageUrl || null,
+        estimatedTotal: o.pricing.estimatedTotal,
+        finalTotal: o.pricing.finalTotal ?? null,
+        createdAt: o.createdAt,
+        delivery: o.delivery,
+        placements,
+        legacyPlacements,
+        designAssets,
+        sides: o.sides,
+        // Multi-placement summary
+        areas: placements.length > 0
+          ? placements.map(p => p.area)
+          : legacyPlacements.map(lp => lp.placementKey),
+      };
+    });
     return NextResponse.json({ page, pageSize, total, totalPages: Math.ceil(total / pageSize), orders });
   } catch (e) {
     console.error('Admin list custom orders error', e);

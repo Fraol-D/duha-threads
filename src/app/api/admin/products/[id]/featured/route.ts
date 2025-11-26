@@ -31,5 +31,5 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<Params> | P
   }
   const doc = await ProductModel.findByIdAndUpdate(id, update, { new: true }).lean();
   if (!doc) return NextResponse.json({ error: 'Not found' }, { status: 404 });
-  return NextResponse.json({ ok: true, product: { id: doc._id.toString(), isFeatured: doc.isFeatured, featuredRank: doc.featuredRank ?? null } });
+  return NextResponse.json({ ok: true, product: { id: (doc as any)._id.toString(), isFeatured: (doc as any).isFeatured, featuredRank: (doc as any).featuredRank ?? null } });
 }

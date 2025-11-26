@@ -13,7 +13,15 @@ function isAdminEmail(email?: string | null) {
 }
 
 export default async function RootPage() {
-  const user = await getCurrentUser();
+  // Wrap in try-catch to handle DB connection failures gracefully
+  let user = null;
+  try {
+    user = await getCurrentUser();
+  } catch (err) {
+    // Log but don't crash - user will be treated as logged out
+    console.warn('[RootPage] Failed to get current user:', (err as Error).message);
+  }
+  
   const admin = isAdminEmail(user?.email);
   if (admin) {
     redirect("/admin/dashboard");

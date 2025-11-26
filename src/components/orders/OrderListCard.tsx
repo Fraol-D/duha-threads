@@ -2,6 +2,8 @@
 import Link from "next/link";
 import Image from "next/image";
 import { Card } from "@/components/ui/Card";
+import { CustomOrderPreview } from "@/components/custom-order/CustomOrderPreview";
+import type { CustomOrder } from "@/types/custom-order";
 import { getOrderStatusClasses, normalizeStatusLabel } from "@/lib/orderStatusStyles";
 
 export type OrderListCardProps = {
@@ -13,6 +15,7 @@ export type OrderListCardProps = {
   subtitle?: string;
   thumbnailUrl?: string | null;
   totalAmount?: number;
+  customOrder?: CustomOrder;
 };
 
 function formatDate(d?: string | Date) {
@@ -34,6 +37,7 @@ export function OrderListCard(props: OrderListCardProps) {
     subtitle,
     thumbnailUrl,
     totalAmount,
+    customOrder,
   } = props;
 
   // Route: standard -> /orders/[id]; custom -> /custom-order/confirmation/[id] (preserve dedicated confirmation UI)
@@ -47,7 +51,11 @@ export function OrderListCard(props: OrderListCardProps) {
           <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium ${getOrderStatusClasses(status)}`}>{normalizeStatusLabel(status)}</span>
         </div>
         <div className="flex gap-3 flex-col xs:flex-row">
-          {thumbnailUrl ? (
+          {type === 'custom' && customOrder ? (
+            <div className="self-start w-full max-w-[140px]">
+              <CustomOrderPreview order={customOrder} size="sm" />
+            </div>
+          ) : thumbnailUrl ? (
             <Image src={thumbnailUrl} alt={title} width={96} height={128} className="w-24 h-32 object-cover rounded border self-start" />
           ) : (
             <div className="w-24 h-32 flex items-center justify-center text-[11px] text-muted bg-[--surface] rounded border self-start">No Preview</div>

@@ -421,15 +421,21 @@ export async function GET(req: NextRequest) {
         id: order._id.toString(),
         status: order.status,
         baseColor: order.baseColor,
+        baseShirt: order.baseShirt,
         placement: order.placement, // legacy primary
         verticalPosition: order.verticalPosition,
         designType: order.designType,
         designText: order.designText,
+        designFont: order.designFont,
+        designColor: order.designColor,
         designImageUrl: order.designImageUrl,
         quantity: order.quantity || order.baseShirt?.quantity || 1,
         previewImageUrl: order.previewImageUrl || null,
         createdAt: order.createdAt,
         placements, // full placement configs
+        legacyPlacements: order.legacyPlacements || [],
+        designAssets: order.designAssets || [],
+        sides: order.sides,
         areas, // simplified area summary
       };
     });

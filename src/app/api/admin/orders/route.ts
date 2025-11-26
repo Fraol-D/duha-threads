@@ -56,7 +56,7 @@ export async function GET(request: NextRequest) {
     const userIds = [...new Set(pageSlice.filter(r => r.userId).map(r => r.userId))];
     if (userIds.length) {
       const userDocs = await UserModel.find({ _id: { $in: userIds } }, { name: 1, email: 1 }).lean();
-      const userMap = new Map(userDocs.map(u => [u._id.toString(), u.name]));
+      const userMap = new Map(userDocs.map((u: any) => [u._id.toString(), u.name]));
       pageSlice.forEach(r => { if (r.userId && userMap.has(r.userId)) r.customerName = userMap.get(r.userId)!; });
     }
 

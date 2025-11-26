@@ -4,10 +4,11 @@ import { getDb } from '@/lib/db/connection';
 import { OrderModel } from '@/lib/db/models/Order';
 import { env } from '@/config/env';
 
-export async function GET(_req: NextRequest, { params }: { params: { id?: string } }) {
+export async function GET(_req: NextRequest, { params }: { params: Promise<{ id?: string }> }) {
   try {
-    console.log('DEBUG /api/debug-order raw params:', params);
-    const id = params.id || '';
+    const resolvedParams = await params;
+    console.log('DEBUG /api/debug-order raw params:', resolvedParams);
+    const id = resolvedParams.id || '';
     if (!id) {
       return NextResponse.json({ error: 'Missing id param' }, { status: 400 });
     }

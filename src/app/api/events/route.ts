@@ -12,8 +12,8 @@ export async function POST(req: NextRequest) {
     if (!['template_view','template_apply','custom_order_started','custom_order_completed'].includes(type)) {
       return NextResponse.json({ error: 'invalid type' }, { status: 400 });
     }
-    const user = await getCurrentUser(req).catch(() => null);
-    const userId = user?._id || null;
+    const user = await getCurrentUser().catch(() => null);
+    const userId = (user as any)?._id || null;
     await EventLog.create({ type, entityId: entityId || null, metadata: metadata || null, userId });
     if (type === 'template_apply' && entityId) {
       await DesignTemplate.findByIdAndUpdate(entityId, { $inc: { usageCount: 1 } }).catch(() => {});

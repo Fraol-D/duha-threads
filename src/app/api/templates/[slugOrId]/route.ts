@@ -3,9 +3,9 @@ import { DesignTemplate } from '@/lib/db/models/DesignTemplate';
 import '@/lib/db/connection';
 import { isValidObjectId } from 'mongoose';
 
-export async function GET(_req: NextRequest, { params }: { params: { slugOrId: string } }) {
+export async function GET(_req: NextRequest, { params }: { params: Promise<{ slugOrId: string }> }) {
   try {
-    const { slugOrId } = params;
+    const { slugOrId } = await params;
     const query = isValidObjectId(slugOrId)
       ? { _id: slugOrId }
       : { slug: slugOrId.toLowerCase() };

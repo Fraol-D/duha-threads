@@ -4,33 +4,14 @@ import { Brush } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { OrderListCard } from '@/components/orders/OrderListCard';
+import type { CustomOrder } from '@/types/custom-order';
 
-interface PlacementConfigItem {
-  id?: string;
-  area: 'front' | 'back' | 'left_chest' | 'right_chest';
-  verticalPosition: 'upper' | 'center' | 'lower';
-  designType: 'text' | 'image';
-  designText?: string | null;
-  designFont?: string | null;
-  designColor?: string | null;
-  designImageUrl?: string | null;
-}
-interface UserOrderItem {
-  id: string;
+type UserOrderItem = CustomOrder & {
   status: string;
-  baseColor?: 'white'|'black';
-  placement?: string;
-  verticalPosition?: string;
-  designType?: 'text'|'image';
-  designText?: string | null;
-  designImageUrl?: string | null;
-  quantity?: number;
-  previewImageUrl?: string | null;
   createdAt: string;
-  placements?: PlacementConfigItem[];
   areas?: string[];
   totalAmount?: number;
-}
+};
 
 function formatArea(area?: string | null) {
   if (!area) return '—';
@@ -125,8 +106,8 @@ export default function MyCustomOrdersPage() {
               status={o.status}
               title={title}
               subtitle={subtitle}
-              thumbnailUrl={o.previewImageUrl || o.designImageUrl || null}
               totalAmount={typeof o.totalAmount === 'number' ? o.totalAmount : undefined}
+              customOrder={o}
             />
           );
         })}

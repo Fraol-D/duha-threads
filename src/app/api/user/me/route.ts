@@ -14,22 +14,32 @@ const patchSchema = z.object({
 });
 
 export async function GET() {
-  const user = await getCurrentUser();
-  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  return NextResponse.json({ user });
+  try {
+    const user = await getCurrentUser();
+    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return NextResponse.json({ user });
+  } catch (err) {
+    console.error('[/api/user/me] GET error:', err);
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+  }
 }
 
 export async function PATCH(req: Request) {
-  const current = await getCurrentUser();
-  if (!current) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  const body = await req.json().catch(() => null);
-  const parsed = patchSchema.safeParse(body);
-  if (!parsed.success) {
-    return NextResponse.json({ error: "Invalid input" }, { status: 400 });
+  try {
+    const current = await getCurrentUser();
+    if (!current) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const body = await req.json().catch(() => null);
+    const parsed = patchSchema.safeParse(body);
+    if (!parsed.success) {
+      return NextResponse.json({ error: "Invalid input" }, { status: 400 });
+    }
+    await getDb();
+    const update = parsed.data;
+    const doc = await UserModel.findByIdAndUpdate(current.id, update, { new: true });
+    if (!doc) return NextResponse.json({ error: "Not found" }, { status: 404 });
+    return NextResponse.json({ user: toPublicUser(doc as any) });
+  } catch (err) {
+    console.error('[/api/user/me] PATCH error:', err);
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
-  await getDb();
-  const update = parsed.data;
-  const doc = await UserModel.findByIdAndUpdate(current.id, update, { new: true });
-  if (!doc) return NextResponse.json({ error: "Not found" }, { status: 404 });
-  return NextResponse.json({ user: toPublicUser(doc as any) });
 }

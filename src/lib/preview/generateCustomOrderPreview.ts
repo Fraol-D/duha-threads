@@ -1,131 +1,128 @@
-import path from 'path';
-import { promises as fs } from 'fs';
 import { CustomOrderDocument } from '@/lib/db/models/CustomOrder';
-import { BASE_SHIRTS } from '@/config/baseShirts';
-import { PLACEMENT_RECTS } from '@/config/placementGuides';
+import { env } from '@/config/env';
 
 type OrderLike = Pick<CustomOrderDocument, '_id' | 'baseShirt' | 'designAssets' | 'placement' | 'verticalPosition'>;
 
-const FRONT_BACK_VERTICAL_TOPS: Record<'upper'|'center'|'lower', number> = {
+const FRONT_BACK_VERTICAL_TOPS: Record<'upper' | 'center' | 'lower', number> = {
   upper: 22,
   center: 32,
   lower: 42,
 };
 
+/**
+ * Generate a preview image using Cloudinary's transformation API.
+ * No native dependencies required - all compositing happens server-side at Cloudinary.
+ */
 export async function generateCustomOrderPreview(order: OrderLike): Promise<string | null> {
   try {
-    // Lazily load 'canvas' to avoid build-time resolution issues and allow fallback
-    let createCanvas: any, loadImage: any;
-    try {
-      // Use eval to prevent webpack static analysis from bundling 'require("canvas")'
-      // eslint-disable-next-line no-eval
-      const req: any = eval('require');
-      const canvasLib = req('canvas');
-      createCanvas = canvasLib.createCanvas;
-      loadImage = canvasLib.loadImage;
-    } catch (e) {
-      // If canvas isn't available (e.g., missing native deps), skip preview generation gracefully
+    // Ensure Cloudinary is configured
+    if (!env.CLOUDINARY_CLOUD_NAME) {
+      console.warn('[PREVIEW] Cloudinary not configured, skipping preview generation');
       return null;
     }
 
-    const width = 800; // 3:4 ratio
-    const height = Math.round((4/3) * width);
-    const canvas = createCanvas(width, height);
-    const ctx = canvas.getContext('2d');
-
-    // Background
-    ctx.fillStyle = '#ffffff';
-    ctx.fillRect(0, 0, width, height);
-
-    // Load base shirt image
+    // Get base shirt image path
     const baseColor = order.baseShirt?.color === 'black' ? 'black' : 'white';
-    const baseRel = BASE_SHIRTS[baseColor];
-    const basePath = path.join(process.cwd(), 'public', baseRel.replace(/^\//, ''));
-    const baseImg = await loadImage(basePath);
-    // Fit contain
-    drawContain(ctx, baseImg, width, height);
+    const baseShirtPublicId = `base-shirts/${baseColor}_front`; // Assumes base shirts are uploaded to Cloudinary
 
-    // Determine primary design asset (first one)
+    // For now, we'll use Cloudinary's transformation URL to overlay the first design asset
+    // This creates a preview without uploading - just a transformation URL
     const asset = order.designAssets?.[0];
-    if (asset) {
-      const rectBase = PLACEMENT_RECTS[asset.placementKey as keyof typeof PLACEMENT_RECTS];
-      if (rectBase) {
-        const rect = { ...rectBase };
-        if ((asset.placementKey === 'front' || asset.placementKey === 'back') && order.verticalPosition) {
-          rect.topPercent = FRONT_BACK_VERTICAL_TOPS[order.verticalPosition];
-        }
-        const px = pctToPx(rect, width, height);
-        if (asset.type === 'image' && asset.imageUrl) {
-          const imgPath = asset.imageUrl.startsWith('/') ? path.join(process.cwd(), 'public', asset.imageUrl) : asset.imageUrl;
-          try {
-            const img = await loadImage(imgPath);
-            ctx.drawImage(img, px.left, px.top, px.width, px.height);
-          } catch {}
-        } else if (asset.type === 'text' && asset.text) {
-          ctx.fillStyle = asset.color || '#000000';
-          ctx.textAlign = 'center';
-          ctx.textBaseline = 'middle';
-          const fontFamily = (asset.font && asset.font.split(',')[0]) || 'Arial';
-          // Rough font size heuristic to fit height
-          const fontSize = Math.max(16, Math.min(px.height, px.width) * 0.35);
-          ctx.font = `${Math.round(fontSize)}px ${fontFamily}`;
-          wrapAndFillText(ctx, asset.text, px.left + px.width/2, px.top + px.height/2, px.width * 0.9, Math.round(fontSize * 1.2));
-        }
-      }
+    if (!asset) {
+      // No assets, just return the base shirt URL
+      return buildCloudinaryUrl(baseShirtPublicId, []);
     }
 
-    const outDir = path.join(process.cwd(), 'public', 'previews', 'custom-orders');
-    await fs.mkdir(outDir, { recursive: true });
-    const outPath = path.join(outDir, `${order._id.toString()}.png`);
-    await fs.writeFile(outPath, canvas.toBuffer('image/png'));
-    const publicUrl = `/previews/custom-orders/${order._id.toString()}.png`;
-    return publicUrl;
+    const transformations: string[] = [];
+
+    // Handle image overlay
+    if (asset.type === 'image' && asset.imageUrl) {
+      // Extract Cloudinary public ID from URL if it's a Cloudinary URL
+      const cloudinaryPattern = /cloudinary\.com\/[^/]+\/image\/upload\/(?:v\d+\/)?(.+?)(?:\.[^.]+)?$/;
+      const match = asset.imageUrl.match(cloudinaryPattern);
+      
+      if (match) {
+        const overlayPublicId = match[1];
+        // Calculate overlay positioning based on placement
+        const positioning = getOverlayPositioning(asset.placementKey, order.verticalPosition);
+        transformations.push(
+          `l_${overlayPublicId.replace(/\//g, ':')},w_${positioning.width},g_${positioning.gravity},x_${positioning.x},y_${positioning.y}`
+        );
+      }
+    } else if (asset.type === 'text' && asset.text) {
+      // Text overlay
+      const positioning = getOverlayPositioning(asset.placementKey, order.verticalPosition);
+      const color = (asset.color || '#000000').replace('#', 'rgb:');
+      const fontFamily = (asset.font && asset.font.split(',')[0]) || 'Arial';
+      const fontSize = positioning.fontSize || 48;
+      
+      transformations.push(
+        `l_text:${fontFamily}_${fontSize}:${encodeURIComponent(asset.text)},co_${color},g_${positioning.gravity},x_${positioning.x},y_${positioning.y}`
+      );
+    }
+
+    // Build the final Cloudinary URL
+    const previewUrl = buildCloudinaryUrl(baseShirtPublicId, transformations);
+    
+    return previewUrl;
   } catch (e) {
-    console.warn('Preview generation failed', e);
+    console.warn('[PREVIEW] Preview generation failed', e);
     return null;
   }
 }
 
-function drawContain(ctx: any, img: any, width: number, height: number) {
-  const ratio = Math.min(width / img.width, height / img.height);
-  const w = img.width * ratio;
-  const h = img.height * ratio;
-  const x = (width - w) / 2;
-  const y = (height - h) / 2;
-  ctx.drawImage(img, x, y, w, h);
+function buildCloudinaryUrl(publicId: string, transformations: string[]): string {
+  const cloudName = env.CLOUDINARY_CLOUD_NAME;
+  const transformStr = transformations.length > 0 ? transformations.join(',') + '/' : '';
+  return `https://res.cloudinary.com/${cloudName}/image/upload/${transformStr}${publicId}`;
 }
 
-function pctToPx(rect: { topPercent: number; leftPercent: number; widthPercent: number; heightPercent: number; transform?: string }, width: number, height: number) {
-  // Base leftPercent as center when transform translateX(-50%) is used
-  let left = (rect.leftPercent / 100) * width;
-  if (rect.transform && rect.transform.includes('translateX(-50%)')) {
-    left = left - ((rect.widthPercent / 100) * width) / 2;
-  }
-  const top = (rect.topPercent / 100) * height;
-  const w = (rect.widthPercent / 100) * width;
-  const h = (rect.heightPercent / 100) * height;
-  return { left, top, width: w, height: h };
-}
-
-function wrapAndFillText(ctx: any, text: string, cx: number, cy: number, maxWidth: number, lineHeight: number) {
-  const words = text.split(/\s+/);
-  const lines: string[] = [];
-  let current = '';
-  for (const w of words) {
-    const test = current ? current + ' ' + w : w;
-    const metrics = ctx.measureText(test);
-    if (metrics.width > maxWidth && current) {
-      lines.push(current);
-      current = w;
-    } else {
-      current = test;
-    }
-  }
-  if (current) lines.push(current);
-  const totalHeight = lineHeight * lines.length;
-  let y = cy - totalHeight / 2 + lineHeight / 2;
-  for (const line of lines) {
-    ctx.fillText(line, cx, y);
-    y += lineHeight;
+function getOverlayPositioning(placementKey: string, verticalPosition?: 'upper' | 'center' | 'lower') {
+  // Cloudinary uses different positioning - these are approximations
+  // Gravity: center, north, south, east, west, north_east, north_west, south_east, south_west
+  
+  switch (placementKey) {
+    case 'front':
+      const yOffset = verticalPosition ? FRONT_BACK_VERTICAL_TOPS[verticalPosition] - 32 : 0;
+      return {
+        gravity: 'center',
+        x: 0,
+        y: yOffset * 3, // Scale percentage to pixels (rough estimate)
+        width: 300,
+        fontSize: 64,
+      };
+    case 'back':
+      const yOffsetBack = verticalPosition ? FRONT_BACK_VERTICAL_TOPS[verticalPosition] - 32 : 0;
+      return {
+        gravity: 'center',
+        x: 0,
+        y: yOffsetBack * 3,
+        width: 300,
+        fontSize: 64,
+      };
+    case 'leftChest':
+      return {
+        gravity: 'north_west',
+        x: 80,
+        y: 100,
+        width: 120,
+        fontSize: 32,
+      };
+    case 'rightChest':
+      return {
+        gravity: 'north_east',
+        x: 80,
+        y: 100,
+        width: 120,
+        fontSize: 32,
+      };
+    default:
+      return {
+        gravity: 'center',
+        x: 0,
+        y: 0,
+        width: 300,
+        fontSize: 48,
+      };
   }
 }

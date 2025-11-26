@@ -57,6 +57,8 @@ export async function GET(
       designImageUrl: customOrder.designImageUrl,
       previewImageUrl: customOrder.previewImageUrl,
       quantity: customOrder.quantity || customOrder.baseShirt?.quantity || 1,
+      legacyPlacements: customOrder.legacyPlacements,
+      sides: customOrder.sides,
       placements: customOrder.placements,
       designAssets: customOrder.designAssets,
       notes: customOrder.notes,

@@ -5,9 +5,9 @@ import { OrderModel } from '@/lib/db/models/Order';
 import { env } from '@/config/env';
 
 // Minimal GET: pure retrieval by id (no ownership yet)
-export async function GET(_req: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const rawId = params.id;
+    const { id: rawId } = await params;
     console.log('ORDERS DETAIL raw id:', rawId);
     if (!env.MONGODB_URI) return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
     await getDb();
@@ -26,9 +26,9 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
   }
 }
 
-export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
+export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const rawId = params.id;
+    const { id: rawId } = await params;
     if (!env.MONGODB_URI) return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
     await getDb();
     const body = await req.json().catch(() => ({}));
@@ -50,9 +50,9 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   }
 }
 
-export async function DELETE(_req: NextRequest, { params }: { params: { id: string } }) {
+export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const rawId = params.id;
+    const { id: rawId } = await params;
     if (!env.MONGODB_URI) return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
     await getDb();
     let order = null;
