@@ -6,6 +6,7 @@ import { CartProvider } from "@/components/CartProvider";
 import { WishlistProvider } from "@/components/WishlistProvider";
 import { Footer } from "@/components/Footer";
 import { Container } from "@/components/Container";
+import { Analytics } from "@vercel/analytics/react";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -37,6 +38,7 @@ export default function RootLayout({
               <Container>{children}</Container>
             </main>
             <Footer />
+            <Analytics />
           </WishlistProvider>
         </CartProvider>
       </body>
