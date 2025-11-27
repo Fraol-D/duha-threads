@@ -20,7 +20,7 @@ interface ProductListItem {
   primaryImage?: { url: string; alt: string; isPrimary: boolean };
   colors?: string[];
   sizes?: string[];
-  rating?: number;
+  ratingAverage?: number;
   ratingCount?: number;
   displayOrder?: number | null;
 }
@@ -216,13 +216,13 @@ export default function ProductsClient() {
                   <div className="p-3 space-y-1">
                     <div className="font-medium line-clamp-1" title={p.name}>{p.name}</div>
                     {/* Rating display */}
-                    {p.rating != null && p.ratingCount != null ? (
-                      <div className="flex items-center gap-1 text-xs text-yellow-500" aria-label={`Rating ${p.rating} out of 5`}>
+                    {p.ratingAverage != null && p.ratingCount != null && p.ratingCount > 0 ? (
+                      <div className="flex items-center gap-1 text-xs text-yellow-500" aria-label={`Rating ${p.ratingAverage} out of 5`}>
                         {Array.from({ length: 5 }).map((_, i) => {
-                          const ratingValue = p.rating ?? 0; // ensure number for Math.round
+                          const ratingValue = p.ratingAverage ?? 0; // ensure number for Math.round
                           return <span key={i}>{i < Math.round(ratingValue) ? '★' : '☆'}</span>;
                         })}
-                        <span className="text-muted ml-1">{(p.rating ?? 0).toFixed(1)} ({p.ratingCount})</span>
+                        <span className="text-muted ml-1">{(p.ratingAverage ?? 0).toFixed(1)} ({p.ratingCount})</span>
                       </div>
                     ) : (
                       <div className="flex items-center gap-1 text-xs text-muted" aria-label="No ratings yet">

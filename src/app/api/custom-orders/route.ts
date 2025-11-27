@@ -7,6 +7,7 @@ import { verifyAuth } from "@/lib/auth/session";
 import { z } from "zod";
 import { ConsoleEmailService, sendCustomOrderCreated } from '@/lib/email/EmailService';
 import { generateCustomOrderPreview } from '@/lib/preview/generateCustomOrderPreview';
+import { Types } from "mongoose";
 
 const PlacementSchema = z.object({
   placementKey: z.string().min(1),
@@ -129,11 +130,21 @@ const LegacySchema = z.object({
   }),
 });
 
-const CreateCustomOrderSchema = z.union([
+const PublicSharingSchema = z.object({
+  sharePublicly: z.boolean().optional(),
+  showcaseTitle: z.string().min(3).max(80).optional().nullable(),
+  showcaseDescription: z.string().max(500).optional().nullable(),
+  showcaseProductSlug: z.string().min(1).optional().nullable(),
+  showcaseProductId: z.string().optional().nullable(),
+});
+
+const BaseCustomOrderSchema = z.union([
   MultiSideBuilderSchema,
   SingleSideBuilderSchema,
   LegacySchema,
 ]);
+
+const CreateCustomOrderSchema = BaseCustomOrderSchema.and(PublicSharingSchema);
 
 // Pricing rules
 const BASE_PLACEMENT_COST = 15; // $15 per placement
@@ -176,6 +187,15 @@ export async function POST(req: NextRequest) {
     type LegacyShape = z.infer<typeof LegacySchema>;
     type SingleBuilderShape = z.infer<typeof SingleSideBuilderSchema>;
     type MultiBuilderShape = z.infer<typeof MultiSideBuilderSchema>;
+    type SharingShape = z.infer<typeof PublicSharingSchema>;
+
+    const shareFields = validationResult.data as SharingShape;
+    const sharePublicly = Boolean(shareFields.sharePublicly);
+    const showcaseTitle = shareFields.showcaseTitle?.trim() || null;
+    const showcaseDescription = shareFields.showcaseDescription?.trim() || null;
+    const showcaseSlug = shareFields.showcaseProductSlug?.trim() || null;
+    const directProductId = shareFields.showcaseProductId?.trim() || null;
+
     const data = validationResult.data as LegacyShape | SingleBuilderShape | MultiBuilderShape;
 
     // Connect to database
@@ -225,6 +245,21 @@ export async function POST(req: NextRequest) {
 
     // Compute pricing
     const pricing = computePricing(basePrice, placementCount, quantity);
+
+    // Resolve linked product for public showcase (best-effort)
+    let linkedProductId: Types.ObjectId | null = null;
+    if (sharePublicly) {
+      if (directProductId && Types.ObjectId.isValid(directProductId)) {
+        linkedProductId = new Types.ObjectId(directProductId);
+      } else if (showcaseSlug) {
+        const linkedProduct = await ProductModel.findOne({ slug: showcaseSlug })
+          .select('_id')
+          .lean<{ _id: Types.ObjectId }>();
+        if (linkedProduct?._id) {
+          linkedProductId = linkedProduct._id;
+        }
+      }
+    }
 
     // Create custom order
     // Normalize to legacy storage shape for now while supporting new flattened inputs
@@ -361,6 +396,11 @@ export async function POST(req: NextRequest) {
       status: 'PENDING_REVIEW',
       statusHistory: [{ status: 'PENDING_REVIEW', changedAt: new Date(), changedBy: authResult.user.id }],
       ...flattenedFields,
+      isPublic: sharePublicly,
+      publicStatus: sharePublicly ? 'pending' : 'private',
+      publicTitle: showcaseTitle,
+      publicDescription: showcaseDescription,
+      linkedProductId,
     });
 
     // Generate preview and persist URL if available

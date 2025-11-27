@@ -41,7 +41,7 @@ export async function GET() {
           primaryImage: (prod.images || []).find((img: any) => img.isPrimary) || (prod.images || [])[0] || null,
           colors: prod.colors || [],
           sizes: prod.sizes || [],
-          rating: prod.rating || null,
+          ratingAverage: prod.ratingAverage ?? null,
           ratingCount: prod.ratingCount || null,
         } : null,
       };

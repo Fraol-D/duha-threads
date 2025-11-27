@@ -78,7 +78,7 @@ export function AdminShell({ navItems, children }: AdminShellProps) {
   return (
     <FullWidthWrapper>
       <div className="flex min-h-[calc(100vh-5rem)] bg-[--bg] text-[--fg]">
-        <aside className="hidden lg:flex w-64 flex-col border-r border-muted bg-[--surface]" style={{ minHeight: "calc(100vh - 5rem)" }}>
+        <aside className="hidden lg:flex w-64 flex-col border-r border-muted bg-[--surface] lg:sticky lg:top-0 lg:h-[calc(100vh-5rem)]">
           <div className="px-4 py-5 border-b border-muted">
             <div className="text-lg font-semibold tracking-tight">Duha Admin</div>
             <p className="text-xs text-muted-foreground">Manage the shop</p>

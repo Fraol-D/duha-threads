@@ -13,6 +13,9 @@ type AdminOrderItem = CustomOrder & {
   createdAt: string;
   areas?: string[];
   estimatedTotal?: number;
+  publicStatus?: string;
+  isPublic?: boolean;
+  delivery?: { email?: string | null };
 };
 
 function formatArea(area?: string | null) {
@@ -46,6 +49,7 @@ export default function AdminCustomOrdersPage() {
   const [error, setError] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<string>('');
   const [designTypeFilter, setDesignTypeFilter] = useState<string>('');
+  const [publicStatusFilter, setPublicStatusFilter] = useState<string>('');
   const [search, setSearch] = useState<string>('');
   const router = useRouter();
 
@@ -59,6 +63,7 @@ export default function AdminCustomOrdersPage() {
     try {
       const url = new URL('/api/admin/custom-orders', window.location.origin);
       if (statusFilter) url.searchParams.set('status', statusFilter);
+      if (publicStatusFilter) url.searchParams.set('publicStatus', publicStatusFilter);
       if (search) url.searchParams.set('q', search);
       const res = await fetch(url.toString());
       if (res.status === 403) throw new Error('Forbidden');
@@ -73,6 +78,7 @@ export default function AdminCustomOrdersPage() {
   const filtered = orders.filter(o => {
     if (statusFilter && o.status !== statusFilter) return false;
     if (designTypeFilter && o.designType !== designTypeFilter) return false;
+    if (publicStatusFilter && (o.publicStatus || (o.isPublic ? 'approved' : 'private')) !== publicStatusFilter) return false;
     return true;
   });
 
@@ -89,6 +95,13 @@ export default function AdminCustomOrdersPage() {
             <option value="">All Types</option>
             <option value="text">Text</option>
             <option value="image">Image</option>
+          </Select>
+          <Select value={publicStatusFilter} onChange={(e)=>setPublicStatusFilter(e.currentTarget.value)}>
+            <option value="">All Share States</option>
+            <option value="pending">Pending Share</option>
+            <option value="approved">Approved Share</option>
+            <option value="rejected">Rejected Share</option>
+            <option value="private">Private</option>
           </Select>
           <input
             value={search}
@@ -111,12 +124,14 @@ export default function AdminCustomOrdersPage() {
             <tr className="text-left">
               <th className="p-2 font-medium">Created</th>
               <th className="p-2 font-medium">User</th>
+              <th className="p-2 font-medium">Email</th>
               <th className="p-2 font-medium">Base</th>
               <th className="p-2 font-medium">Placements</th>
               <th className="p-2 font-medium">Vertical</th>
               <th className="p-2 font-medium">Design</th>
               <th className="p-2 font-medium">Qty</th>
               <th className="p-2 font-medium">Status</th>
+              <th className="p-2 font-medium">Share</th>
               <th className="p-2 font-medium">Preview</th>
             </tr>
           </thead>
@@ -125,12 +140,14 @@ export default function AdminCustomOrdersPage() {
               <tr key={o.id} className="border-t hover:bg-[--surface] cursor-pointer" onClick={()=>router.push(`/admin/custom-orders/${o.id}`)}>                
                 <td className="p-2 whitespace-nowrap">{new Date(o.createdAt).toLocaleDateString()}</td>
                 <td className="p-2 max-w-40 truncate" title={o.userId || ''}>{o.userId ? o.userId.slice(-6) : '—'}</td>
+                <td className="p-2 max-w-48 truncate text-xs" title={o.delivery?.email || ''}>{o.delivery?.email || '—'}</td>
                 <td className="p-2">{o.baseColor || '—'}</td>
                 <td className="p-2">{summarizeAreas(o.areas, o.placement)}</td>
                 <td className="p-2">{formatVertical(o.verticalPosition, o.placement)}</td>
                 <td className="p-2">{o.designType === 'text' ? (o.designText?.slice(0,14) || 'Text') : o.designType === 'image' ? 'Image' : '—'}</td>
                 <td className="p-2">{o.quantity || 1}</td>
                 <td className="p-2"><Badge>{o.status.replace(/_/g,' ')}</Badge></td>
+                <td className="p-2 text-xs capitalize">{(o.publicStatus || (o.isPublic ? 'approved' : 'private')).replace(/_/g,' ')}</td>
                 <td className="p-2">
                   <div className="w-full max-w-[140px]">
                     <CustomOrderPreview order={o} size="sm" />

@@ -28,6 +28,8 @@ const ProductSchema = new Schema<ProductDocument>(
     isFeatured: { type: Boolean, default: false, index: true },
     featuredRank: { type: Number, required: false, default: null },
     displayOrder: { type: Number, default: 0, index: true },
+    ratingAverage: { type: Number, default: 0 },
+    ratingCount: { type: Number, default: 0 },
   },
   { timestamps: true }
 );

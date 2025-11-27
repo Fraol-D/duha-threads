@@ -33,6 +33,8 @@ export async function GET() {
           basePrice: prod.basePrice,
           images: prod.images || [],
           primaryImage: (prod.images || []).find((img: any) => img.isPrimary) || (prod.images || [])[0] || null,
+          ratingAverage: prod.ratingAverage ?? null,
+          ratingCount: prod.ratingCount ?? null,
         } : null,
       };
     });

@@ -76,9 +76,20 @@ export default function WishlistPage() {
                 <div className="space-y-1 text-xs">
                   {p ? (
                     <>
-                      <div className="flex items-center gap-1 text-yellow-500" aria-label="Rating placeholder">
-                        {Array.from({ length: 5 }).map((_, idx) => <span key={idx}>★</span>)}
-                        <span className="text-muted ml-1">4.8</span>
+                      <div
+                        className="flex items-center gap-1 text-yellow-500"
+                        aria-label={p.ratingCount && p.ratingCount > 0
+                          ? `Average rating ${(p.ratingAverage ?? 0).toFixed(1)} out of 5`
+                          : 'No ratings yet'}
+                      >
+                        {Array.from({ length: 5 }).map((_, idx) => (
+                          <span key={idx}>{idx < Math.round(p.ratingAverage ?? 0) ? '★' : '☆'}</span>
+                        ))}
+                        <span className="text-muted ml-1">
+                          {p.ratingCount && p.ratingCount > 0
+                            ? `${(p.ratingAverage ?? 0).toFixed(1)} (${p.ratingCount})`
+                            : 'No ratings yet'}
+                        </span>
                       </div>
                       <div className="text-sm font-semibold">${p.basePrice.toFixed(2)}</div>
                     </>

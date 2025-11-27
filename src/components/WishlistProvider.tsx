@@ -12,7 +12,7 @@ interface WishlistProduct {
   primaryImage: { url: string; alt: string; isPrimary?: boolean } | null;
   colors?: string[];
   sizes?: string[];
-  rating?: number | null;
+  ratingAverage?: number | null;
   ratingCount?: number | null;
 }
 

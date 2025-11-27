@@ -13,10 +13,14 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const status = searchParams.get('status');
     const q = searchParams.get('q');
+    const publicStatus = searchParams.get('publicStatus');
     const page = parseInt(searchParams.get('page') || '1', 10);
     const pageSize = parseInt(searchParams.get('pageSize') || '20', 10);
     const filter: Record<string, unknown> = {};
     if (status) filter.status = status;
+    if (publicStatus && ['private','pending','approved','rejected'].includes(publicStatus)) {
+      filter.publicStatus = publicStatus;
+    }
     if (q) filter['delivery.email'] = { $regex: q, $options: 'i' };
     const skip = (page - 1) * pageSize;
     const [ordersRaw, total] = await Promise.all([
@@ -52,6 +56,11 @@ export async function GET(req: NextRequest) {
         legacyPlacements,
         designAssets,
         sides: o.sides,
+        publicStatus: o.publicStatus || (o.isPublic ? 'approved' : 'private'),
+        isPublic: o.isPublic ?? false,
+        publicTitle: o.publicTitle || null,
+        publicDescription: o.publicDescription || null,
+        linkedProductId: o.linkedProductId ? o.linkedProductId.toString() : null,
         // Multi-placement summary
         areas: placements.length > 0
           ? placements.map(p => p.area)

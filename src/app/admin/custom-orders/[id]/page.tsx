@@ -72,6 +72,11 @@ interface AdminCustomOrder extends BaseCustomOrder {
     phone: string;
     address: string;
   };
+  isPublic?: boolean;
+  publicStatus?: 'private' | 'pending' | 'approved' | 'rejected';
+  publicTitle?: string | null;
+  publicDescription?: string | null;
+  linkedProductId?: string | null;
   pricing: {
     basePrice: number;
     placementCost: number;
@@ -109,6 +114,10 @@ export default function AdminCustomOrderDetailPage() {
   const [newFinalTotal, setNewFinalTotal] = useState<string>("");
   const [adminNoteDraft, setAdminNoteDraft] = useState<string>("");
   const [adminNotes, setAdminNotes] = useState<string>("");
+  const [publicStatusDraft, setPublicStatusDraft] = useState<string>('private');
+  const [publicTitleDraft, setPublicTitleDraft] = useState<string>('');
+  const [publicDescriptionDraft, setPublicDescriptionDraft] = useState<string>('');
+  const [linkedProductInput, setLinkedProductInput] = useState<string>('');
 
   const loadOrder = useCallback(async () => {
     setLoading(true);
@@ -125,6 +134,10 @@ export default function AdminCustomOrderDetailPage() {
       setOrder(data.order);
       setNewStatus(data.order.status);
       setNewFinalTotal(data.order.pricing.finalTotal?.toString() || "");
+      setPublicStatusDraft(data.order.publicStatus || (data.order.isPublic ? 'approved' : 'private'));
+      setPublicTitleDraft(data.order.publicTitle || '');
+      setPublicDescriptionDraft(data.order.publicDescription || '');
+      setLinkedProductInput(data.order.linkedProductId || '');
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Failed to load order";
       setError(msg);
@@ -152,6 +165,21 @@ export default function AdminCustomOrderDetailPage() {
       }
       if (newFinalTotal && parseFloat(newFinalTotal) !== order.pricing.finalTotal) {
         payload.finalTotal = parseFloat(newFinalTotal);
+      }
+      const normalizedPublicStatus = order.publicStatus || (order.isPublic ? 'approved' : 'private');
+      if (publicStatusDraft !== normalizedPublicStatus) {
+        payload.publicStatus = publicStatusDraft;
+      }
+      const trimmedTitle = publicTitleDraft.trim();
+      if (trimmedTitle !== (order.publicTitle || '')) {
+        payload.publicTitle = trimmedTitle || null;
+      }
+      const trimmedDescription = publicDescriptionDraft.trim();
+      if (trimmedDescription !== (order.publicDescription || '')) {
+        payload.publicDescription = trimmedDescription || null;
+      }
+      if (linkedProductInput.trim() !== (order.linkedProductId || '')) {
+        payload.linkedProductReference = linkedProductInput.trim() || null;
       }
       if (adminNotes.trim()) {
         payload.adminNotes = adminNotes.trim();
@@ -262,6 +290,43 @@ export default function AdminCustomOrderDetailPage() {
           {updating ? "Updating..." : "Update Order"}
         </Button>
         {error && <p className="text-sm text-red-600">{error}</p>}
+      </Card>
+
+      <Card variant="glass" className="p-6 space-y-4">
+        <h2 className="text-xl font-semibold">Public Showcase</h2>
+        <div className="grid md:grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Share Status</label>
+            <Select value={publicStatusDraft} onChange={(e) => setPublicStatusDraft(e.currentTarget.value)}>
+              <option value="private">Private</option>
+              <option value="pending">Pending</option>
+              <option value="approved">Approved</option>
+              <option value="rejected">Rejected</option>
+            </Select>
+          </div>
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Linked Product (slug or ID)</label>
+            <Input
+              value={linkedProductInput}
+              onChange={(e) => setLinkedProductInput(e.currentTarget.value)}
+              placeholder="e.g. neon-aurora"
+            />
+            <p className="text-[11px] text-muted">Leave blank to detach the design from any product.</p>
+          </div>
+        </div>
+        <div className="space-y-2">
+          <label className="text-sm font-medium">Display Title</label>
+          <Input value={publicTitleDraft} onChange={(e) => setPublicTitleDraft(e.currentTarget.value)} maxLength={80} />
+        </div>
+        <div className="space-y-2">
+          <label className="text-sm font-medium">Short Description</label>
+          <Textarea
+            rows={2}
+            maxLength={400}
+            value={publicDescriptionDraft}
+            onChange={(e) => setPublicDescriptionDraft(e.currentTarget.value)}
+          />
+        </div>
       </Card>
 
       <Card className="p-4">

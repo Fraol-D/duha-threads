@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/lib/db/connection";
 import { CustomOrderModel } from "@/lib/db/models/CustomOrder";
+import { ProductModel } from "@/lib/db/models/Product";
 import { verifyAuth } from "@/lib/auth/session";
 import { isAdmin } from "@/lib/auth/admin";
 import { ConsoleEmailService, sendCustomOrderStatusChanged } from "@/lib/email/EmailService";
 import { z } from "zod";
+import { Types } from "mongoose";
 
 
 const UpdateCustomOrderSchema = z.object({
@@ -20,6 +22,10 @@ const UpdateCustomOrderSchema = z.object({
   finalTotal: z.number().optional(),
   adminNotes: z.string().optional(),
   adminNote: z.string().optional(),
+  publicStatus: z.enum(['private','pending','approved','rejected']).optional(),
+  publicTitle: z.string().max(80).optional().nullable(),
+  publicDescription: z.string().max(500).optional().nullable(),
+  linkedProductReference: z.string().optional().nullable(),
   addStatusHistory: z.boolean().optional().default(true),
 });
 
@@ -63,6 +69,11 @@ export async function GET(
       designAssets: customOrder.designAssets,
       notes: customOrder.notes,
       delivery: customOrder.delivery,
+      isPublic: customOrder.isPublic,
+      publicStatus: customOrder.publicStatus,
+      publicTitle: customOrder.publicTitle,
+      publicDescription: customOrder.publicDescription,
+      linkedProductId: customOrder.linkedProductId ? customOrder.linkedProductId.toString() : null,
       pricing: customOrder.pricing,
       status: customOrder.status,
       statusHistory: customOrder.statusHistory,
@@ -127,6 +138,39 @@ export async function PATCH(
       customOrder.pricing.finalTotal = data.finalTotal;
     }
 
+    if (data.publicStatus && data.publicStatus !== customOrder.publicStatus) {
+      customOrder.publicStatus = data.publicStatus;
+      customOrder.isPublic = data.publicStatus === 'approved';
+      if (data.publicStatus === 'private') {
+        customOrder.linkedProductId = null;
+      }
+    }
+
+    if (Object.prototype.hasOwnProperty.call(data, 'publicTitle')) {
+      customOrder.publicTitle = data.publicTitle || null;
+    }
+
+    if (Object.prototype.hasOwnProperty.call(data, 'publicDescription')) {
+      customOrder.publicDescription = data.publicDescription || null;
+    }
+
+    if (Object.prototype.hasOwnProperty.call(data, 'linkedProductReference')) {
+      const ref = data.linkedProductReference?.trim();
+      if (!ref) {
+        customOrder.linkedProductId = null;
+      } else if (Types.ObjectId.isValid(ref)) {
+        customOrder.linkedProductId = new Types.ObjectId(ref);
+      } else {
+        const linkedProduct = await ProductModel.findOne({ slug: ref })
+          .select('_id')
+          .lean<{ _id: Types.ObjectId }>();
+        if (!linkedProduct) {
+          return NextResponse.json({ error: "Linked product not found" }, { status: 400 });
+        }
+        customOrder.linkedProductId = linkedProduct._id;
+      }
+    }
+
     // Admin notes can be appended to the notes field
     const noteToAppend = data.adminNotes || data.adminNote;
     if (noteToAppend) {
@@ -154,6 +198,7 @@ export async function PATCH(
         status: customOrder.status,
         pricing: customOrder.pricing,
         statusHistory: customOrder.statusHistory,
+        publicStatus: customOrder.publicStatus,
       },
     });
   } catch (error) {

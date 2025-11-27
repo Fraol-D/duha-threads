@@ -21,6 +21,8 @@ export interface ProductDocument {
   isFeatured?: boolean;
   featuredRank?: number | null;
   displayOrder?: number | null;
+  ratingAverage?: number;
+  ratingCount?: number;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -40,6 +42,8 @@ export interface PublicProduct {
   isFeatured?: boolean;
   featuredRank?: number | null;
   displayOrder?: number | null;
+  ratingAverage?: number;
+  ratingCount?: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -57,7 +61,7 @@ export interface ProductListItem {
   colors?: string[];
   sizes?: string[];
   // Optional rating fields (future-proof)
-  rating?: number;
+  ratingAverage?: number;
   ratingCount?: number;
   isFeatured?: boolean;
   featuredRank?: number | null;
@@ -98,6 +102,8 @@ export function toPublicProduct(doc: ProductDocument): PublicProduct {
     isFeatured: doc.isFeatured,
     featuredRank: doc.featuredRank ?? null,
     displayOrder: doc.displayOrder ?? null,
+    ratingAverage: doc.ratingAverage ?? 0,
+    ratingCount: doc.ratingCount ?? 0,
     createdAt: doc.createdAt.toISOString(),
     updatedAt: doc.updatedAt.toISOString(),
   };
@@ -119,5 +125,7 @@ export function toProductListItem(doc: ProductDocument): ProductListItem {
     isFeatured: doc.isFeatured,
     featuredRank: doc.featuredRank ?? null,
     displayOrder: doc.displayOrder ?? null,
+    ratingAverage: doc.ratingAverage ?? 0,
+    ratingCount: doc.ratingCount ?? 0,
   };
 }

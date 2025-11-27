@@ -58,6 +58,11 @@ export interface CustomOrder {
   designColor?: string | null;
   designImageUrl?: string | null;
   previewImageUrl?: string | null;
+  isPublic?: boolean | null;
+  publicStatus?: 'private' | 'pending' | 'approved' | 'rejected' | null;
+  publicTitle?: string | null;
+  publicDescription?: string | null;
+  linkedProductId?: string | null;
   quantity?: number | null;
   placements?: CustomOrderPlacement[] | null;
   legacyPlacements?: CustomOrderLegacyPlacement[] | null;

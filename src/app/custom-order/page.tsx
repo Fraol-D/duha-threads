@@ -104,6 +104,9 @@ export default function CustomOrderBuilderPage() {
   const [deliveryPhone, setDeliveryPhone] = useState('');
   const [deliveryEmail, setDeliveryEmail] = useState('');
   const [notes, setNotes] = useState('');
+  const [sharePublicly, setSharePublicly] = useState(false);
+  const [shareTitle, setShareTitle] = useState('');
+  const [shareDescription, setShareDescription] = useState('');
 
   useEffect(() => {
     fetch('/api/user/me').then(r=>r.json()).then(data => {
@@ -236,7 +239,10 @@ export default function CustomOrderBuilderPage() {
           designFont: p.designType==='text' ? FONT_MAP[(p.designFont ?? 'sans')].family : null,
           designColor: p.designType==='text' ? p.designColor || null : null,
           designImageUrl: p.designType==='image' ? p.designImageUrl || null : null,
-        }))
+        })),
+        sharePublicly,
+        showcaseTitle: sharePublicly ? (shareTitle.trim() || null) : null,
+        showcaseDescription: sharePublicly ? (shareDescription.trim() || null) : null,
       };
       const res = await fetch('/api/custom-orders', { method: 'POST', headers: { 'Content-Type':'application/json' }, body: JSON.stringify(payload) });
       if (!res.ok) { const data = await res.json().catch(()=>({})); throw new Error(data.error || 'Failed to create custom order'); }
@@ -483,6 +489,47 @@ export default function CustomOrderBuilderPage() {
                     <div><span className="font-medium">Estimated Per-Shirt:</span> ${unitEstimate.toFixed(2)}</div>
                     <div><span className="font-medium">Estimated Total:</span> ${estimatedTotal.toFixed(2)}</div>
                   </div>
+                </Card>
+                <Card className="p-4 space-y-3">
+                  <div className="flex items-start justify-between gap-4">
+                    <div>
+                      <h3 className="text-sm font-semibold">Community Showcase</h3>
+                      <p className="text-[11px] text-muted">Opt in to let Duha Threads feature this design after an admin review.</p>
+                    </div>
+                    <label className="inline-flex items-center gap-2 text-xs font-medium">
+                      <input
+                        type="checkbox"
+                        className="accent-current"
+                        checked={sharePublicly}
+                        onChange={(e) => setSharePublicly(e.currentTarget.checked)}
+                      />
+                      Allow sharing
+                    </label>
+                  </div>
+                  {sharePublicly && (
+                    <div className="space-y-3">
+                      <div className="space-y-1">
+                        <label className="text-xs font-medium">Display Title</label>
+                        <Input
+                          value={shareTitle}
+                          onChange={(e) => setShareTitle(e.currentTarget.value)}
+                          maxLength={80}
+                          placeholder="e.g. Neon Skyline Drop"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-xs font-medium">Description (optional)</label>
+                        <Textarea
+                          rows={2}
+                          value={shareDescription}
+                          onChange={(e) => setShareDescription(e.currentTarget.value)}
+                          maxLength={400}
+                          placeholder="Share the inspiration or story behind this design"
+                        />
+                      </div>
+                      <p className="text-[11px] text-muted">We only publish approved designs. Personal details never appear publicly.</p>
+                    </div>
+                  )}
                 </Card>
                 <div className="space-y-3">
                   <div className="space-y-1"><label className="text-xs font-medium">Delivery Name</label><Input value={deliveryName} onChange={(e)=>setDeliveryName(e.currentTarget.value)} placeholder="Name" /></div>

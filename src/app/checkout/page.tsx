@@ -22,6 +22,8 @@ interface EnrichedCartItem {
     basePrice: number;
     images: { url: string; alt: string; isPrimary?: boolean }[];
     primaryImage: { url: string; alt: string; isPrimary?: boolean } | null;
+    ratingAverage?: number | null;
+    ratingCount?: number | null;
   } | null;
 }
 
@@ -118,10 +120,24 @@ export default function CheckoutPage() {
                       {line.product?.description && (
                         <p className="text-xs text-muted line-clamp-2 max-w-prose">{line.product.description}</p>
                       )}
-                      <div className="flex items-center gap-1 text-yellow-500 text-[10px]" aria-label="Rating placeholder">
-                        {Array.from({ length: 5 }).map((_, i) => <span key={i}>★</span>)}
-                        <span className="text-muted ml-1">4.8</span>
-                      </div>
+                      {line.product && (
+                        <div
+                          className="flex items-center gap-1 text-yellow-500 text-[10px]"
+                          aria-label={line.product.ratingCount && line.product.ratingCount > 0
+                            ? `Average rating ${(line.product.ratingAverage ?? 0).toFixed(1)} out of 5`
+                            : 'No ratings yet'}
+                        >
+                          {Array.from({ length: 5 }).map((_, i) => {
+                            const avg = line.product?.ratingAverage ?? 0;
+                            return <span key={i}>{i < Math.round(avg) ? '★' : '☆'}</span>;
+                          })}
+                          <span className="text-muted ml-1">
+                            {line.product.ratingCount && line.product.ratingCount > 0
+                              ? `${(line.product.ratingAverage ?? 0).toFixed(1)} (${line.product.ratingCount})`
+                              : 'No ratings yet'}
+                          </span>
+                        </div>
+                      )}
                       <div className="text-xs text-muted">Size: {line.size} • Color: {line.color}</div>
                     </div>
                     <div className="flex flex-col items-end gap-1 min-w-[130px]">

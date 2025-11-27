@@ -79,6 +79,11 @@ export interface CustomOrderDocument extends Document {
   designColor?: string | null;
   designImageUrl?: string | null;
   previewImageUrl?: string | null;
+  isPublic?: boolean;
+  publicStatus?: 'private' | 'pending' | 'approved' | 'rejected';
+  publicTitle?: string | null;
+  publicDescription?: string | null;
+  linkedProductId?: mongoose.Types.ObjectId | null;
   // Multi-side (front/back) design support
   sides?: {
     front: {
@@ -184,6 +189,11 @@ const CustomOrderSchema = new Schema<CustomOrderDocument>(
     designColor: { type: String },
     designImageUrl: { type: String },
     previewImageUrl: { type: String },
+    isPublic: { type: Boolean, default: false },
+    publicStatus: { type: String, enum: ['private','pending','approved','rejected'], default: 'private', index: true },
+    publicTitle: { type: String },
+    publicDescription: { type: String },
+    linkedProductId: { type: Schema.Types.ObjectId, ref: 'Product', default: null },
     quantity: { type: Number, min: 1, default: 1 },
     sides: {
       type: {
@@ -236,6 +246,8 @@ CustomOrderSchema.index({ userId: 1, createdAt: -1 });
 CustomOrderSchema.index({ status: 1, createdAt: -1 });
 CustomOrderSchema.index({ placement: 1 });
 CustomOrderSchema.index({ verticalPosition: 1 });
+CustomOrderSchema.index({ isPublic: 1, publicStatus: 1 });
+CustomOrderSchema.index({ linkedProductId: 1, publicStatus: 1 });
 
 export const CustomOrderModel: Model<CustomOrderDocument> =
   mongoose.models.CustomOrder || mongoose.model<CustomOrderDocument>("CustomOrder", CustomOrderSchema);
