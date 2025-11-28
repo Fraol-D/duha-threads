@@ -151,87 +151,144 @@ export default async function AdminDashboardPage() {
   const formatCurrency = (value?: number) => currencyFormatter.format(toNumber(value));
 
   return (
-    <div className="max-w-7xl mx-auto p-6 md:p-10 space-y-8">
+    <div className="space-y-8">
       <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-semibold tracking-tight">Admin Dashboard</h1>
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
+          <p className="text-sm text-muted-foreground mt-1">Overview of your store performance</p>
+        </div>
       </div>
+
+      {/* KPI Grid */}
       <BentoGrid>
-        <BentoTile variant="glass">
-          <h2 className="text-sm text-muted-foreground mb-2">Sales Today</h2>
-          <p className="text-3xl font-semibold">{formatCurrency(kpis.todaySales)}</p>
-        </BentoTile>
-        <BentoTile variant="glass">
-          <h2 className="text-sm text-muted-foreground mb-2">Orders Today</h2>
-          <p className="text-3xl font-semibold">{kpis.todayOrdersCount}</p>
-        </BentoTile>
-        <BentoTile variant="glass">
-          <h2 className="text-sm text-muted-foreground mb-2">Custom Orders Today</h2>
-          <p className="text-3xl font-semibold">{kpis.todayCustomOrdersCount}</p>
-        </BentoTile>
-        <BentoTile variant="glass">
-          <h2 className="text-sm text-muted-foreground mb-2">New Users Today</h2>
-          <p className="text-3xl font-semibold">{kpis.newUsersToday}</p>
-        </BentoTile>
-        <BentoTile variant="glass">
-          <h2 className="text-sm text-muted-foreground mb-2">Pending Custom Jobs</h2>
-          <p className="text-3xl font-semibold">{kpis.pendingCustomJobsCount}</p>
-        </BentoTile>
-        <BentoTile variant="glass">
-          <h2 className="text-sm text-muted-foreground mb-2">Totals</h2>
-          <div className="space-y-1 text-sm">
-            <p><span className="text-muted-foreground">Users:</span> {kpis.totals.users}</p>
-            <p><span className="text-muted-foreground">Orders:</span> {kpis.totals.orders}</p>
-            <p><span className="text-muted-foreground">Custom Orders:</span> {kpis.totals.customOrders}</p>
+        <BentoTile variant="glass" className="group hover:shadow-lg transition-shadow duration-300">
+          <div className="flex items-start justify-between">
+            <div>
+              <h2 className="text-xs uppercase tracking-wider text-muted-foreground mb-2 font-medium">Sales Today</h2>
+              <p className="text-3xl font-bold bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent">{formatCurrency(kpis.todaySales)}</p>
+            </div>
+            <div className="p-2 bg-green-500/10 rounded-lg">
+              <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
           </div>
         </BentoTile>
-        <BentoTile variant="soft3D">
-          <h2 className="text-sm font-medium mb-1">Products</h2>
-          <p className="text-xs text-muted-foreground mb-4">Add and manage tees</p>
-          <Link href="/admin/products" className="inline-block">
-            <Button variant="secondary">Manage products</Button>
-          </Link>
+        
+        <BentoTile variant="glass" className="group hover:shadow-lg transition-shadow duration-300">
+          <div className="flex items-start justify-between">
+            <div>
+              <h2 className="text-xs uppercase tracking-wider text-muted-foreground mb-2 font-medium">Orders Today</h2>
+              <p className="text-3xl font-bold">{kpis.todayOrdersCount}</p>
+            </div>
+            <div className="p-2 bg-blue-500/10 rounded-lg">
+              <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+              </svg>
+            </div>
+          </div>
         </BentoTile>
-        <BentoTile span="2" rowSpan="2" variant="soft3D">
-          <h2 className="text-sm text-muted-foreground mb-4">Recent Orders</h2>
-          <div className="space-y-3 text-sm max-h-80 overflow-auto pr-2">
-            {recent.orders.length === 0 && <p className="text-muted-foreground">No recent orders.</p>}
+        
+        <BentoTile variant="glass" className="group hover:shadow-lg transition-shadow duration-300">
+          <div className="flex items-start justify-between">
+            <div>
+              <h2 className="text-xs uppercase tracking-wider text-muted-foreground mb-2 font-medium">Custom Orders</h2>
+              <p className="text-3xl font-bold">{kpis.todayCustomOrdersCount}</p>
+            </div>
+            <div className="p-2 bg-purple-500/10 rounded-lg">
+              <svg className="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01" />
+              </svg>
+            </div>
+          </div>
+        </BentoTile>
+        
+        <BentoTile variant="glass" className="group hover:shadow-lg transition-shadow duration-300">
+          <div className="flex items-start justify-between">
+            <div>
+              <h2 className="text-xs uppercase tracking-wider text-muted-foreground mb-2 font-medium">New Users</h2>
+              <p className="text-3xl font-bold">{kpis.newUsersToday}</p>
+            </div>
+            <div className="p-2 bg-amber-500/10 rounded-lg">
+              <svg className="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+              </svg>
+            </div>
+          </div>
+        </BentoTile>
+        
+        <BentoTile variant="glass" className="group hover:shadow-lg transition-shadow duration-300">
+          <div className="flex items-start justify-between">
+            <div>
+              <h2 className="text-xs uppercase tracking-wider text-muted-foreground mb-2 font-medium">Pending Jobs</h2>
+              <p className="text-3xl font-bold text-orange-600">{kpis.pendingCustomJobsCount}</p>
+            </div>
+            <div className="p-2 bg-orange-500/10 rounded-lg">
+              <svg className="w-5 h-5 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+          </div>
+        </BentoTile>
+        
+        <BentoTile variant="soft3D" className="group hover:shadow-lg transition-shadow duration-300">
+          <h2 className="text-xs uppercase tracking-wider text-muted-foreground mb-3 font-medium">Overview</h2>
+          <div className="space-y-2 text-sm">
+            <div className="flex items-center justify-between p-2 rounded-lg bg-[--bg]/50 hover:bg-[--bg] transition-colors">
+              <span className="text-muted-foreground">Total Users</span>
+              <span className="font-semibold">{kpis.totals.users}</span>
+            </div>
+            <div className="flex items-center justify-between p-2 rounded-lg bg-[--bg]/50 hover:bg-[--bg] transition-colors">
+              <span className="text-muted-foreground">Total Orders</span>
+              <span className="font-semibold">{kpis.totals.orders}</span>
+            </div>
+            <div className="flex items-center justify-between p-2 rounded-lg bg-[--bg]/50 hover:bg-[--bg] transition-colors">
+              <span className="text-muted-foreground">Custom Orders</span>
+              <span className="font-semibold">{kpis.totals.customOrders}</span>
+            </div>
+          </div>
+        </BentoTile>
+        
+        <BentoTile span="2" rowSpan="2" variant="soft3D" className="border-none shadow-sm">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-sm font-semibold">Recent Orders</h2>
+            <Link href="/admin/orders" className="text-xs text-primary hover:underline font-medium">View all →</Link>
+          </div>
+          <div className="space-y-2 max-h-80 overflow-auto custom-scrollbar">
+            {recent.orders.length === 0 && <p className="text-sm text-muted-foreground py-8 text-center">No recent orders.</p>}
             {recent.orders.map((o) => (
-              <div key={o.id} className="flex items-center justify-between border-b border-muted pb-2">
-                <div>
-                  <p className="font-medium">{formatCurrency(o.total)}</p>
+              <div key={o.id} className="flex items-center justify-between p-3 rounded-lg hover:bg-[--bg] transition-colors border border-transparent hover:border-muted/20">
+                <div className="flex-1">
+                  <p className="font-semibold text-sm">{formatCurrency(o.total)}</p>
                   <p className="text-xs text-muted-foreground">{new Date(o.createdAt).toLocaleString()}</p>
                 </div>
-                <span className="text-xs px-2 py-1 rounded bg-[--surface-alt]">{o.status}</span>
+                <span className="text-xs px-2.5 py-1 rounded-full bg-blue-500/10 text-blue-700 dark:text-blue-400 font-medium">{o.status}</span>
               </div>
             ))}
-          </div>
-          <div className="mt-4 text-right">
-            <Link href="/admin/orders" className="text-xs underline hover:opacity-80">View all</Link>
           </div>
         </BentoTile>
-        <BentoTile span="1" rowSpan="2" variant="soft3D">
-          <h2 className="text-sm text-muted-foreground mb-4">Recent Custom Orders</h2>
-          <div className="space-y-3 text-sm max-h-80 overflow-auto pr-2">
-            {recent.customOrders.length === 0 && <p className="text-muted-foreground">No recent custom orders.</p>}
+        
+        <BentoTile span="1" rowSpan="2" variant="soft3D" className="border-none shadow-sm">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-sm font-semibold">Custom Orders</h2>
+            <Link href="/admin/custom-orders" className="text-xs text-primary hover:underline font-medium">All →</Link>
+          </div>
+          <div className="space-y-2 max-h-80 overflow-auto custom-scrollbar">
+            {recent.customOrders.length === 0 && <p className="text-sm text-muted-foreground py-8 text-center">No orders.</p>}
             {recent.customOrders.map((co) => (
-              <div key={co.id} className="flex items-center justify-between border-b border-muted pb-2">
-                <div>
-                  <p className="font-medium">{formatCurrency(co.total || 0)}</p>
-                  <p className="text-xs text-muted-foreground">{new Date(co.createdAt).toLocaleString()}</p>
-                </div>
-                <span className="text-xs px-2 py-1 rounded bg-[--surface-alt]">{co.status}</span>
+              <div key={co.id} className="p-3 rounded-lg hover:bg-[--bg] transition-colors border border-transparent hover:border-muted/20">
+                <p className="font-semibold text-sm">{formatCurrency(co.total || 0)}</p>
+                <p className="text-xs text-muted-foreground mt-1">{new Date(co.createdAt).toLocaleString()}</p>
+                <span className="inline-block mt-2 text-xs px-2.5 py-1 rounded-full bg-purple-500/10 text-purple-700 dark:text-purple-400 font-medium">{co.status}</span>
               </div>
             ))}
-          </div>
-          <div className="mt-4 text-right">
-            <Link href="/admin/custom-orders" className="text-xs underline hover:opacity-80">View all</Link>
           </div>
         </BentoTile>
       </BentoGrid>
-      <div className="mt-10 space-y-6">
+      
+      <div className="space-y-6 pt-4">
         <div className="flex items-center justify-between">
-          <h2 className="text-xl font-semibold tracking-tight">Analytics</h2>
-          <Link href="/admin/products" className="text-xs underline hover:opacity-80">Manage featured products</Link>
+          <h2 className="text-xl font-bold tracking-tight">Analytics</h2>
         </div>
         <AnalyticsClient />
       </div>
