@@ -100,28 +100,28 @@ export function HeroSection() {
                            variants={hoverLift}
                            initial="rest"
                            whileHover="hover"
-                           className="absolute -right-4 top-10 p-3 rounded-xl bg-white/90 dark:bg-black/90 backdrop-blur-md shadow-lg border border-white/20 dark:border-white/10 max-w-[140px]"
+                           className="absolute -right-4 top-10 p-3 rounded-xl bg-white/95 text-black backdrop-blur-md shadow-lg shadow-black/10 border border-black/5 max-w-[140px]"
                          >
                            <div className="flex items-center gap-2 mb-2">
-                             <div className="w-2 h-2 rounded-full bg-green-500" />
-                             <span className="text-[10px] font-bold uppercase tracking-wider">In Stock</span>
+                             <div className="w-2 h-2 rounded-full bg-green-400" />
+                             <span className="text-[10px] font-bold uppercase tracking-wider text-black">In Stock</span>
                            </div>
-                           <div className="text-xs font-medium">Premium Heavyweight Cotton</div>
+                           <div className="text-xs font-semibold text-black">Premium Heavyweight Cotton</div>
                          </motion.div>
 
                          <motion.div 
                            variants={hoverLift}
                            initial="rest"
                            whileHover="hover"
-                           className="absolute -left-4 bottom-20 p-3 rounded-xl bg-white/90 dark:bg-black/90 backdrop-blur-md shadow-lg border border-white/20 dark:border-white/10"
+                           className="absolute -left-4 bottom-20 p-3 rounded-xl bg-white/95 text-black backdrop-blur-md shadow-lg shadow-black/10 border border-black/5"
                          >
                             <div className="flex items-center gap-3">
-                               <div className="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center text-white text-xs font-bold">
-                                  <Sparkles className="w-4 h-4" />
+                               <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-black text-xs font-bold">
+                                  <Sparkles className="w-4 h-4 text-black" />
                                </div>
                                <div>
-                                  <div className="text-xs font-bold">Custom Print</div>
-                                  <div className="text-[10px] text-muted-foreground">Front & Back</div>
+                                  <div className="text-xs font-bold text-black">Custom Print</div>
+                                  <div className="text-[10px] text-black/80">Front & Back</div>
                                </div>
                             </div>
                          </motion.div>
