@@ -34,7 +34,7 @@ export function HeroSection() {
               
               <motion.h1 variants={textReveal} className="text-hero tracking-tight text-foreground">
                 Design your own <br />
-                <span className="text-transparent bg-clip-text bg-gradient-to-r from-foreground to-foreground/60">
+                <span className="text-transparent bg-clip-text bg-linear-to-r from-foreground to-foreground/60">
                   tee in minutes.
                 </span>
               </motion.h1>
@@ -60,9 +60,9 @@ export function HeroSection() {
               <motion.div variants={fadeInUp} className="flex items-center gap-4 pt-4 text-sm text-muted-foreground">
                 <div className="flex -space-x-2">
                   {[1, 2, 3, 4].map((i) => (
-                    <div key={i} className="w-8 h-8 rounded-full border-2 border-[--bg] bg-muted flex items-center justify-center overflow-hidden">
-                       {/* Placeholder avatars */}
-                       <div className="w-full h-full bg-gradient-to-br from-gray-200 to-gray-300" />
+                      <div key={i} className="w-8 h-8 rounded-full border-2 border-[--bg] bg-muted flex items-center justify-center overflow-hidden">
+                        {/* Placeholder avatars */}
+                        <div className="w-full h-full bg-linear-to-br from-gray-200 to-gray-300" />
                     </div>
                   ))}
                 </div>
@@ -79,10 +79,10 @@ export function HeroSection() {
                transition={{ duration: 0.8, ease: "easeOut", delay: 0.2 }}
                className="relative w-full h-full"
              >
-                <div className="absolute inset-0 bg-gradient-to-tr from-blue-500/5 to-purple-500/5 rounded-3xl transform rotate-3 scale-95 blur-sm" />
+                <div className="absolute inset-0 bg-linear-to-tr from-blue-500/5 to-purple-500/5 rounded-3xl transform rotate-3 scale-95 blur-sm" />
                 <div className="relative h-full w-full rounded-2xl overflow-hidden border border-white/10 shadow-2xl bg-white/5 backdrop-blur-sm">
                   {/* Abstract representation of the builder or a hero image */}
-                   <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-b from-transparent to-black/5">
+                   <div className="absolute inset-0 flex items-center justify-center bg-linear-to-b from-transparent to-black/5">
                       <div className="relative w-64 h-80 md:w-80 md:h-96">
                         {/* Hero Image */}
                          <div className="absolute inset-0">

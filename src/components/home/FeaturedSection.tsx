@@ -1,29 +1,85 @@
 "use client";
 
 import Link from "next/link";
-import Image from "next/image";
-import { motion } from "framer-motion";
-import { BentoGrid, BentoTile } from "@/components/ui/BentoGrid";
+import { motion, type Variants, type Transition } from "framer-motion";
+import { BentoGrid } from "@/components/ui/BentoGrid";
 import { Button } from "@/components/ui/Button";
-import { cardMotion, fadeInUp } from "@/lib/motion";
-import { ArrowRight, Star } from "lucide-react";
+import { fadeInUp } from "@/lib/motion";
+import { ArrowRight } from "lucide-react";
 
-interface FeaturedProduct {
+type FeaturedDrop = {
   id: string;
-  slug: string;
-  name: string;
-  basePrice: number;
+  label: string;
+  title: string;
   description: string;
-  primaryImage?: { url: string; alt: string } | null;
-  featuredRank: number | null;
-}
+  href: string;
+  badge?: string;
+  accentGradient: string;
+  motif?: string;
+  spotlight?: boolean;
+};
 
-interface FeaturedSectionProps {
-  products: FeaturedProduct[];
-}
+const cardTransition: Transition = {
+  duration: 0.25,
+  ease: [0.16, 1, 0.3, 1],
+};
 
-export function FeaturedSection({ products }: FeaturedSectionProps) {
-  if (products.length === 0) return null;
+const cardMotion: Variants = {
+  rest: {
+    y: 0,
+    boxShadow: "0 0 0 rgba(0,0,0,0)",
+    transition: cardTransition,
+  },
+  hover: {
+    y: -4,
+    boxShadow: "0 24px 60px rgba(0,0,0,0.35)",
+    transition: cardTransition,
+  },
+};
+
+const featuredDrops: FeaturedDrop[] = [
+  {
+    id: "sunrise-glow",
+    label: "Signature Drop",
+    title: "Sunrise Glow Tee",
+    description: "A clean everyday tee inspired by DUHA’s morning light aesthetic.",
+    href: "/products",
+    badge: "New",
+    accentGradient: "from-amber-500/50 via-rose-500/40 to-orange-400/40",
+    motif: "after:absolute after:inset-0 after:bg-[radial-gradient(circle_at_top,_rgba(255,255,255,0.3),_transparent_60%)] after:opacity-70",
+    spotlight: true,
+  },
+  {
+    id: "minimal-pack",
+    label: "Everyday Essential",
+    title: "Minimal Essentials Pack",
+    description: "A set of versatile tees that pair with anything — engineered for daily wear.",
+    href: "/products",
+    badge: "Popular",
+    accentGradient: "from-slate-900/70 via-slate-800/60 to-slate-900/70",
+    motif: "after:absolute after:inset-0 after:bg-[radial-gradient(circle_at_bottom,_rgba(255,255,255,0.15),_transparent_65%)]",
+  },
+  {
+    id: "atelier-program",
+    label: "Studio Capsule",
+    title: "Atelier Program",
+    description: "Limited artist collaborations, produced in micro batches with archival inks.",
+    href: "/products",
+    accentGradient: "from-indigo-600/40 via-purple-500/30 to-cyan-400/30",
+    motif: "after:absolute after:inset-0 after:bg-[radial-gradient(circle_at_center,_rgba(255,255,255,0.25),_transparent_70%)]",
+  },
+  {
+    id: "heritage-classics",
+    label: "Seasonless Favorite",
+    title: "Heritage Classics",
+    description: "Vintage-washed tees with subtle embroidery inspired by Addis street culture.",
+    href: "/products",
+    accentGradient: "from-emerald-500/35 via-lime-500/25 to-cyan-400/35",
+  },
+];
+
+export function FeaturedSection() {
+  if (featuredDrops.length === 0) return null;
 
   return (
     <section className="py-12 md:py-20">
@@ -41,71 +97,52 @@ export function FeaturedSection({ products }: FeaturedSectionProps) {
         </div>
 
         <BentoGrid>
-          {products.slice(0, 3).map((product, index) => (
+          {featuredDrops.map((drop, index) => (
             <motion.div
-              key={product.id}
+              key={drop.id}
               variants={fadeInUp}
               initial="initial"
               whileInView="animate"
               viewport={{ once: true, margin: "-50px" }}
               transition={{ delay: index * 0.1 }}
-              className={index === 0 ? "md:col-span-2 md:row-span-2" : "md:col-span-1 md:row-span-1"}
+              className={drop.spotlight ? "md:col-span-2 md:row-span-2" : "md:col-span-1"}
             >
-              <Link href={`/products/${product.slug}`} className="block h-full">
+              <Link href={drop.href} className="block h-full">
                 <motion.div
                   variants={cardMotion}
                   initial="rest"
                   whileHover="hover"
-                  className="group relative h-full rounded-2xl overflow-hidden bg-[--surface] border border-muted/50"
+                  className="group relative h-full rounded-2xl overflow-hidden border border-white/10 bg-[--surface]"
                 >
-                  <div className="absolute inset-0 z-10 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-60 transition-opacity group-hover:opacity-70" />
+                  <div className={`absolute inset-0 bg-linear-to-br ${drop.accentGradient} opacity-80 transition-opacity duration-500 group-hover:opacity-100`} />
+                  {drop.motif && <div className={`absolute inset-0 pointer-events-none ${drop.motif}`} />}
+                  <div className="absolute inset-0 bg-linear-to-t from-black/40 via-black/10 to-transparent opacity-60" />
 
-                  <div className={`relative ${index === 0 ? 'aspect-[4/3] md:h-full' : 'aspect-square'} overflow-hidden bg-muted`}>
-                    {product.primaryImage ? (
-                      <Image
-                        src={product.primaryImage.url}
-                        alt={product.primaryImage.alt || product.name}
-                        fill
-                        sizes={index === 0 ? "(max-width: 768px) 100vw, 66vw" : "(max-width: 768px) 50vw, 33vw"}
-                        className="object-cover transition-transform duration-500 group-hover:scale-105"
-                      />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center bg-muted">
-                        <span className="text-muted-foreground">No Image</span>
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="absolute bottom-0 left-0 right-0 z-20 p-6 text-white">
-                    <div className="flex items-start justify-between gap-4">
-                      <div>
-                        {index === 0 && (
-                          <span className="inline-block px-2 py-1 mb-2 text-[10px] font-bold uppercase tracking-wider bg-white/20 backdrop-blur-md rounded-md border border-white/10">
-                            Best Seller
+                  <div className="relative z-10 flex flex-col h-full p-6 text-white">
+                    <div className="space-y-3 flex-1">
+                      <span className="inline-flex items-center text-[11px] font-semibold uppercase tracking-[0.2em] text-white/70">
+                        {drop.label}
+                      </span>
+                      <div className="flex flex-wrap items-center gap-3">
+                        <h3 className={`font-bold leading-tight ${drop.spotlight ? 'text-3xl md:text-[2.75rem]' : 'text-xl'}`}>
+                          {drop.title}
+                        </h3>
+                        {drop.badge && (
+                          <span className="px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide bg-white/20 rounded-full border border-white/30">
+                            {drop.badge}
                           </span>
                         )}
-                        <h3 className={`font-bold ${index === 0 ? 'text-2xl md:text-3xl' : 'text-lg'}`}>
-                          {product.name}
-                        </h3>
-                        {index === 0 && (
-                          <p className="mt-2 text-sm text-white/80 line-clamp-2 max-w-md">
-                            {product.description}
-                          </p>
-                        )}
                       </div>
-                      <div className="text-right">
-                        <div className="font-bold text-lg">${product.basePrice.toFixed(2)}</div>
-                        <div className="flex items-center justify-end gap-1 text-xs text-yellow-400 mt-1">
-                          <Star className="w-3 h-3 fill-current" />
-                          <span className="text-white/90">4.9</span>
-                        </div>
-                      </div>
+                      <p className={`text-sm text-white/80 ${drop.spotlight ? 'max-w-xl' : 'max-w-sm'}`}>
+                        {drop.description}
+                      </p>
                     </div>
 
-                    <div className="mt-4 overflow-hidden h-0 opacity-0 transition-all duration-300 group-hover:h-10 group-hover:opacity-100">
-                      <Button size="sm" className="w-full bg-white text-black hover:bg-white/90">
-                        View Details
+                    <div className="pt-6 flex items-center justify-between">
+                      <Button size="sm" variant="outline" className="bg-white/90 text-black border-white hover:bg-white">
+                        Explore drop
                       </Button>
+                      <ArrowRight className="w-4 h-4 text-white/80 group-hover:translate-x-1 transition-transform" />
                     </div>
                   </div>
                 </motion.div>
