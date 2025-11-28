@@ -65,6 +65,16 @@ interface OrderDetail {
   } | null;
 }
 
+const ADMIN_STATUS_VALUES = [
+  'Pending','Accepted','In Printing','Out for Delivery','Delivered','Cancelled',
+  'PENDING_REVIEW','APPROVED','IN_DESIGN','IN_PRINTING','READY_FOR_PICKUP','OUT_FOR_DELIVERY','DELIVERED','CANCELLED'
+];
+
+const adminOrderStatusOptions = ADMIN_STATUS_VALUES.map((statusValue) => ({
+  label: statusValue.replace(/_/g, ' '),
+  value: statusValue,
+}));
+
 export default function OrderDetailClient({ orderId }: { orderId: string }) {
   const [detail, setDetail] = useState<OrderDetail | null>(null);
   const [loading, setLoading] = useState(true);
@@ -204,9 +214,7 @@ export default function OrderDetailClient({ orderId }: { orderId: string }) {
       <Card variant="glass" className="p-4 space-y-2">
         <h3 className="text-xs font-medium">Admin Actions</h3>
         <div className="flex gap-2">
-          <Select value={status} onChange={e => setStatus(e.currentTarget.value)} className="text-xs">
-            {['Pending','Accepted','In Printing','Out for Delivery','Delivered','Cancelled','PENDING_REVIEW','APPROVED','IN_DESIGN','IN_PRINTING','READY_FOR_PICKUP','OUT_FOR_DELIVERY','DELIVERED','CANCELLED'].map(s => <option key={s} value={s}>{s}</option>)}
-          </Select>
+          <Select value={status} onChange={setStatus} options={adminOrderStatusOptions} className="text-xs" />
           <Button variant="secondary" disabled={updating || status === detail.status} onClick={updateStatus}>{updating ? 'Saving…' : 'Save Status'}</Button>
         </div>
       </Card>

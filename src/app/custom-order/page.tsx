@@ -39,11 +39,6 @@ const FONT_LOOKUP: Record<string, (typeof FONT_OPTIONS)[number]> = FONT_OPTIONS.
 const DEFAULT_FONT_ID: FontId = 'poppins';
 const FONT_SIZE_MIN = 24;
 const FONT_SIZE_MAX = 72;
-const TEXT_WIDTH_PRESETS: { id: TextBoxWidthPreset; label: string; helper: string }[] = [
-  { id: 'narrow', label: 'Pocket', helper: 'Chest badge' },
-  { id: 'standard', label: 'Classic', helper: 'Centered text' },
-  { id: 'wide', label: 'Wide', helper: 'Full chest' },
-];
 const getFontOption = (id?: FontId) => FONT_LOOKUP[id ?? DEFAULT_FONT_ID] ?? FONT_LOOKUP[DEFAULT_FONT_ID];
 const clampFontSize = (value: number) => Math.min(FONT_SIZE_MAX, Math.max(FONT_SIZE_MIN, value));
 const TEXT_COLORS = [
@@ -92,7 +87,6 @@ export default function CustomOrderBuilderPage() {
   const [previewMode, setPreviewMode] = useState<'front'|'back'>('front');
   const previewContainerRef = useRef<HTMLDivElement | null>(null);
   const [previewSize, setPreviewSize] = useState({ width: 0, height: 0 });
-  const [fontSearch, setFontSearch] = useState('');
   useEffect(() => {
     const element = previewContainerRef.current;
     if (!element) return;
@@ -143,18 +137,6 @@ export default function CustomOrderBuilderPage() {
   const [sharePublicly, setSharePublicly] = useState(false);
   const [shareTitle, setShareTitle] = useState('');
   const [shareDescription, setShareDescription] = useState('');
-
-  useEffect(() => {
-    setFontSearch('');
-  }, [activePlacementId]);
-
-  const filteredFonts = useMemo(() => {
-    const term = fontSearch.trim().toLowerCase();
-    if (!term) return FONT_OPTIONS;
-    return FONT_OPTIONS.filter((option) =>
-      option.label.toLowerCase().includes(term) || option.keywords.some((keyword) => keyword.includes(term))
-    );
-  }, [fontSearch]);
 
   useEffect(() => {
     fetch('/api/user/me').then(r=>r.json()).then(data => {
@@ -464,8 +446,6 @@ export default function CustomOrderBuilderPage() {
                       {(() => {
                         const active = orderedEnabledPlacements.find(p=>p.id===activePlacementId);
                         if (!active) return <motion.div key="none" initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}} className="text-center py-8 text-sm text-muted">Enable a placement above to configure it.</motion.div>;
-                        const idx = orderedEnabledPlacements.findIndex(p=>p.id===activePlacementId);
-                        
                         return (
                           <motion.div key={active.id} initial={{opacity:0, x: 10}} animate={{opacity:1, x: 0}} exit={{opacity:0, x: -10}} transition={{duration:0.2}}>
                           <div className="bg-[--bg] rounded-2xl p-5 shadow-sm space-y-5">
@@ -524,7 +504,7 @@ export default function CustomOrderBuilderPage() {
                                     <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Font</label>
                                     <select 
                                       value={active.designFont}
-                                      onChange={(e) => setPlacements(prev => prev.map(x => x.id === active.id ? { ...x, designFont: e.target.value as any } : x))}
+                                      onChange={(e) => setPlacements(prev => prev.map(x => x.id === active.id ? { ...x, designFont: e.target.value as FontId } : x))}
                                       className="w-full rounded-lg bg-[--surface] border-none text-xs py-2.5 px-3 shadow-sm focus:ring-2 ring-black/5"
                                     >
                                       {FONT_OPTIONS.map(f => (
@@ -700,7 +680,7 @@ export default function CustomOrderBuilderPage() {
                         </div>
                         <label className="relative inline-flex items-center cursor-pointer">
                           <input type="checkbox" className="sr-only peer" checked={sharePublicly} onChange={(e) => setSharePublicly(e.currentTarget.checked)} />
-                          <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-black"></div>
+                          <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-black"></div>
                         </label>
                       </div>
                       {sharePublicly && (

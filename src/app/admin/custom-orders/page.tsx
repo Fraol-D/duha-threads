@@ -53,6 +53,26 @@ export default function AdminCustomOrdersPage() {
   const [search, setSearch] = useState<string>('');
   const router = useRouter();
 
+  const statusOptions = [
+    { label: 'All Statuses', value: '' },
+    ...['PENDING_REVIEW','APPROVED','IN_DESIGN','IN_PRINTING','READY_FOR_PICKUP','OUT_FOR_DELIVERY','DELIVERED','CANCELLED']
+      .map((s) => ({ label: s.replace(/_/g, ' '), value: s }))
+  ];
+
+  const designTypeOptions = [
+    { label: 'All Types', value: '' },
+    { label: 'Text', value: 'text' },
+    { label: 'Image', value: 'image' },
+  ];
+
+  const publicStatusOptions = [
+    { label: 'All Share States', value: '' },
+    { label: 'Pending Share', value: 'pending' },
+    { label: 'Approved Share', value: 'approved' },
+    { label: 'Rejected Share', value: 'rejected' },
+    { label: 'Private', value: 'private' },
+  ];
+
   useEffect(() => {
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -87,22 +107,9 @@ export default function AdminCustomOrdersPage() {
       <div className="flex items-center justify-between flex-wrap gap-4">
         <h1 className="text-3xl font-semibold tracking-tight">Custom Orders (Admin)</h1>
         <div className="flex gap-2">
-          <Select value={statusFilter} onChange={(e)=>{ setStatusFilter(e.currentTarget.value); }}>
-            <option value="">All Statuses</option>
-            {['PENDING_REVIEW','APPROVED','IN_DESIGN','IN_PRINTING','READY_FOR_PICKUP','OUT_FOR_DELIVERY','DELIVERED','CANCELLED'].map(s => <option key={s} value={s}>{s.replace(/_/g,' ')}</option>)}
-          </Select>
-          <Select value={designTypeFilter} onChange={(e)=>setDesignTypeFilter(e.currentTarget.value)}>
-            <option value="">All Types</option>
-            <option value="text">Text</option>
-            <option value="image">Image</option>
-          </Select>
-          <Select value={publicStatusFilter} onChange={(e)=>setPublicStatusFilter(e.currentTarget.value)}>
-            <option value="">All Share States</option>
-            <option value="pending">Pending Share</option>
-            <option value="approved">Approved Share</option>
-            <option value="rejected">Rejected Share</option>
-            <option value="private">Private</option>
-          </Select>
+          <Select value={statusFilter} onChange={setStatusFilter} options={statusOptions} />
+          <Select value={designTypeFilter} onChange={setDesignTypeFilter} options={designTypeOptions} />
+          <Select value={publicStatusFilter} onChange={setPublicStatusFilter} options={publicStatusOptions} />
           <input
             value={search}
             onChange={(e)=>setSearch(e.target.value)}

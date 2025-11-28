@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
-import { Shirt, Filter, Heart } from "lucide-react";
+import { Shirt, Heart } from "lucide-react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { useWishlist } from "@/components/WishlistProvider";
@@ -218,9 +218,9 @@ export default function ProductsClient() {
                 </button>
                 <button onClick={()=>setView('list')} className={`p-1.5 rounded transition-all ${view==='list'?'bg-white shadow-sm text-black':'text-muted-foreground hover:text-foreground'}`}>
                   <div className="flex flex-col gap-0.5 w-3 h-3">
-                    <div className="bg-current h-[2px] w-full rounded-[1px]" />
-                    <div className="bg-current h-[2px] w-full rounded-[1px]" />
-                    <div className="bg-current h-[2px] w-full rounded-[1px]" />
+                    <div className="bg-current h-0.5 w-full rounded-[1px]" />
+                    <div className="bg-current h-0.5 w-full rounded-[1px]" />
+                    <div className="bg-current h-0.5 w-full rounded-[1px]" />
                   </div>
                 </button>
               </div>
@@ -242,7 +242,7 @@ export default function ProductsClient() {
               value={params.get("sort") || "newest"}
               onChange={(val) => setParam("sort", val)}
               options={sortOptions}
-              className="min-w-[160px]"
+              className="min-w-40"
             />
             
             {/* Fix 1: DO NOT MODIFY - Color, Size, Per-page dropdowns (reference implementation) */}

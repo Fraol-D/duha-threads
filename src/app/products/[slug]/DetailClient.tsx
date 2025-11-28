@@ -228,17 +228,23 @@ export default function DetailClient({ product }: { product: PublicProduct }) {
             {product.sizes.length > 0 && (
               <div className="space-y-1">
                 <label className="text-xs font-medium">Size</label>
-                <Select value={size} onChange={e => setSize(e.currentTarget.value)}>
-                  {product.sizes.map(s => <option key={s} value={s}>{s}</option>)}
-                </Select>
+                <Select
+                  value={size}
+                  onChange={setSize}
+                  options={product.sizes.map((s) => ({ label: s, value: s }))}
+                  placeholder="Select size"
+                />
               </div>
             )}
             {product.colors.length > 0 && (
               <div className="space-y-1">
                 <label className="text-xs font-medium">Color</label>
-                <Select value={color} onChange={e => setColor(e.currentTarget.value)}>
-                  {product.colors.map(c => <option key={c} value={c}>{c}</option>)}
-                </Select>
+                <Select
+                  value={color}
+                  onChange={setColor}
+                  options={product.colors.map((c) => ({ label: c, value: c }))}
+                  placeholder="Select color"
+                />
               </div>
             )}
             <div className="space-y-1">

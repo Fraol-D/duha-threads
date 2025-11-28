@@ -77,7 +77,7 @@ export default function AnalyticsClient() {
         } else {
           setError('Failed to load analytics');
         }
-      } catch (e) {
+      } catch {
         if (active) setError('Network error');
       } finally {
         if (active) setLoading(false);
@@ -117,7 +117,7 @@ export default function AnalyticsClient() {
       <div className="grid md:grid-cols-3 gap-4">
         <Card variant="glass" className="p-5 space-y-2 border-none shadow-sm hover:shadow-md transition-shadow">
           <h3 className="text-xs uppercase tracking-wider text-muted-foreground font-medium">Revenue (30d)</h3>
-          <p className="text-2xl font-bold bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent">
+          <p className="text-2xl font-bold bg-linear-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent">
             {formatCurrency(data.totals.totalRevenueLast30Days)}
           </p>
         </Card>

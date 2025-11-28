@@ -35,6 +35,8 @@ const statusOptions = [
   'Pending','Accepted','In Printing','Out for Delivery','Delivered','Cancelled'
 ];
 
+const statusSelectOptions = statusOptions.map((option) => ({ label: option, value: option }));
+
 export default function AdminOrdersClient() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -109,9 +111,7 @@ export default function AdminOrdersClient() {
             <Button variant="secondary" onClick={applySearch} disabled={loading}>Search</Button>
           </div>
           <div className="flex gap-2">
-            <Select value={status} onChange={e => changeStatus(e.currentTarget.value)}>
-              {statusOptions.map(s => <option key={s} value={s}>{s}</option>)}
-            </Select>
+            <Select value={status} onChange={changeStatus} options={statusSelectOptions} />
           </div>
         </div>
         <div className="text-xs text-muted-foreground">Standard Orders (new pipeline). Legacy/custom orders available under /admin/custom-orders.</div>

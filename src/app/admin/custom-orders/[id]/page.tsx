@@ -121,6 +121,25 @@ export default function AdminCustomOrderDetailPage() {
   const [publicDescriptionDraft, setPublicDescriptionDraft] = useState<string>('');
   const [linkedProductInput, setLinkedProductInput] = useState<string>('');
 
+  const adminStatusOptions = [
+    { label: 'Pending Review', value: 'PENDING_REVIEW' },
+    { label: 'Approved', value: 'APPROVED' },
+    { label: 'Accepted', value: 'ACCEPTED' },
+    { label: 'In Design', value: 'IN_DESIGN' },
+    { label: 'In Printing', value: 'IN_PRINTING' },
+    { label: 'Ready for Pickup', value: 'READY_FOR_PICKUP' },
+    { label: 'Out for Delivery', value: 'OUT_FOR_DELIVERY' },
+    { label: 'Delivered', value: 'DELIVERED' },
+    { label: 'Cancelled', value: 'CANCELLED' },
+  ];
+
+  const shareStatusOptions = [
+    { label: 'Private', value: 'private' },
+    { label: 'Pending', value: 'pending' },
+    { label: 'Approved', value: 'approved' },
+    { label: 'Rejected', value: 'rejected' },
+  ];
+
   const loadOrder = useCallback(async () => {
     setLoading(true);
     setError(null);
@@ -256,17 +275,7 @@ export default function AdminCustomOrderDetailPage() {
         <div className="grid md:grid-cols-3 gap-4">
           <div className="space-y-2">
             <label className="text-sm font-medium">Status</label>
-            <Select value={newStatus} onChange={(e) => setNewStatus(e.currentTarget.value)}>
-              <option value="PENDING_REVIEW">Pending Review</option>
-              <option value="APPROVED">Approved</option>
-              <option value="ACCEPTED">Accepted</option>
-              <option value="IN_DESIGN">In Design</option>
-              <option value="IN_PRINTING">In Printing</option>
-              <option value="READY_FOR_PICKUP">Ready for Pickup</option>
-              <option value="OUT_FOR_DELIVERY">Out for Delivery</option>
-              <option value="DELIVERED">Delivered</option>
-              <option value="CANCELLED">Cancelled</option>
-            </Select>
+            <Select value={newStatus} onChange={setNewStatus} options={adminStatusOptions} />
           </div>
           <div className="space-y-2">
             <label className="text-sm font-medium">Final Total ($)</label>
@@ -299,12 +308,7 @@ export default function AdminCustomOrderDetailPage() {
         <div className="grid md:grid-cols-2 gap-4">
           <div className="space-y-2">
             <label className="text-sm font-medium">Share Status</label>
-            <Select value={publicStatusDraft} onChange={(e) => setPublicStatusDraft(e.currentTarget.value)}>
-              <option value="private">Private</option>
-              <option value="pending">Pending</option>
-              <option value="approved">Approved</option>
-              <option value="rejected">Rejected</option>
-            </Select>
+            <Select value={publicStatusDraft} onChange={setPublicStatusDraft} options={shareStatusOptions} />
           </div>
           <div className="space-y-2">
             <label className="text-sm font-medium">Linked Product (slug or ID)</label>
