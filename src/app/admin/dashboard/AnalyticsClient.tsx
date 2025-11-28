@@ -3,8 +3,9 @@ import { useEffect, useState } from 'react';
 import { Card } from '@/components/ui/Card';
 import {
   LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend,
-  BarChart, Bar, PieChart, Pie, Cell
+  BarChart, Bar, PieChart, Pie, Cell,
 } from 'recharts';
+import type { TooltipProps } from 'recharts';
 
 interface SalesDay { date: string; totalRevenue: number; totalOrders: number }
 interface TopProduct { productId: string; name: string; totalQuantitySold: number; totalRevenue: number }
@@ -23,6 +24,37 @@ interface AnalyticsPayload {
     totalCustomOrdersLast30Days: number;
   };
 }
+
+const chartPalette = {
+  revenue: 'var(--chart-revenue)',
+  orders: 'var(--chart-orders)',
+  quantity: 'var(--chart-quantity)',
+  grid: 'var(--chart-grid)',
+  statuses: {
+    pending: 'var(--chart-status-pending)',
+    pending_review: 'var(--chart-status-pending)',
+    processing: 'var(--chart-status-pending)',
+    completed: 'var(--chart-status-completed)',
+    fulfilled: 'var(--chart-status-completed)',
+    shipped: 'var(--chart-status-completed)',
+    cancelled: 'var(--chart-status-cancelled)',
+    refunded: 'var(--chart-status-cancelled)',
+  } as Record<string, string>,
+  fallback: ['#0ea5e9', '#22d3ee', '#a855f7', '#f97316', '#34d399'],
+};
+
+const tooltipStyle = {
+  backgroundColor: 'var(--surface)',
+  borderColor: 'var(--muted-border)',
+  borderRadius: 8,
+  color: 'var(--fg)',
+  fontSize: '0.8rem',
+};
+
+const statusColorFor = (status: string, index: number) => {
+  const key = status?.toLowerCase();
+  return chartPalette.statuses[key] ?? chartPalette.fallback[index % chartPalette.fallback.length] ?? 'var(--chart-status-default)';
+};
 
 export default function AnalyticsClient() {
   const [data, setData] = useState<AnalyticsPayload | null>(null);
@@ -63,7 +95,21 @@ export default function AnalyticsClient() {
     minimumFractionDigits: 2,
   }).format(toNumber(value));
 
-  const COLORS = ['#111111','#333333','#555555','#777777','#999999','#bbbbbb','#dddddd'];
+  const tooltipFormatter: TooltipProps<number, string>['formatter'] = (value, name) => {
+    const numericValue = typeof value === 'number' ? value : Number(value ?? 0);
+    const normalized = name?.toLowerCase() ?? '';
+    if (normalized.includes('revenue')) {
+      return [formatCurrency(numericValue), 'Revenue'];
+    }
+    if (normalized.includes('order')) {
+      return [numericValue, 'Orders'];
+    }
+    if (normalized.includes('quantity')) {
+      return [numericValue, 'Qty Sold'];
+    }
+    return [numericValue, name];
+  };
+
   return (
     <div className="space-y-6">
       <div className="grid md:grid-cols-3 gap-4">
@@ -88,14 +134,14 @@ export default function AnalyticsClient() {
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={data.salesByDay} margin={{ top: 10, right: 20, bottom: 10, left: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-                <XAxis dataKey="date" tick={{ fontSize: 10 }} minTickGap={20} />
-                <YAxis yAxisId="rev" tick={{ fontSize: 10 }} />
-                <YAxis yAxisId="ord" orientation="right" tick={{ fontSize: 10 }} />
-                <Tooltip formatter={(v:any, n:any)=> n==='totalRevenue'? formatCurrency(v): v} />
-                <Legend />
-                <Line yAxisId="rev" type="monotone" dataKey="totalRevenue" stroke="var(--foreground)" strokeWidth={2} dot={false} name="Revenue" />
-                <Line yAxisId="ord" type="monotone" dataKey="totalOrders" stroke="var(--foreground)" strokeOpacity={0.5} strokeWidth={2} dot={false} name="Orders" />
+                <CartesianGrid strokeDasharray="3 3" stroke={chartPalette.grid} />
+                <XAxis dataKey="date" tick={{ fontSize: 10, fill: 'var(--fg)' }} minTickGap={20} />
+                <YAxis yAxisId="rev" tick={{ fontSize: 10, fill: 'var(--fg)' }} />
+                <YAxis yAxisId="ord" orientation="right" tick={{ fontSize: 10, fill: 'var(--fg)' }} />
+                <Tooltip formatter={tooltipFormatter} contentStyle={tooltipStyle} labelStyle={{ color: 'var(--fg)' }} />
+                <Legend wrapperStyle={{ color: 'var(--fg)' }} />
+                <Line yAxisId="rev" type="monotone" dataKey="totalRevenue" stroke={chartPalette.revenue} strokeWidth={2} dot={false} name="Revenue" />
+                <Line yAxisId="ord" type="monotone" dataKey="totalOrders" stroke={chartPalette.orders} strokeWidth={2} dot={false} name="Orders" />
               </LineChart>
             </ResponsiveContainer>
           </div>
@@ -110,12 +156,12 @@ export default function AnalyticsClient() {
             <div className="h-64">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={data.topProducts} margin={{ top: 10, right: 10, bottom: 20, left: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-                  <XAxis dataKey="name" interval={0} angle={-30} textAnchor="end" height={60} tick={{ fontSize: 10 }} />
-                  <YAxis tick={{ fontSize: 10 }} />
-                  <Tooltip formatter={(v:any, n:any)=> n==='totalRevenue'? formatCurrency(v): v} />
-                  <Legend />
-                  <Bar dataKey="totalQuantitySold" name="Qty Sold" fill="var(--foreground)" />
+                  <CartesianGrid strokeDasharray="3 3" stroke={chartPalette.grid} />
+                  <XAxis dataKey="name" interval={0} angle={-30} textAnchor="end" height={60} tick={{ fontSize: 10, fill: 'var(--fg)' }} />
+                  <YAxis tick={{ fontSize: 10, fill: 'var(--fg)' }} />
+                  <Tooltip formatter={tooltipFormatter} contentStyle={tooltipStyle} labelStyle={{ color: 'var(--fg)' }} />
+                  <Legend wrapperStyle={{ color: 'var(--fg)' }} />
+                  <Bar dataKey="totalQuantitySold" name="Qty Sold" fill={chartPalette.quantity} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -129,13 +175,19 @@ export default function AnalyticsClient() {
             <div className="h-64">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
-                  <Pie data={data.orderStatusBreakdown} dataKey="count" nameKey="status" outerRadius={110} label={({name, percent = 0}) => `${name} ${Math.round(percent*100)}%`}>
+                  <Pie
+                    data={data.orderStatusBreakdown}
+                    dataKey="count"
+                    nameKey="status"
+                    outerRadius={110}
+                    label={{ fill: 'var(--fg)', fontSize: 12 }}
+                  >
                     {data.orderStatusBreakdown.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                      <Cell key={`cell-${entry.status}-${index}`} fill={statusColorFor(entry.status, index)} />
                     ))}
                   </Pie>
-                  <Tooltip />
-                  <Legend />
+                  <Tooltip contentStyle={tooltipStyle} labelStyle={{ color: 'var(--fg)' }} />
+                  <Legend wrapperStyle={{ color: 'var(--fg)' }} />
                 </PieChart>
               </ResponsiveContainer>
             </div>

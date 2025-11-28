@@ -21,6 +21,8 @@ const DesignAssetSchema = z.object({
   imageUrl: z.string().optional(),
   text: z.string().optional(),
   font: z.string().optional(),
+  fontSize: z.number().min(12).max(120).optional(),
+  textBoxWidth: z.enum(['narrow','standard','wide']).optional(),
   color: z.string().optional(),
   aiPrompt: z.string().optional(),
   templateId: z.string().optional(),
@@ -34,6 +36,8 @@ const SideSchema = z.object({
   designType: z.enum(['text','image']),
   designText: z.string().optional().nullable(),
   designFont: z.string().optional().nullable(),
+  designFontSize: z.number().min(12).max(120).optional().nullable(),
+  textBoxWidth: z.enum(['narrow','standard','wide']).optional().nullable(),
   designColor: z.string().optional().nullable(),
   designImageUrl: z.string().optional().nullable(),
 });
@@ -45,6 +49,8 @@ const PlacementConfigSchema = z.object({
   designType: z.enum(['text','image']),
   designText: z.string().optional().nullable(),
   designFont: z.string().optional().nullable(),
+  designFontSize: z.number().min(12).max(120).optional().nullable(),
+  textBoxWidth: z.enum(['narrow','standard','wide']).optional().nullable(),
   designColor: z.string().optional().nullable(),
   designImageUrl: z.string().optional().nullable(),
 });
@@ -83,6 +89,8 @@ interface SideOnlyBuilder {
       designFont?: string | null;
       designColor?: string | null;
       designImageUrl?: string | null;
+      designFontSize?: number | null;
+      textBoxWidth?: 'narrow' | 'standard' | 'wide' | null;
     };
     back: {
       enabled: boolean;
@@ -93,6 +101,8 @@ interface SideOnlyBuilder {
       designFont?: string | null;
       designColor?: string | null;
       designImageUrl?: string | null;
+      designFontSize?: number | null;
+      textBoxWidth?: 'narrow' | 'standard' | 'wide' | null;
     };
   };
 }
@@ -104,6 +114,8 @@ const SingleSideBuilderSchema = z.object({
   designType: z.enum(['text','image']),
   designText: z.string().optional().nullable(),
   designFont: z.string().optional().nullable(),
+  designFontSize: z.number().min(12).max(120).optional().nullable(),
+  textBoxWidth: z.enum(['narrow','standard','wide']).optional().nullable(),
   designColor: z.string().optional().nullable(),
   designImageUrl: z.string().optional().nullable(),
   quantity: z.number().int().min(1).max(20).default(1),
@@ -283,7 +295,16 @@ export async function POST(req: NextRequest) {
       newPlacements = multi.placements;
       designAssets = multi.placements.map(p => {
         if (p.designType === 'text') {
-          return { placementKey: p.area === 'left_chest' ? 'chest_left' : p.area === 'right_chest' ? 'chest_right' : p.area, type: 'text', sourceType: 'uploaded', text: p.designText || undefined, font: p.designFont || undefined, color: p.designColor || undefined };
+          return {
+            placementKey: p.area === 'left_chest' ? 'chest_left' : p.area === 'right_chest' ? 'chest_right' : p.area,
+            type: 'text',
+            sourceType: 'uploaded',
+            text: p.designText || undefined,
+            font: p.designFont || undefined,
+            fontSize: p.designFontSize || undefined,
+            textBoxWidth: p.textBoxWidth || undefined,
+            color: p.designColor || undefined,
+          };
         }
         return { placementKey: p.area === 'left_chest' ? 'chest_left' : p.area === 'right_chest' ? 'chest_right' : p.area, type: 'image', sourceType: 'uploaded', imageUrl: p.designImageUrl || undefined };
       });
@@ -297,7 +318,16 @@ export async function POST(req: NextRequest) {
       if (multi.sides && multi.sides.front.enabled) {
         legacyPlacements.push({ placementKey: 'front', label: 'front' });
         if (multi.sides.front.designType === 'text' && multi.sides.front.designText) {
-          designAssets.push({ placementKey: 'front', type: 'text', sourceType: 'uploaded', text: multi.sides.front.designText, font: multi.sides.front.designFont || undefined, color: multi.sides.front.designColor || undefined });
+            designAssets.push({
+              placementKey: 'front',
+              type: 'text',
+              sourceType: 'uploaded',
+              text: multi.sides.front.designText,
+              font: multi.sides.front.designFont || undefined,
+              fontSize: multi.sides.front.designFontSize || undefined,
+              textBoxWidth: multi.sides.front.textBoxWidth || undefined,
+              color: multi.sides.front.designColor || undefined,
+            });
         } else if (multi.sides.front.designType === 'image' && multi.sides.front.designImageUrl) {
           designAssets.push({ placementKey: 'front', type: 'image', sourceType: 'uploaded', imageUrl: multi.sides.front.designImageUrl });
         }
@@ -305,7 +335,16 @@ export async function POST(req: NextRequest) {
       if (multi.sides && multi.sides.back.enabled) {
         legacyPlacements.push({ placementKey: 'back', label: 'back' });
         if (multi.sides.back.designType === 'text' && multi.sides.back.designText) {
-          designAssets.push({ placementKey: 'back', type: 'text', sourceType: 'uploaded', text: multi.sides.back.designText, font: multi.sides.back.designFont || undefined, color: multi.sides.back.designColor || undefined });
+            designAssets.push({
+              placementKey: 'back',
+              type: 'text',
+              sourceType: 'uploaded',
+              text: multi.sides.back.designText,
+              font: multi.sides.back.designFont || undefined,
+              fontSize: multi.sides.back.designFontSize || undefined,
+              textBoxWidth: multi.sides.back.textBoxWidth || undefined,
+              color: multi.sides.back.designColor || undefined,
+            });
         } else if (multi.sides.back.designType === 'image' && multi.sides.back.designImageUrl) {
           designAssets.push({ placementKey: 'back', type: 'image', sourceType: 'uploaded', imageUrl: multi.sides.back.designImageUrl });
         }
@@ -318,7 +357,16 @@ export async function POST(req: NextRequest) {
       legacyPlacements = [{ placementKey: single.placement, label: single.placement.replace(/_/g,' ') }];
       designAssets = [];
       if (single.designType === 'text' && single.designText) {
-        designAssets.push({ placementKey: single.placement, type: 'text', sourceType: 'uploaded', text: single.designText, font: single.designFont || undefined, color: single.designColor || undefined });
+        designAssets.push({
+          placementKey: single.placement,
+          type: 'text',
+          sourceType: 'uploaded',
+          text: single.designText,
+          font: single.designFont || undefined,
+          fontSize: single.designFontSize || undefined,
+          textBoxWidth: single.textBoxWidth || undefined,
+          color: single.designColor || undefined,
+        });
       } else if (single.designType === 'image' && single.designImageUrl) {
         designAssets.push({ placementKey: single.placement, type: 'image', sourceType: 'uploaded', imageUrl: single.designImageUrl });
       }
@@ -339,6 +387,8 @@ export async function POST(req: NextRequest) {
           designType: primary?.designType,
           designText: primary?.designType === 'text' ? primary.designText || null : null,
           designFont: primary?.designType === 'text' ? primary.designFont || null : null,
+          designFontSize: primary?.designType === 'text' ? primary.designFontSize || null : null,
+          textBoxWidth: primary?.designType === 'text' ? primary.textBoxWidth || null : null,
           designColor: primary?.designType === 'text' ? primary.designColor || null : null,
           designImageUrl: primary?.designType === 'image' ? primary.designImageUrl || null : null,
           quantity: multi.quantity || 1,
@@ -357,6 +407,8 @@ export async function POST(req: NextRequest) {
           designType: primary?.designType,
           designText: primary?.designType === 'text' ? primary?.designText || null : null,
           designFont: primary?.designType === 'text' ? primary?.designFont || null : null,
+          designFontSize: primary?.designType === 'text' ? primary?.designFontSize || null : null,
+          textBoxWidth: primary?.designType === 'text' ? primary?.textBoxWidth || null : null,
           designColor: primary?.designType === 'text' ? primary?.designColor || null : null,
           designImageUrl: primary?.designType === 'image' ? primary?.designImageUrl || null : null,
           quantity: multi.quantity || 1,
@@ -374,6 +426,8 @@ export async function POST(req: NextRequest) {
           designType: single.designType,
           designText: single.designType === 'text' ? single.designText || null : null,
           designFont: single.designType === 'text' ? single.designFont || null : null,
+          designFontSize: single.designType === 'text' ? single.designFontSize || null : null,
+          textBoxWidth: single.designType === 'text' ? single.textBoxWidth || null : null,
           designColor: single.designType === 'text' ? single.designColor || null : null,
           designImageUrl: single.designType === 'image' ? single.designImageUrl || null : null,
           quantity: single.quantity || 1,
@@ -467,6 +521,8 @@ export async function GET(req: NextRequest) {
         designType: order.designType,
         designText: order.designText,
         designFont: order.designFont,
+        designFontSize: order.designFontSize,
+        textBoxWidth: order.textBoxWidth,
         designColor: order.designColor,
         designImageUrl: order.designImageUrl,
         quantity: order.quantity || order.baseShirt?.quantity || 1,

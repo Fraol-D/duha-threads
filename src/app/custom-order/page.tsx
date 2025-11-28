@@ -10,23 +10,42 @@ import { Textarea } from "@/components/ui/Textarea";
 import { Stepper } from "@/components/ui/Stepper";
 import { MascotSlot } from "@/components/ui/MascotSlot";
 import { fadeInUp } from "@/lib/motion";
-import { DesignPreviewCanvas, type CanvasPlacement, PREVIEW_ASPECT_RATIO } from "@/components/preview/DesignPreviewCanvas";
+import { DesignPreviewCanvas, type CanvasPlacement, PREVIEW_ASPECT_RATIO, DEFAULT_FONT_SIZE_CONTROL } from "@/components/preview/DesignPreviewCanvas";
 import { BaseShirtColor } from "@/config/baseShirts";
 import { resolveBasePreviewImage } from "@/lib/preview/baseImage";
 import { DesignAssistant } from "@/components/DesignAssistant";
 import { logEvent } from "@/lib/loggerEvents";
+import type { TextBoxWidthPreset } from "@/types/custom-order";
 
 // Stable placement order constant (outside component to avoid hook deps)
 const PLACEMENT_ORDER_REF = Object.freeze(['front','back','left_chest','right_chest'] as const);
 
 type BuilderStep = 'baseShirt' | 'placements' | 'design' | 'review';
-const FONT_MAP: Record<string, { label: string; class: string; family: string }> = {
-  sans: { label: 'Sans', class: 'font-sans', family: 'Inter, system-ui, sans-serif' },
-  serif: { label: 'Serif', class: 'font-serif', family: 'Georgia, serif' },
-  mono: { label: 'Mono', class: 'font-mono', family: 'Courier New, monospace' },
-  script: { label: 'Script', class: 'font-[cursive]', family: 'cursive' },
-  display: { label: 'Display', class: 'font-bold tracking-wide', family: 'Impact, system-ui, sans-serif' },
-};
+const FONT_OPTIONS = [
+  { id: 'poppins', label: 'Poppins', family: '"Poppins", "Segoe UI", system-ui, sans-serif', keywords: ['modern','rounded'] },
+  { id: 'montserrat', label: 'Montserrat', family: '"Montserrat", "Segoe UI", system-ui, sans-serif', keywords: ['bold','clean'] },
+  { id: 'playfair', label: 'Playfair Display', family: '"Playfair Display", "Times New Roman", serif', keywords: ['serif','elegant'] },
+  { id: 'bebas', label: 'Bebas Neue', family: '"Bebas Neue", Impact, sans-serif', keywords: ['display','uppercase'] },
+  { id: 'raleway', label: 'Raleway', family: '"Raleway", "Helvetica Neue", sans-serif', keywords: ['light','sans'] },
+  { id: 'lora', label: 'Lora Serif', family: '"Lora", Georgia, serif', keywords: ['serif','story'] },
+  { id: 'script', label: 'Dancing Script', family: '"Dancing Script", "Brush Script MT", cursive', keywords: ['script','handwritten'] },
+  { id: 'mono', label: 'JetBrains Mono', family: '"JetBrains Mono", "Courier New", monospace', keywords: ['mono','tech'] },
+] as const;
+type FontId = (typeof FONT_OPTIONS)[number]['id'];
+const FONT_LOOKUP: Record<string, (typeof FONT_OPTIONS)[number]> = FONT_OPTIONS.reduce((acc, option) => {
+  acc[option.id] = option;
+  return acc;
+}, {} as Record<string, (typeof FONT_OPTIONS)[number]>);
+const DEFAULT_FONT_ID: FontId = 'poppins';
+const FONT_SIZE_MIN = 24;
+const FONT_SIZE_MAX = 72;
+const TEXT_WIDTH_PRESETS: { id: TextBoxWidthPreset; label: string; helper: string }[] = [
+  { id: 'narrow', label: 'Pocket', helper: 'Chest badge' },
+  { id: 'standard', label: 'Classic', helper: 'Centered text' },
+  { id: 'wide', label: 'Wide', helper: 'Full chest' },
+];
+const getFontOption = (id?: FontId) => FONT_LOOKUP[id ?? DEFAULT_FONT_ID] ?? FONT_LOOKUP[DEFAULT_FONT_ID];
+const clampFontSize = (value: number) => Math.min(FONT_SIZE_MAX, Math.max(FONT_SIZE_MIN, value));
 const TEXT_COLORS = [
   { value: '#000000', label: 'Black', swatch: 'bg-black' },
   { value: '#ffffff', label: 'White', swatch: 'bg-white border border-muted' },
@@ -50,19 +69,30 @@ export default function CustomOrderBuilderPage() {
     verticalPosition: 'upper' | 'center' | 'lower';
     designType: 'text' | 'image';
     designText?: string;
-    designFont?: keyof typeof FONT_MAP;
+    designFont?: FontId;
+    fontSize?: number;
+    textWidthPreset?: TextBoxWidthPreset;
     designColor?: string;
     designImageUrl?: string | null;
     localImagePreviewUrl?: string | null;
   }
   const [enabledAreas, setEnabledAreas] = useState<PlacementArea[]>(['front']);
   const [placements, setPlacements] = useState<PlacementConfig[]>([{
-    id: 'front-1', area: 'front', verticalPosition: 'upper', designType: 'text', designText: '', designFont: 'sans', designColor: '#000000'
+    id: 'front-1',
+    area: 'front',
+    verticalPosition: 'upper',
+    designType: 'text',
+    designText: '',
+    designFont: DEFAULT_FONT_ID,
+    fontSize: DEFAULT_FONT_SIZE_CONTROL,
+    textWidthPreset: 'standard',
+    designColor: '#000000',
   }]);
   const [activePlacementId, setActivePlacementId] = useState<string | null>('front-1');
   const [previewMode, setPreviewMode] = useState<'front'|'back'>('front');
   const previewContainerRef = useRef<HTMLDivElement | null>(null);
   const [previewSize, setPreviewSize] = useState({ width: 0, height: 0 });
+  const [fontSearch, setFontSearch] = useState('');
   useEffect(() => {
     const element = previewContainerRef.current;
     if (!element) return;
@@ -75,16 +105,22 @@ export default function CustomOrderBuilderPage() {
     observer.observe(element);
     return () => observer.disconnect();
   }, []);
-  const canvasPlacements = useMemo<CanvasPlacement[]>(() => placements.map((p) => ({
-    id: p.id,
-    area: p.area,
-    verticalPosition: p.verticalPosition,
-    designType: p.designType,
-    designText: p.designType === 'text' ? (p.designText ?? '') : null,
-    designFont: p.designType === 'text' ? FONT_MAP[p.designFont ?? 'sans'].family : null,
-    designColor: p.designType === 'text' ? (p.designColor || '#000000') : null,
-    designImageUrl: p.designType === 'image' ? (p.designImageUrl || p.localImagePreviewUrl || null) : null,
-  })), [placements]);
+  const canvasPlacements = useMemo<CanvasPlacement[]>(() => placements.map((p) => {
+    const font = getFontOption(p.designFont);
+    const isFrontOrBack = p.area === 'front' || p.area === 'back';
+    return {
+      id: p.id,
+      area: p.area,
+      verticalPosition: p.verticalPosition,
+      designType: p.designType,
+      designText: p.designType === 'text' ? (p.designText ?? '') : null,
+      designFont: p.designType === 'text' ? font.family : null,
+      designColor: p.designType === 'text' ? (p.designColor || '#000000') : null,
+      designImageUrl: p.designType === 'image' ? (p.designImageUrl || p.localImagePreviewUrl || null) : null,
+      fontSize: p.designType === 'text' ? (p.fontSize ?? DEFAULT_FONT_SIZE_CONTROL) : null,
+      textBoxWidth: isFrontOrBack ? (p.textWidthPreset ?? 'standard') : null,
+    };
+  }), [placements]);
   const frontCanvasPlacements = useMemo(() => filterPlacementsBySide(canvasPlacements, 'front'), [canvasPlacements]);
   const backCanvasPlacements = useMemo(() => filterPlacementsBySide(canvasPlacements, 'back'), [canvasPlacements]);
   const previewPlacements = previewMode === 'front' ? frontCanvasPlacements : backCanvasPlacements;
@@ -107,6 +143,18 @@ export default function CustomOrderBuilderPage() {
   const [sharePublicly, setSharePublicly] = useState(false);
   const [shareTitle, setShareTitle] = useState('');
   const [shareDescription, setShareDescription] = useState('');
+
+  useEffect(() => {
+    setFontSearch('');
+  }, [activePlacementId]);
+
+  const filteredFonts = useMemo(() => {
+    const term = fontSearch.trim().toLowerCase();
+    if (!term) return FONT_OPTIONS;
+    return FONT_OPTIONS.filter((option) =>
+      option.label.toLowerCase().includes(term) || option.keywords.some((keyword) => keyword.includes(term))
+    );
+  }, [fontSearch]);
 
   useEffect(() => {
     fetch('/api/user/me').then(r=>r.json()).then(data => {
@@ -230,16 +278,21 @@ export default function CustomOrderBuilderPage() {
         deliveryAddress,
         phoneNumber: deliveryPhone,
         notes: notes || null,
-        placements: placements.map(p => ({
-          id: p.id,
-          area: p.area,
-          verticalPosition: p.verticalPosition,
-          designType: p.designType,
-          designText: p.designType==='text' ? (p.designText ?? '').trim() || null : null,
-          designFont: p.designType==='text' ? FONT_MAP[(p.designFont ?? 'sans')].family : null,
-          designColor: p.designType==='text' ? p.designColor || null : null,
-          designImageUrl: p.designType==='image' ? p.designImageUrl || null : null,
-        })),
+        placements: placements.map((p) => {
+          const font = getFontOption(p.designFont);
+          return {
+            id: p.id,
+            area: p.area,
+            verticalPosition: p.verticalPosition,
+            designType: p.designType,
+            designText: p.designType === 'text' ? (p.designText ?? '').trim() || null : null,
+            designFont: p.designType === 'text' ? font.family : null,
+            designFontSize: p.designType === 'text' ? clampFontSize(p.fontSize ?? DEFAULT_FONT_SIZE_CONTROL) : null,
+            textBoxWidth: p.designType === 'text' && (p.area === 'front' || p.area === 'back') ? (p.textWidthPreset ?? 'standard') : null,
+            designColor: p.designType === 'text' ? p.designColor || null : null,
+            designImageUrl: p.designType === 'image' ? p.designImageUrl || null : null,
+          };
+        }),
         sharePublicly,
         showcaseTitle: sharePublicly ? (shareTitle.trim() || null) : null,
         showcaseDescription: sharePublicly ? (shareDescription.trim() || null) : null,
@@ -268,13 +321,19 @@ export default function CustomOrderBuilderPage() {
           updated[frontIdx].designType='text';
           updated[frontIdx].designText=first.text;
           updated[frontIdx].designColor=first.color || '#000000';
+          updated[frontIdx].designFont=DEFAULT_FONT_ID;
+          updated[frontIdx].fontSize=DEFAULT_FONT_SIZE_CONTROL;
+          updated[frontIdx].textWidthPreset='standard';
         }
         return updated;
       }
       const newPlacement: PlacementConfig = {
         id: 'front-1', area:'front', verticalPosition:'upper', designType: first.type==='image'?'image':'text',
         designText: first.type==='text'? first.text || '' : '',
-        designFont: 'sans', designColor: first.type==='text' ? first.color || '#000000' : '#000000',
+        designFont: DEFAULT_FONT_ID,
+        fontSize: DEFAULT_FONT_SIZE_CONTROL,
+        textWidthPreset: 'standard',
+        designColor: first.type==='text' ? first.color || '#000000' : '#000000',
         designImageUrl: first.type==='image'? first.imageUrl || null : null,
         localImagePreviewUrl: first.type==='image'? first.imageUrl || null : null,
       };
@@ -343,7 +402,19 @@ export default function CustomOrderBuilderPage() {
                                 return prev;
                               } else {
                                 if (!enabled) {
-                                  const newP: PlacementConfig = { id: `${area}-1`, area, verticalPosition: 'upper', designType:'text', designText:'', designFont:'sans', designColor:'#000000', designImageUrl: null, localImagePreviewUrl: null };
+                                  const newP: PlacementConfig = {
+                                    id: `${area}-1`,
+                                    area,
+                                    verticalPosition: 'upper',
+                                    designType:'text',
+                                    designText:'',
+                                    designFont: DEFAULT_FONT_ID,
+                                    fontSize: DEFAULT_FONT_SIZE_CONTROL,
+                                    textWidthPreset: area === 'front' || area === 'back' ? 'standard' : undefined,
+                                    designColor:'#000000',
+                                    designImageUrl: null,
+                                    localImagePreviewUrl: null,
+                                  };
                                   setActivePlacementId(newP.id);
                                   if (area === 'back') setPreviewMode('back'); else setPreviewMode('front');
                                   return [...prev, newP];
@@ -376,7 +447,29 @@ export default function CustomOrderBuilderPage() {
                         <div className="flex items-center justify-between">
                           <h3 className="text-xs font-semibold uppercase tracking-wide">Placement {idx+1} of {total}: {areaLabel(active.area)}</h3>
                           <div className="flex gap-2">
-                            <button type="button" onClick={()=>setPlacements(prev => prev.map(x => x.id===active.id ? { ...x, designType:'text', designText: x.designText ?? '', designFont: x.designFont ?? 'sans', designColor: x.designColor ?? '#000000' } : x))} className={`px-2 py-1 rounded text-[10px] soft-3d ${active.designType==='text'?'ring-2 ring-token':''}`}>Text</button>
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setPlacements((prev) =>
+                                  prev.map((x) =>
+                                    x.id === active.id
+                                      ? {
+                                          ...x,
+                                          designType: 'text',
+                                          designText: x.designText ?? '',
+                                          designFont: x.designFont ?? DEFAULT_FONT_ID,
+                                          fontSize: x.fontSize ?? DEFAULT_FONT_SIZE_CONTROL,
+                                          textWidthPreset: x.textWidthPreset ?? 'standard',
+                                          designColor: x.designColor ?? '#000000',
+                                        }
+                                      : x,
+                                  ),
+                                )
+                              }
+                              className={`px-2 py-1 rounded text-[10px] soft-3d ${active.designType==='text'?'ring-2 ring-token':''}`}
+                            >
+                              Text
+                            </button>
                             <button type="button" onClick={()=>setPlacements(prev => prev.map(x => x.id===active.id ? { ...x, designType:'image', designImageUrl: x.designImageUrl ?? null } : x))} className={`px-2 py-1 rounded text-[10px] soft-3d ${active.designType==='image'?'ring-2 ring-token':''}`}>Image</button>
                           </div>
                         </div>
@@ -390,9 +483,92 @@ export default function CustomOrderBuilderPage() {
                         {active.designType==='text' && (
                           <div className="space-y-3">
                             <div className="space-y-1"><label className="text-[10px] font-medium">Text</label><Input value={active.designText ?? ''} onChange={(e)=>{ const val = e.currentTarget.value; setPlacements(prev => prev.map(x => x.id===active.id ? { ...x, designText: val } : x)); }} placeholder={`Text for ${areaLabel(active.area)}`} /></div>
-                            <div className="space-y-1"><label className="text-[10px] font-medium">Font</label><div className="flex flex-wrap gap-1">{(Object.keys(FONT_MAP) as Array<keyof typeof FONT_MAP>).map(k => (
-                              <button key={k} type="button" onClick={()=>setPlacements(prev => prev.map(x => x.id===active.id ? { ...x, designFont:k } : x))} className={`soft-3d px-2 py-1 rounded text-[10px] ${active.designFont===k?'ring-2 ring-token':''}`}>{FONT_MAP[k].label}</button>
-                            ))}</div></div>
+                            <div className="space-y-2">
+                              <label className="text-[10px] font-medium">Font</label>
+                              <Input
+                                value={fontSearch}
+                                onChange={(e) => setFontSearch(e.currentTarget.value)}
+                                placeholder="Search fonts"
+                                className="text-xs"
+                              />
+                              <div className="max-h-44 overflow-y-auto rounded-lg border border-muted/50 divide-y divide-muted/40">
+                                {filteredFonts.map((option) => (
+                                  <button
+                                    key={option.id}
+                                    type="button"
+                                    onClick={() =>
+                                      setPlacements((prev) =>
+                                        prev.map((x) => (x.id === active.id ? { ...x, designFont: option.id } : x)),
+                                      )
+                                    }
+                                    className={`flex w-full items-center justify-between px-3 py-2 text-left text-xs ${
+                                      active.designFont === option.id ? 'bg-[--surface] text-foreground' : 'hover:bg-[--surface]/60'
+                                    }`}
+                                    style={{ fontFamily: option.family }}
+                                  >
+                                    <span>{option.label}</span>
+                                    <span className="text-[10px] opacity-70">Aa</span>
+                                  </button>
+                                ))}
+                                {filteredFonts.length === 0 && (
+                                  <div className="px-3 py-2 text-[11px] text-muted">No fonts found.</div>
+                                )}
+                              </div>
+                            </div>
+                            <div className="space-y-1">
+                              <label className="text-[10px] font-medium">Font Size</label>
+                              <div className="flex items-center gap-3">
+                                <input
+                                  type="range"
+                                  min={FONT_SIZE_MIN}
+                                  max={FONT_SIZE_MAX}
+                                  step={2}
+                                  value={clampFontSize(active.fontSize ?? DEFAULT_FONT_SIZE_CONTROL)}
+                                  onChange={(e) => {
+                                    const next = clampFontSize(Number(e.currentTarget.value) || DEFAULT_FONT_SIZE_CONTROL);
+                                    setPlacements((prev) => prev.map((x) => (x.id === active.id ? { ...x, fontSize: next } : x)));
+                                  }}
+                                  className="flex-1"
+                                />
+                                <Input
+                                  type="number"
+                                  min={FONT_SIZE_MIN}
+                                  max={FONT_SIZE_MAX}
+                                  value={clampFontSize(active.fontSize ?? DEFAULT_FONT_SIZE_CONTROL)}
+                                  onChange={(e) => {
+                                    const next = clampFontSize(Number(e.currentTarget.value) || DEFAULT_FONT_SIZE_CONTROL);
+                                    setPlacements((prev) => prev.map((x) => (x.id === active.id ? { ...x, fontSize: next } : x)));
+                                  }}
+                                  className="w-16 text-xs"
+                                />
+                              </div>
+                            </div>
+                            {['front', 'back'].includes(active.area) && (
+                              <div className="space-y-1">
+                                <label className="text-[10px] font-medium">Text Width</label>
+                                <div className="flex flex-wrap gap-2">
+                                  {TEXT_WIDTH_PRESETS.map((preset) => (
+                                    <button
+                                      key={preset.id}
+                                      type="button"
+                                      onClick={() =>
+                                        setPlacements((prev) =>
+                                          prev.map((x) =>
+                                            x.id === active.id ? { ...x, textWidthPreset: preset.id } : x,
+                                          ),
+                                        )
+                                      }
+                                      className={`soft-3d rounded px-2 py-1 text-[10px] ${
+                                        active.textWidthPreset === preset.id ? 'ring-2 ring-token' : ''
+                                      }`}
+                                    >
+                                      <span className="font-medium">{preset.label}</span>
+                                      <span className="ml-1 text-[9px] text-muted">{preset.helper}</span>
+                                    </button>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
                             <div className="space-y-1"><label className="text-[10px] font-medium">Color</label><div className="flex flex-wrap gap-1">{TEXT_COLORS.map(c => (
                               <button key={c.value} type="button" onClick={()=>setPlacements(prev => prev.map(x => x.id===active.id ? { ...x, designColor:c.value } : x))} className={`h-7 w-7 rounded-full flex items-center justify-center ${active.designColor===c.value?'ring-2 ring-token':''}`}><span className={`block h-5 w-5 rounded-full ${c.swatch}`}></span></button>
                             ))}</div></div>

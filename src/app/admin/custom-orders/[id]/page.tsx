@@ -64,6 +64,8 @@ interface AdminCustomOrder extends BaseCustomOrder {
     imageUrl?: string;
     text?: string;
     font?: string;
+    fontSize?: number;
+    textBoxWidth?: 'narrow' | 'standard' | 'wide';
     color?: string;
   }>;
   notes: string;

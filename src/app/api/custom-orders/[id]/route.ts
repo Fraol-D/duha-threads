@@ -34,6 +34,8 @@ export async function GET(
       designType: customOrder.designType,
       designText: customOrder.designText,
       designFont: customOrder.designFont,
+      designFontSize: customOrder.designFontSize,
+      textBoxWidth: customOrder.textBoxWidth,
       designColor: customOrder.designColor,
       designImageUrl: customOrder.designImageUrl,
       quantity: customOrder.quantity || customOrder.baseShirt?.quantity || 1,

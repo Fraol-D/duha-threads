@@ -16,6 +16,7 @@ import {
 import { isAdminEmail } from "@/config/admin-public";
 import { useCart } from "./CartProvider";
 import { useWishlist } from "./WishlistProvider";
+import { BrandLogo } from "./BrandLogo";
  
 
 type NavItem = { href: string; label: string; icon: React.ComponentType<{ className?: string }>; title?: string };
@@ -84,9 +85,7 @@ export function Header() {
   return (
     <header className="fixed top-0 inset-x-0 z-40 border-b border-muted bg-[--bg]/80 backdrop-blur supports-backdrop-filter:bg-[--bg]/60">
       <div className="mx-auto max-w-7xl px-4 py-4 flex items-center justify-between">
-        <Link href="/" className="text-xl font-semibold tracking-tight">
-          Duha Threads
-        </Link>
+        <BrandLogo theme={theme} />
         <nav className="hidden md:flex items-center gap-3">
           {navItems.map((item) => {
             const Icon = item.icon;

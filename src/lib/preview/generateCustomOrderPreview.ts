@@ -9,6 +9,17 @@ const FRONT_BACK_VERTICAL_TOPS: Record<'upper' | 'center' | 'lower', number> = {
   lower: 42,
 };
 
+const TEXT_BOX_WIDTH_MULTIPLIERS: Record<'narrow' | 'standard' | 'wide', number> = {
+  narrow: 0.75,
+  standard: 1,
+  wide: 1.35,
+};
+
+const clampFontSize = (size: number | undefined) => {
+  if (!size || Number.isNaN(size)) return 48;
+  return Math.max(12, Math.min(120, Math.round(size)));
+};
+
 /**
  * Generate a preview image using Cloudinary's transformation API.
  * No native dependencies required - all compositing happens server-side at Cloudinary.
@@ -53,11 +64,14 @@ export async function generateCustomOrderPreview(order: OrderLike): Promise<stri
       // Text overlay
       const positioning = getOverlayPositioning(asset.placementKey, order.verticalPosition);
       const color = (asset.color || '#000000').replace('#', 'rgb:');
-      const fontFamily = (asset.font && asset.font.split(',')[0]) || 'Arial';
-      const fontSize = positioning.fontSize || 48;
+      const fontFamily = normalizeCloudinaryFontFamily(asset.font);
+      const fontSize = clampFontSize(asset.fontSize ?? positioning.fontSize);
+      const widthMultiplier = asset.textBoxWidth ? TEXT_BOX_WIDTH_MULTIPLIERS[asset.textBoxWidth] || 1 : 1;
+      const widthDirective = positioning.width ? Math.round(positioning.width * widthMultiplier) : undefined;
+      const fitSegment = widthDirective ? `,c_fit,w_${widthDirective}` : '';
       
       transformations.push(
-        `l_text:${fontFamily}_${fontSize}:${encodeURIComponent(asset.text)},co_${color},g_${positioning.gravity},x_${positioning.x},y_${positioning.y}`
+        `l_text:${fontFamily}_${fontSize}:${encodeURIComponent(asset.text)}${fitSegment},co_${color},g_${positioning.gravity},x_${positioning.x},y_${positioning.y}`
       );
     }
 
@@ -80,8 +94,8 @@ function buildCloudinaryUrl(publicId: string, transformations: string[]): string
 function getOverlayPositioning(placementKey: string, verticalPosition?: 'upper' | 'center' | 'lower') {
   // Cloudinary uses different positioning - these are approximations
   // Gravity: center, north, south, east, west, north_east, north_west, south_east, south_west
-  
-  switch (placementKey) {
+  const normalized = (placementKey || '').toLowerCase();
+  switch (normalized) {
     case 'front':
       const yOffset = verticalPosition ? FRONT_BACK_VERTICAL_TOPS[verticalPosition] - 32 : 0;
       return {
@@ -100,7 +114,8 @@ function getOverlayPositioning(placementKey: string, verticalPosition?: 'upper' 
         width: 300,
         fontSize: 64,
       };
-    case 'leftChest':
+    case 'left_chest':
+    case 'chest_left':
       return {
         gravity: 'north_west',
         x: 80,
@@ -108,7 +123,8 @@ function getOverlayPositioning(placementKey: string, verticalPosition?: 'upper' 
         width: 120,
         fontSize: 32,
       };
-    case 'rightChest':
+    case 'right_chest':
+    case 'chest_right':
       return {
         gravity: 'north_east',
         x: 80,
@@ -125,4 +141,10 @@ function getOverlayPositioning(placementKey: string, verticalPosition?: 'upper' 
         fontSize: 48,
       };
   }
+}
+
+function normalizeCloudinaryFontFamily(font?: string | null) {
+  if (!font) return 'Arial';
+  const firstFamily = font.split(',')[0] || 'Arial';
+  return firstFamily.replace(/["']/g, '').trim() || 'Arial';
 }

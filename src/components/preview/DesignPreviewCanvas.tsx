@@ -5,10 +5,18 @@ import { Stage, Layer, Image as KonvaImage, Rect, Text as KonvaText, Group } fro
 import type { Stage as KonvaStage } from 'konva/lib/Stage';
 
 import { PLACEMENT_RECTS, type PlacementKey } from '@/config/placementGuides';
-import type { CustomPlacementArea, CustomPlacementDesignType, CustomVerticalPosition } from '@/types/custom-order';
+import type { CustomPlacementArea, CustomPlacementDesignType, CustomVerticalPosition, TextBoxWidthPreset } from '@/types/custom-order';
 
 const BASE_ASPECT_RATIO = 4 / 3;
 const FALLBACK_FONT = 'Inter, system-ui, sans-serif';
+export const DEFAULT_FONT_SIZE_CONTROL = 40;
+const WIDTH_MULTIPLIERS: Record<TextBoxWidthPreset, number> = {
+  narrow: 0.8,
+  standard: 1,
+  wide: 1.45,
+};
+const FRONT_BACK_MAX_WIDTH_PERCENT = 42;
+const FRONT_BACK_MIN_WIDTH_PERCENT = 16;
 
 export type PreviewCanvasMode = 'full' | 'thumbnail';
 
@@ -21,6 +29,8 @@ export interface CanvasPlacement {
   designFont?: string | null;
   designColor?: string | null;
   designImageUrl?: string | null;
+  fontSize?: number | null;
+  textBoxWidth?: TextBoxWidthPreset | null;
 }
 
 export interface DesignPreviewCanvasHandle {
@@ -145,9 +155,13 @@ function PlacementNode({
           align="center"
           verticalAlign="middle"
           fontFamily={placement.designFont || FALLBACK_FONT}
-          fontSize={computeFontSize(rect, mode)}
+          fontSize={computeFontSize(rect, mode, placement.fontSize)}
           fill={placement.designColor || '#000000'}
+          wrap="word"
+          lineHeight={1.15}
+          ellipsis
           listening={false}
+          padding={4}
         />
       ) : null}
       {showGuides && !hasContent && (
@@ -179,10 +193,13 @@ function placementHasContent(placement: CanvasPlacement) {
   return false;
 }
 
-function computeFontSize(rect: PlacementRectPixels, mode: PreviewCanvasMode) {
+function computeFontSize(rect: PlacementRectPixels, mode: PreviewCanvasMode, controlValue?: number | null) {
   const base = Math.min(rect.width, rect.height);
-  const scale = mode === 'thumbnail' ? 0.32 : 0.42;
-  return Math.max(12, base * scale);
+  const scale = mode === 'thumbnail' ? 0.3 : 0.42;
+  const requested = controlValue ?? DEFAULT_FONT_SIZE_CONTROL;
+  const normalized = Math.max(12, requested);
+  const relative = normalized / DEFAULT_FONT_SIZE_CONTROL;
+  return Math.max(12, base * scale * relative);
 }
 
 function resolvePlacementRect(placement: CanvasPlacement, width: number, height: number): PlacementRectPixels | null {
@@ -190,7 +207,8 @@ function resolvePlacementRect(placement: CanvasPlacement, width: number, height:
   const baseRect = PLACEMENT_RECTS[mappedKey];
   if (!baseRect) return null;
   const topPercent = adjustTopPercent(baseRect.topPercent, placement);
-  const finalWidth = (baseRect.widthPercent / 100) * width;
+  const widthPercent = adjustWidthPercent(baseRect.widthPercent, placement);
+  const finalWidth = (widthPercent / 100) * width;
   const finalHeight = (baseRect.heightPercent / 100) * height;
   let x = (baseRect.leftPercent / 100) * width;
   if (baseRect.transform?.includes('translateX(-50%)')) {
@@ -210,6 +228,14 @@ function adjustTopPercent(defaultTop: number, placement: CanvasPlacement) {
     default:
       return 42;
   }
+}
+
+function adjustWidthPercent(baseWidthPercent: number, placement: CanvasPlacement) {
+  if (placement.area !== 'front' && placement.area !== 'back') return baseWidthPercent;
+  const preset = placement.textBoxWidth ?? 'standard';
+  const multiplier = WIDTH_MULTIPLIERS[preset] ?? 1;
+  const adjusted = baseWidthPercent * multiplier;
+  return Math.min(FRONT_BACK_MAX_WIDTH_PERCENT, Math.max(FRONT_BACK_MIN_WIDTH_PERCENT, adjusted));
 }
 
 function mapAreaToPlacementKey(area: CustomPlacementArea): PlacementKey {

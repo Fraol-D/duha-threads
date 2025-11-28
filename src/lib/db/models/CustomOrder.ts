@@ -12,6 +12,8 @@ export interface INewPlacementConfig {
   designType: 'text' | 'image';
   designText?: string | null;
   designFont?: string | null;
+  designFontSize?: number | null;
+  textBoxWidth?: 'narrow' | 'standard' | 'wide' | null;
   designColor?: string | null;
   designImageUrl?: string | null;
 }
@@ -23,6 +25,8 @@ export interface IDesignAsset {
   imageUrl?: string;
   text?: string;
   font?: string;
+  fontSize?: number;
+  textBoxWidth?: 'narrow' | 'standard' | 'wide';
   color?: string;
   aiPrompt?: string;
   templateId?: string;
@@ -76,6 +80,8 @@ export interface CustomOrderDocument extends Document {
   designType?: 'text' | 'image';
   designText?: string | null;
   designFont?: string | null;
+  designFontSize?: number | null;
+  textBoxWidth?: 'narrow' | 'standard' | 'wide' | null;
   designColor?: string | null;
   designImageUrl?: string | null;
   previewImageUrl?: string | null;
@@ -93,6 +99,8 @@ export interface CustomOrderDocument extends Document {
       designType: 'text' | 'image';
       designText?: string | null;
       designFont?: string | null;
+      designFontSize?: number | null;
+      textBoxWidth?: 'narrow' | 'standard' | 'wide' | null;
       designColor?: string | null;
       designImageUrl?: string | null;
     };
@@ -103,6 +111,8 @@ export interface CustomOrderDocument extends Document {
       designType: 'text' | 'image';
       designText?: string | null;
       designFont?: string | null;
+      designFontSize?: number | null;
+      textBoxWidth?: 'narrow' | 'standard' | 'wide' | null;
       designColor?: string | null;
       designImageUrl?: string | null;
     };
@@ -135,6 +145,8 @@ const NewPlacementSchema = new Schema<INewPlacementConfig>({
   designType: { type: String, enum: ['text','image'], required: true },
   designText: { type: String },
   designFont: { type: String },
+  designFontSize: { type: Number },
+  textBoxWidth: { type: String, enum: ['narrow','standard','wide'] },
   designColor: { type: String },
   designImageUrl: { type: String },
 }, { _id: false });
@@ -146,6 +158,8 @@ const DesignAssetSchema = new Schema<IDesignAsset>({
   imageUrl: { type: String },
   text: { type: String },
   font: { type: String },
+  fontSize: { type: Number },
+  textBoxWidth: { type: String, enum: ['narrow','standard','wide'] },
   color: { type: String },
   aiPrompt: { type: String },
   templateId: { type: String },
@@ -186,6 +200,8 @@ const CustomOrderSchema = new Schema<CustomOrderDocument>(
     designType: { type: String, enum: ['text','image'] },
     designText: { type: String },
     designFont: { type: String },
+    designFontSize: { type: Number },
+    textBoxWidth: { type: String, enum: ['narrow','standard','wide'] },
     designColor: { type: String },
     designImageUrl: { type: String },
     previewImageUrl: { type: String },
@@ -204,6 +220,8 @@ const CustomOrderSchema = new Schema<CustomOrderDocument>(
           designType: { type: String, enum: ['text','image'], required: true, default: 'text' },
           designText: { type: String },
           designFont: { type: String },
+          designFontSize: { type: Number },
+          textBoxWidth: { type: String, enum: ['narrow','standard','wide'] },
           designColor: { type: String },
           designImageUrl: { type: String },
         },
@@ -214,6 +232,8 @@ const CustomOrderSchema = new Schema<CustomOrderDocument>(
           designType: { type: String, enum: ['text','image'], required: true, default: 'text' },
           designText: { type: String },
           designFont: { type: String },
+          designFontSize: { type: Number },
+          textBoxWidth: { type: String, enum: ['narrow','standard','wide'] },
           designColor: { type: String },
           designImageUrl: { type: String },
         },

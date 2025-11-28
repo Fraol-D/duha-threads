@@ -44,6 +44,8 @@ export async function GET(req: NextRequest) {
         designType: o.designType || (firstImageAsset ? 'image' : firstTextAsset ? 'text' : null),
         designText: o.designText || firstTextAsset?.text || null,
         designFont: o.designFont || firstTextAsset?.font || null,
+        designFontSize: o.designFontSize || firstTextAsset?.fontSize || null,
+        textBoxWidth: o.textBoxWidth || firstTextAsset?.textBoxWidth || null,
         designColor: o.designColor || firstTextAsset?.color || null,
         designImageUrl: o.designImageUrl || firstImageAsset?.imageUrl || null,
         quantity: o.quantity || o.baseShirt?.quantity || 1,

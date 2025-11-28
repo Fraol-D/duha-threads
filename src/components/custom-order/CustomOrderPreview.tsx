@@ -161,6 +161,11 @@ function normalizePlacement(placement: CustomOrderPlacement, fallbackId: string)
     designFont: designType === 'text' ? placement.designFont || FALLBACK_FONT : null,
     designColor: designType === 'text' ? placement.designColor || '#000000' : null,
     designImageUrl: designType === 'image' ? placement.designImageUrl || null : null,
+    fontSize: designType === 'text' ? placement.designFontSize || undefined : undefined,
+    textBoxWidth:
+      designType === 'text' && (area === 'front' || area === 'back')
+        ? placement.textBoxWidth || undefined
+        : undefined,
   };
 }
 
@@ -181,6 +186,11 @@ function placementsFromSides(order: CustomOrder): PreviewPlacement[] {
       designFont: designType === 'text' ? side.designFont || order.designFont || FALLBACK_FONT : null,
       designColor: designType === 'text' ? side.designColor || order.designColor || '#000000' : null,
       designImageUrl: designType === 'image' ? side.designImageUrl || order.designImageUrl || null : null,
+      fontSize: designType === 'text' ? side.designFontSize || order.designFontSize || undefined : undefined,
+      textBoxWidth:
+        designType === 'text' && (key === 'front' || key === 'back')
+          ? side.textBoxWidth || order.textBoxWidth || undefined
+          : undefined,
     });
   });
   return entries;
@@ -224,6 +234,14 @@ function placementsFromLegacy(
       designFont: designType === 'text' ? asset?.font || order.designFont || FALLBACK_FONT : null,
       designColor: designType === 'text' ? asset?.color || order.designColor || '#000000' : null,
       designImageUrl: designType === 'image' ? asset?.imageUrl || order.designImageUrl || null : null,
+      fontSize:
+        designType === 'text'
+          ? asset?.fontSize || order.designFontSize || undefined
+          : undefined,
+      textBoxWidth:
+        designType === 'text' && (placementKey === 'front' || placementKey === 'back')
+          ? asset?.textBoxWidth || order.textBoxWidth || undefined
+          : undefined,
     };
   });
 }
@@ -242,6 +260,11 @@ function placementFromFlatFields(order: CustomOrder): PreviewPlacement | null {
     designFont: designType === 'text' ? order.designFont || FALLBACK_FONT : null,
     designColor: designType === 'text' ? order.designColor || '#000000' : null,
     designImageUrl: designType === 'image' ? order.designImageUrl || null : null,
+    fontSize: designType === 'text' ? order.designFontSize || undefined : undefined,
+    textBoxWidth:
+      designType === 'text' && (area === 'front' || area === 'back')
+        ? order.textBoxWidth || undefined
+        : undefined,
   };
 }
 
