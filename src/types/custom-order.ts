@@ -49,6 +49,7 @@ export interface CustomOrderDesignAsset {
 
 export interface CustomOrder {
   id: string;
+  orderNumber?: string;
   status?: string;
   baseColor?: BaseShirtColor | string | null;
   baseShirt?: {

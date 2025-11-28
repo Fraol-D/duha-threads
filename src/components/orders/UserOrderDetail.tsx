@@ -45,6 +45,7 @@ export function UserOrderDetail({ orderNumber, id, status, createdAt, items, sub
   const primary = items[0];
   const additionalCount = items.length > 1 ? items.length - 1 : 0;
   const statusColor = STATUS_COLORS[status] || 'bg-gray-200 text-gray-700';
+  const displayNumber = orderNumber || id.slice(-6);
 
   const flow = useMemo(() => {
     // Use a condensed flow for new statuses if present
@@ -71,12 +72,12 @@ export function UserOrderDetail({ orderNumber, id, status, createdAt, items, sub
   return (
     <div className="mx-auto max-w-4xl space-y-8">
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Order details</h1>
-          <p className="text-sm text-muted-foreground">Order #{orderNumber || id.slice(0,8)}</p>
+      <div className="flex flex-col gap-1">
+        <p className="text-xs uppercase tracking-wide text-muted-foreground">Order</p>
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
+          <h1 className="text-2xl font-semibold tracking-tight">Order {displayNumber}</h1>
+          <div className="text-xs text-muted-foreground">Placed on {formattedDate}</div>
         </div>
-        <div className="text-xs text-muted-foreground">Placed on {formattedDate}</div>
       </div>
 
       {/* Status Card */}
@@ -134,6 +135,10 @@ export function UserOrderDetail({ orderNumber, id, status, createdAt, items, sub
             </div>
           </div>
         </div>
+      </div>
+
+      <div className="text-[11px] text-muted-foreground">
+        Reference ID: <code className="font-mono text-[11px]">{id}</code>
       </div>
 
       {/* Delivery Info */}

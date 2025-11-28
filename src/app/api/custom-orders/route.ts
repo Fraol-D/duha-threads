@@ -8,6 +8,7 @@ import { z } from "zod";
 import { ConsoleEmailService, sendCustomOrderCreated } from '@/lib/email/EmailService';
 import { generateCustomOrderPreview } from '@/lib/preview/generateCustomOrderPreview';
 import { Types } from "mongoose";
+import { generateOrderNumber, isOrderNumberDuplicateError } from '@/lib/orders/orderNumber';
 
 const PlacementSchema = z.object({
   placementKey: z.string().min(1),
@@ -438,7 +439,7 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    const customOrder = await CustomOrderModel.create({
+    const customOrderBase = {
       userId: authResult.user.id,
       baseShirt,
       legacyPlacements,
@@ -455,7 +456,26 @@ export async function POST(req: NextRequest) {
       publicTitle: showcaseTitle,
       publicDescription: showcaseDescription,
       linkedProductId,
-    });
+    };
+
+    const today = new Date();
+    let customOrder = null;
+    for (let seq = 0; seq < 10; seq++) {
+      try {
+        const candidate = generateOrderNumber(today, seq);
+        customOrder = await CustomOrderModel.create({ ...customOrderBase, orderNumber: candidate });
+        break;
+      } catch (err) {
+        if (isOrderNumberDuplicateError(err)) {
+          continue;
+        }
+        throw err;
+      }
+    }
+
+    if (!customOrder) {
+      return NextResponse.json({ error: 'Unable to generate unique custom order number' }, { status: 500 });
+    }
 
     // Generate preview and persist URL if available
     try {
@@ -481,6 +501,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({
       success: true,
       orderId: customOrder._id.toString(),
+      orderNumber: customOrder.orderNumber,
       status: customOrder.status,
       estimatedTotal: pricing.estimatedTotal,
       previewImageUrl: latest?.previewImageUrl || null,
@@ -513,6 +534,7 @@ export async function GET(req: NextRequest) {
       const areas = placements.length > 0 ? placements.map(p=> p.area === 'left_chest' ? 'left_chest' : p.area === 'right_chest' ? 'right_chest' : p.area ) : legacyAreas;
       return {
         id: order._id.toString(),
+        orderNumber: order.orderNumber || order._id.toString().slice(-6),
         status: order.status,
         baseColor: order.baseColor,
         baseShirt: order.baseShirt,

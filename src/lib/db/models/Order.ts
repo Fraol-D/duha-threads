@@ -72,7 +72,7 @@ const OrderSchema = new Schema<OrderDocument>(
   {
     userId: { type: Schema.Types.ObjectId, ref: "User", required: true, index: true },
     items: { type: [OrderItemSchema], required: true },
-    orderNumber: { type: String, index: true, unique: true },
+    orderNumber: { type: String, index: true, unique: true, sparse: true },
     // Legacy flat fields retained (may be null moving forward)
     deliveryAddress: { type: String },
     phone: { type: String },
@@ -118,12 +118,6 @@ OrderSchema.pre('save', function(next) {
       const sum = this.items.reduce((acc: number, it: OrderItem) => acc + (it.subtotal || (it.unitPrice * it.quantity)), 0);
       this.subtotal = sum;
       this.totalAmount = sum; // future: add shipping/tax adjustments
-    }
-    // Generate orderNumber if missing
-    if (!this.orderNumber) {
-      // Simple generation: ORD- + 8 hex chars; retry if collision
-      const gen = () => 'ORD-' + Math.random().toString(16).slice(2, 10).toUpperCase();
-      this.orderNumber = gen();
     }
     // Backward compatibility: if legacy flat fields exist but deliveryInfo.address missing, hydrate deliveryInfo
     if (!this.deliveryInfo.address && this.deliveryAddress) {

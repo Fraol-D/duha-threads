@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from "next/server";
-import crypto from 'crypto';
 import { getCurrentUser } from "@/lib/auth/session";
 import { getDb } from "@/lib/db/connection";
 import { OrderModel } from "@/lib/db/models/Order";
@@ -7,6 +6,7 @@ import { CartItemModel } from '@/lib/db/models/CartItem';
 import { ProductModel } from '@/lib/db/models/Product';
 import { z } from 'zod';
 import { env } from "@/config/env";
+import { generateOrderNumber, isOrderNumberDuplicateError } from '@/lib/orders/orderNumber';
 
 export async function GET() {
   const user = await getCurrentUser();
@@ -27,10 +27,6 @@ const createSchema = z.object({
   notes: z.string().max(200).optional(),
   customOrderId: z.string().optional(),
 });
-
-function generateOrderNumber(): string {
-  return 'ORD-' + crypto.randomBytes(4).toString('hex').toUpperCase();
-}
 
 export async function POST(req: NextRequest) {
   const user = await getCurrentUser();
@@ -77,28 +73,40 @@ export async function POST(req: NextRequest) {
   const status: string = 'PENDING';
   const isCustomOrder = !!customOrderId;
 
-  let order;
-  try {
-    const orderNumber = generateOrderNumber();
-    order = await OrderModel.create({
-      userId: user.id,
-      items,
-      deliveryInfo: { name, phone, address, notes },
-      subtotal,
-      totalAmount: subtotal,
-      currency,
-      status,
-      isCustomOrder,
-      customOrderId: isCustomOrder ? customOrderId : null,
-      orderNumber,
-      // legacy fields (optional)
-      deliveryAddress: address,
-      phone,
-      email: user.email,
-    });
-  } catch (err) {
-    console.error('[ORDER_CREATE_ERROR]', err);
-    return NextResponse.json({ error: 'Failed to create order' }, { status: 500 });
+  const basePayload = {
+    userId: user.id,
+    items,
+    deliveryInfo: { name, phone, address, notes },
+    subtotal,
+    totalAmount: subtotal,
+    currency,
+    status,
+    isCustomOrder,
+    customOrderId: isCustomOrder ? customOrderId : null,
+    // legacy fields (optional)
+    deliveryAddress: address,
+    phone,
+    email: user.email,
+  };
+
+  const today = new Date();
+  let order = null;
+  for (let seq = 0; seq < 10; seq++) {
+    try {
+      const candidate = generateOrderNumber(today, seq);
+      order = await OrderModel.create({ ...basePayload, orderNumber: candidate });
+      break;
+    } catch (err) {
+      if (isOrderNumberDuplicateError(err)) {
+        continue;
+      }
+      console.error('[ORDER_CREATE_ERROR]', err);
+      return NextResponse.json({ error: 'Failed to create order' }, { status: 500 });
+    }
+  }
+
+  if (!order) {
+    return NextResponse.json({ error: 'Unable to generate unique order number' }, { status: 500 });
   }
 
   // Attempt to clear cart; non-fatal on failure

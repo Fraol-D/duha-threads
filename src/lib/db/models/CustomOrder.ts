@@ -64,6 +64,7 @@ export type CustomOrderStatus =
   | 'CANCELLED';
 
 export interface CustomOrderDocument extends Document {
+  orderNumber?: string;
   userId: mongoose.Types.ObjectId | null;
   baseShirt: {
     productId: string;
@@ -187,6 +188,7 @@ const StatusHistorySchema = new Schema<IStatusHistoryEntry>({
 
 const CustomOrderSchema = new Schema<CustomOrderDocument>(
   {
+    orderNumber: { type: String, unique: true, sparse: true, index: true },
     userId: { type: Schema.Types.ObjectId, ref: "User", default: null },
     baseShirt: {
       productId: { type: String, required: true },
@@ -268,6 +270,7 @@ CustomOrderSchema.index({ placement: 1 });
 CustomOrderSchema.index({ verticalPosition: 1 });
 CustomOrderSchema.index({ isPublic: 1, publicStatus: 1 });
 CustomOrderSchema.index({ linkedProductId: 1, publicStatus: 1 });
+CustomOrderSchema.index({ orderNumber: 1 });
 
 export const CustomOrderModel: Model<CustomOrderDocument> =
   mongoose.models.CustomOrder || mongoose.model<CustomOrderDocument>("CustomOrder", CustomOrderSchema);

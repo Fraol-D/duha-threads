@@ -5,9 +5,8 @@ import Link from "next/link";
 import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
 import { Card } from "@/components/ui/Card";
-import { EmptyState } from "@/components/ui/EmptyState";
-import { MascotSlot } from "@/components/ui/MascotSlot";
 import { Button } from "@/components/ui/Button";
+import { MascotState } from "@/components/ui/MascotState";
 import { fadeInUp } from "@/lib/motion";
 import { useCart } from "@/components/CartProvider";
 
@@ -75,22 +74,22 @@ export default function CartPage() {
     adjustQuantity(line, -line.quantity); // use adjust to delete
   }
 
-  if (loading) return <div className="py-12 text-center">Loading cart...</div>;
-  if (error) return <div className="py-12 text-center text-red-600">{error}</div>;
+  if (loading) return <div className="py-12"><MascotState variant="loading" message="Loading your cart" /></div>;
+  if (error) return (
+    <div className="py-12">
+      <MascotState variant="error" message={error} actionLabel="Retry" onActionClick={() => window.location.reload()} />
+    </div>
+  );
 
   if (items.length === 0) {
     return (
-      <div className="py-10 space-y-6">
-        <Card variant="glass" className="p-8">
-          <EmptyState
-            title="Your cart is empty"
-            description="Looks like you haven't added anything yet."
-            action={<Link href="/products" className="underline">Browse products</Link>}
-          />
-        </Card>
-        <Card variant="soft3D" className="p-6">
-          <MascotSlot variant="emptyCart" />
-        </Card>
+      <div className="py-10">
+        <MascotState
+          variant="empty"
+          message="Your cart is empty. Let's fix that."
+          actionLabel="Browse products"
+          onActionClick={() => window.location.assign('/products')}
+        />
       </div>
     );
   }

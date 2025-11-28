@@ -107,7 +107,7 @@ export default function AdminCustomOrdersPage() {
             value={search}
             onChange={(e)=>setSearch(e.target.value)}
             onKeyDown={(e)=>{ if (e.key==='Enter') load(); }}
-            placeholder="Search email/phone"
+            placeholder="Search email, order #, or ID"
             className="border rounded px-2 py-1 text-sm"
           />
           <button onClick={load} className="px-3 py-1.5 rounded bg-[--accent] text-white text-sm">Filter</button>
@@ -122,6 +122,7 @@ export default function AdminCustomOrdersPage() {
         <table className="min-w-full text-sm">
           <thead className="bg-[--surface]">
             <tr className="text-left">
+              <th className="p-2 font-medium">Order</th>
               <th className="p-2 font-medium">Created</th>
               <th className="p-2 font-medium">User</th>
               <th className="p-2 font-medium">Email</th>
@@ -138,6 +139,12 @@ export default function AdminCustomOrdersPage() {
           <tbody>
             {filtered.map(o => (
               <tr key={o.id} className="border-t hover:bg-[--surface] cursor-pointer" onClick={()=>router.push(`/admin/custom-orders/${o.id}`)}>                
+                <td className="p-2">
+                  <div className="flex flex-col gap-0.5">
+                    <span className="font-semibold">{o.orderNumber || o.id.slice(-6)}</span>
+                    <span className="text-[11px] text-muted-foreground font-mono" title={o.id}>ID: {o.id}</span>
+                  </div>
+                </td>
                 <td className="p-2 whitespace-nowrap">{new Date(o.createdAt).toLocaleDateString()}</td>
                 <td className="p-2 max-w-40 truncate" title={o.userId || ''}>{o.userId ? o.userId.slice(-6) : '—'}</td>
                 <td className="p-2 max-w-48 truncate text-xs" title={o.delivery?.email || ''}>{o.delivery?.email || '—'}</td>

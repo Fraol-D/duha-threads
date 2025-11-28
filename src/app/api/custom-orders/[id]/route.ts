@@ -27,6 +27,7 @@ export async function GET(
 
     const order = {
       id: customOrder._id.toString(),
+      orderNumber: customOrder.orderNumber || customOrder._id.toString().slice(-6),
       // Flattened builder fields (if present)
       baseColor: customOrder.baseColor,
       placement: customOrder.placement,

@@ -27,6 +27,7 @@ export async function GET(request: NextRequest) {
         { email: { $regex: q, $options: 'i' } },
         { 'deliveryInfo.address': { $regex: q, $options: 'i' } },
         { _id: { $regex: q, $options: 'i' } },
+        { orderNumber: { $regex: q, $options: 'i' } },
       ];
     }
 
@@ -40,7 +41,7 @@ export async function GET(request: NextRequest) {
 
     const pageSlice = docs.map((o: any) => ({
       id: o._id.toString(),
-      orderNumber: o._id.toString().slice(-6),
+      orderNumber: o.orderNumber || o._id.toString().slice(-6),
       userId: o.userId?.toString() || null,
       customerEmail: o.email || o.deliveryInfo?.address || null,
       customerName: null,

@@ -4,6 +4,7 @@ import { Package, Brush, ArrowRight, Layers } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Card } from "@/components/ui/Card";
+import { MascotState } from "@/components/ui/MascotState";
 
 type CountResponse = { orders?: unknown[]; customOrders?: unknown[] };
 
@@ -57,13 +58,47 @@ export default function MyOrdersHubPage() {
 
   useEffect(() => { if (authChecked) loadCounts(); }, [authChecked, loadCounts]);
 
+  if (!authChecked || loading) {
+    return (
+      <div className="py-10">
+        <MascotState variant="loading" message="Loading your orders overview" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="py-10">
+        <MascotState
+          variant="error"
+          message={error}
+          actionLabel="Retry"
+          onActionClick={loadCounts}
+        />
+      </div>
+    );
+  }
+
+  const totalOrders = standardCount + customCount;
+  if (totalOrders === 0) {
+    return (
+      <div className="py-10">
+        <MascotState
+          variant="empty"
+          message="You haven't placed any standard or custom orders yet."
+          actionLabel="Browse products"
+          onActionClick={() => router.push("/products")}
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="py-10">
       <div className="mx-auto max-w-4xl space-y-8">
         <header className="space-y-2">
           <h1 className="text-3xl font-semibold tracking-tight">My orders</h1>
           <p className="text-sm text-muted-foreground max-w-prose">View your standard and custom T-shirt orders in one place. Use the options below to see full lists and details.</p>
-          {error && <div className="text-xs text-red-600">{error}</div>}
         </header>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <Card className="p-5 flex items-start gap-3">

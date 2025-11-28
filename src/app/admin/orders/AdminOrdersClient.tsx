@@ -101,7 +101,7 @@ export default function AdminOrdersClient() {
         <div className="flex flex-col md:flex-row gap-4 md:items-end">
           <div className="flex gap-2 flex-1">
             <Input
-              placeholder="Search email or ID"
+              placeholder="Search email, order #, or ID"
               value={typedSearch}
               onChange={e => setTypedSearch(e.currentTarget.value)}
               onKeyDown={e => { if (e.key === 'Enter') applySearch(); }}
@@ -128,7 +128,7 @@ export default function AdminOrdersClient() {
             <table className="w-full text-sm border-collapse">
               <thead>
                 <tr className="bg-[--surface-alt] text-xs">
-                  <th className="text-left font-medium p-2">Order #</th>
+                  <th className="text-left font-medium p-2">Order</th>
                   <th className="text-left font-medium p-2">Customer</th>
                   <th className="text-left font-medium p-2">Total</th>
                   <th className="text-left font-medium p-2">Status</th>
@@ -145,7 +145,12 @@ export default function AdminOrdersClient() {
                     onClick={() => { if (!o.id) return; router.push(`/admin/orders/${o.id}`); }}
                     aria-label={o.id ? `View order ${o.orderNumber}` : 'Order has missing id'}
                   > 
-                    <td className="p-2 font-medium">{o.orderNumber}</td>
+                    <td className="p-2">
+                      <div className="flex flex-col gap-0.5">
+                        <span className="font-semibold">{o.orderNumber}</span>
+                        <span className="text-[11px] text-muted-foreground font-mono truncate" title={o.id}>ID: {o.id}</span>
+                      </div>
+                    </td>
                     <td className="p-2">
                       <div className="flex flex-col">
                         <span className="truncate max-w-40" title={o.customerName || o.customerEmail || 'Customer'}>{o.customerName || o.customerEmail || 'Customer'}</span>

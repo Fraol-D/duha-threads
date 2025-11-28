@@ -48,7 +48,7 @@ export async function GET(
       order: {
         id: order._id.toString(),
         isCustomOrder: !!order.isCustomOrder,
-        orderNumber: order._id.toString().slice(-6),
+        orderNumber: order.orderNumber || order._id.toString().slice(-6),
         status: order.status,
         totalAmount: order.totalAmount ?? order.total ?? 0,
         subtotal: order.subtotal,

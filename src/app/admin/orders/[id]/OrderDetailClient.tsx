@@ -193,9 +193,12 @@ export default function OrderDetailClient({ orderId }: { orderId: string }) {
   };
   return (
     <div className="space-y-8">
-      <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-semibold tracking-tight">Order #{detail.orderNumber}</h1>
-        <Link href="/admin/orders" className="text-xs underline hover:opacity-80">Back to list</Link>
+      <div className="flex flex-col gap-1">
+        <div className="flex items-center justify-between">
+          <h1 className="text-3xl font-semibold tracking-tight">Order {detail.orderNumber}</h1>
+          <Link href="/admin/orders" className="text-xs underline hover:opacity-80">Back to list</Link>
+        </div>
+        <p className="text-[11px] text-muted-foreground">Mongo ID: <code className="font-mono text-[11px]">{detail.id}</code></p>
       </div>
       <OrderDetailView {...sharedProps} />
       <Card variant="glass" className="p-4 space-y-2">

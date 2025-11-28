@@ -3,8 +3,7 @@ import Link from "next/link";
 import { motion } from "framer-motion";
 import { Heart } from "lucide-react";
 import { Card } from "@/components/ui/Card";
-import { EmptyState } from "@/components/ui/EmptyState";
-import { MascotSlot } from "@/components/ui/MascotSlot";
+import { MascotState } from "@/components/ui/MascotState";
 import { fadeInUp, staggerChildren } from "@/lib/motion";
 import { useWishlist } from "@/components/WishlistProvider";
 import { useRouter } from "next/navigation";
@@ -17,17 +16,14 @@ export default function WishlistPage() {
 
   if (count === 0) {
     return (
-      <div className="py-10 space-y-6">
-        <Card variant="glass" className="p-8">
-          <EmptyState
-            title="Your wishlist is empty"
-            description="Save products you love and revisit later."
-            action={<Link href="/products" className="underline">Browse products</Link>}
-          />
-        </Card>
-        <Card variant="soft3D" className="p-6">
-          <MascotSlot variant="emptyWishlist" />
-        </Card>
+      <div className="py-10">
+        <MascotState
+          variant="empty"
+          title="Your wishlist is empty"
+          message="Save products you love and revisit later."
+          actionLabel="Browse products"
+          onActionClick={() => router.push("/products")}
+        />
       </div>
     );
   }

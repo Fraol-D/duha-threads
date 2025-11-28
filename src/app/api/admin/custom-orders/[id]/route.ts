@@ -50,6 +50,7 @@ export async function GET(
 
     const order = {
       id: customOrder._id.toString(),
+      orderNumber: customOrder.orderNumber || customOrder._id.toString().slice(-6),
       userId: customOrder.userId?.toString() || null,
       baseShirt: customOrder.baseShirt,
       // Flattened builder fields (optional)
@@ -197,6 +198,7 @@ export async function PATCH(
       success: true,
       order: {
         id: customOrder._id.toString(),
+        orderNumber: customOrder.orderNumber || customOrder._id.toString().slice(-6),
         status: customOrder.status,
         pricing: customOrder.pricing,
         statusHistory: customOrder.statusHistory,

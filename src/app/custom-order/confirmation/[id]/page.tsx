@@ -70,6 +70,9 @@ export default function CustomOrderConfirmationPage() {
         <h1 className="text-hero">Custom Order Confirmed</h1>
         <Badge className="px-4 py-2 text-base">{order.status.replace(/_/g,' ')}</Badge>
       </div>
+      <div className="text-sm text-muted-foreground">
+        Order {order.orderNumber || order.id?.slice(-6)} · Reference ID: <code className="font-mono text-[11px]">{order.id}</code>
+      </div>
       <p className="text-muted text-sm">We received your custom order. A confirmation email has been sent. Track progress under My Custom Orders.</p>
 
       <div className="grid lg:grid-cols-2 gap-6">

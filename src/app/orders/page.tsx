@@ -1,10 +1,9 @@
 "use client";
-import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { OrderListCard } from "@/components/orders/OrderListCard";
-import { Card } from "@/components/ui/Card";
 import { Package } from "lucide-react";
+import { MascotState } from "@/components/ui/MascotState";
 
 interface OrderListItem {
   id: string;
@@ -72,8 +71,12 @@ export default function OrdersPage() {
     })();
   }, [router]);
 
-  if (loading) return <div className="py-12 text-center">Loading orders...</div>;
-  if (error) return <div className="py-12 text-center text-red-600">{error}</div>;
+  if (loading) return <div className="py-12"><MascotState variant="loading" message="Loading your orders" /></div>;
+  if (error) return (
+    <div className="py-12">
+      <MascotState variant="error" message={error} actionLabel="Retry" onActionClick={() => router.refresh()} />
+    </div>
+  );
 
   return (
     <div className="py-10 mx-auto max-w-4xl space-y-6">
@@ -82,11 +85,12 @@ export default function OrdersPage() {
         <h1 className="text-2xl font-semibold tracking-tight">Standard orders</h1>
       </div>
       {orders.length === 0 ? (
-        <Card className="p-6 text-sm space-y-2">
-          <div className="font-medium">You have no standard orders.</div>
-          <div className="text-muted-foreground">Browse products to place your first order.</div>
-          <Link href="/products" className="inline-flex items-center rounded-md bg-[--accent] text-[--accent-foreground] px-3 py-1.5 text-xs font-semibold hover:opacity-90 w-fit">Shop products</Link>
-        </Card>
+        <MascotState
+          variant="empty"
+          message="No standard orders yet. Browse products to get started."
+          actionLabel="Browse products"
+          onActionClick={() => router.push("/products")}
+        />
       ) : (
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {orders.map(o => {
@@ -96,15 +100,16 @@ export default function OrdersPage() {
             if (first?.color) subtitleParts.push(first.color);
             subtitleParts.push(new Date(o.createdAt).toLocaleDateString());
             subtitleParts.push(`Total ${o.totalAmount.toFixed(2)}`);
-            const subtitle = `Order #${o.orderNumber} · ` + subtitleParts.join(' · ');
+            const subtitle = subtitleParts.join(' · ');
             return (
               <OrderListCard
                 key={o.id}
                 id={o.id}
+                orderNumber={o.orderNumber}
                 type="standard"
                 createdAt={o.createdAt}
                 status={o.status}
-                title={first?.name || `Order #${o.orderNumber}`}
+                title={first?.name || `Order ${o.orderNumber}`}
                 subtitle={subtitle}
                 thumbnailUrl={first?.imageUrl || null}
                 totalAmount={o.totalAmount}

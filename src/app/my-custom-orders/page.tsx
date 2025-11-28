@@ -4,6 +4,7 @@ import { Brush } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { OrderListCard } from '@/components/orders/OrderListCard';
+import { MascotState } from '@/components/ui/MascotState';
 import type { CustomOrder } from '@/types/custom-order';
 
 type UserOrderItem = CustomOrder & {
@@ -81,12 +82,27 @@ export default function MyCustomOrdersPage() {
             <option value="image">Image</option>
           </select>
         </div>
-        {loading && <div className="text-sm">Loading custom orders...</div>}
-        {error && <div className="text-sm text-red-600">{error}</div>}
+        {loading && <MascotState variant="loading" message="Loading custom orders" className="py-4" />}
+        {error && (
+          <MascotState
+            variant="error"
+            message={error}
+            actionLabel="Retry"
+            onActionClick={() => window.location.reload()}
+            className="py-4"
+          />
+        )}
         {!loading && !error && filtered.length === 0 && (
-          <div className="text-sm text-muted-foreground">No custom orders yet.</div>
+          <MascotState
+            variant="empty"
+            message="No custom designs yet. Try creating your first custom tee."
+            actionLabel="Start designing"
+            onActionClick={() => window.location.assign('/custom-order')}
+            className="py-4"
+          />
         )}
       </Card>
+      {filtered.length > 0 && (
       <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {filtered.map(o => {
           const placementsCount = Array.isArray(o.areas) ? new Set(o.areas).size : (Array.isArray(o.placements) ? o.placements.length : (o.placement ? 1 : 0));
@@ -101,6 +117,7 @@ export default function MyCustomOrdersPage() {
             <OrderListCard
               key={o.id}
               id={o.id}
+              orderNumber={o.orderNumber}
               type="custom"
               createdAt={o.createdAt}
               status={o.status}
@@ -112,6 +129,7 @@ export default function MyCustomOrdersPage() {
           );
         })}
       </div>
+      )}
     </div>
   );
 }

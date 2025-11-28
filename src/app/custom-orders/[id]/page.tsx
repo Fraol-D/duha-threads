@@ -70,6 +70,8 @@ export default async function CustomOrderDetailPage({
       : 'upcoming') as 'completed' | 'current' | 'upcoming',
   }));
 
+  const displayNumber = customOrder.orderNumber || customOrder._id.toString().slice(-6);
+
   return (
     <div className="py-8 space-y-6">
       <div className="flex items-center justify-between">
@@ -77,7 +79,11 @@ export default async function CustomOrderDetailPage({
           <Link href="/custom-orders" className="text-sm underline hover:no-underline mb-2 inline-block">
             ← Back to Custom Orders
           </Link>
-          <h1 className="text-hero">Custom Order Details</h1>
+          <div className="space-y-1">
+            <p className="text-xs uppercase tracking-wide text-muted">Custom order</p>
+            <h1 className="text-hero">Order {displayNumber}</h1>
+            <p className="text-xs text-muted">Reference ID: <code className="font-mono text-[11px]">{customOrder._id.toString()}</code></p>
+          </div>
         </div>
         <Badge className="text-base px-4 py-2">
           {customOrder.status.replace(/_/g, " ")}

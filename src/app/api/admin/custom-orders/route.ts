@@ -21,7 +21,14 @@ export async function GET(req: NextRequest) {
     if (publicStatus && ['private','pending','approved','rejected'].includes(publicStatus)) {
       filter.publicStatus = publicStatus;
     }
-    if (q) filter['delivery.email'] = { $regex: q, $options: 'i' };
+    if (q) {
+      const rx = { $regex: q, $options: 'i' };
+      filter.$or = [
+        { 'delivery.email': rx },
+        { orderNumber: rx },
+        { _id: rx },
+      ];
+    }
     const skip = (page - 1) * pageSize;
     const [ordersRaw, total] = await Promise.all([
       CustomOrderModel.find(filter).sort({ createdAt: -1 }).skip(skip).limit(pageSize).lean(),
@@ -35,6 +42,7 @@ export async function GET(req: NextRequest) {
       const firstImageAsset = designAssets.find(a => a.type === 'image');
       return {
         id: o._id.toString(),
+        orderNumber: o.orderNumber || o._id.toString().slice(-6),
         userId: o.userId?.toString() || null,
         status: o.status,
         baseColor: o.baseColor || o.baseShirt?.color,

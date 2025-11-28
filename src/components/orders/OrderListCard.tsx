@@ -8,6 +8,7 @@ import { getOrderStatusClasses, normalizeStatusLabel } from "@/lib/orderStatusSt
 
 export type OrderListCardProps = {
   id: string; // orderNumber or _id used for navigation
+  orderNumber?: string;
   type: "standard" | "custom";
   createdAt?: string | Date;
   status?: string;
@@ -30,6 +31,7 @@ function formatDate(d?: string | Date) {
 export function OrderListCard(props: OrderListCardProps) {
   const {
     id,
+    orderNumber,
     type,
     createdAt,
     status,
@@ -42,13 +44,17 @@ export function OrderListCard(props: OrderListCardProps) {
 
   // Route: standard -> /orders/[id]; custom -> /custom-order/confirmation/[id] (preserve dedicated confirmation UI)
   const href = type === "standard" ? `/orders/${id}` : `/custom-order/confirmation/${id}`;
+  const displayNumber = orderNumber || id.slice(-6);
 
   return (
     <Link href={href} className="block focus:outline-none focus:ring-2 focus:ring-foreground/40 rounded-xl">
       <Card variant="glass" className="p-4 space-y-3 hover:ring-2 ring-token transition cursor-pointer">
-        <div className="flex justify-between items-center text-xs">
-          <div className="text-muted">{formatDate(createdAt)}</div>
-          <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium ${getOrderStatusClasses(status)}`}>{normalizeStatusLabel(status)}</span>
+        <div className="space-y-1">
+          <div className="flex items-center justify-between text-xs">
+            <div className="text-sm font-semibold tracking-tight">Order {displayNumber}</div>
+            <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium ${getOrderStatusClasses(status)}`}>{normalizeStatusLabel(status)}</span>
+          </div>
+          <div className="text-[11px] text-muted">{formatDate(createdAt)}</div>
         </div>
         <div className="flex gap-3 flex-col xs:flex-row">
           {type === 'custom' && customOrder ? (

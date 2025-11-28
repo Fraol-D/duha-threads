@@ -5,8 +5,10 @@ import { getDb } from "@/lib/db/connection";
 import { CartItemModel } from "@/lib/db/models/CartItem";
 import { ProductModel } from "@/lib/db/models/Product";
 import { OrderModel } from "@/lib/db/models/Order";
+import type { OrderDocument } from "@/lib/db/models/Order";
 import { ConsoleEmailService, buildOrderEmail } from "@/lib/email/EmailService";
 import { env } from "@/config/env";
+import { generateOrderNumber, isOrderNumberDuplicateError } from '@/lib/orders/orderNumber';
 
 const bodySchema = z.object({
   deliveryAddress: z.string().min(5),
@@ -60,7 +62,7 @@ export async function POST(req: Request) {
   const subtotal = items.reduce((sum, it) => sum + it.price * it.quantity, 0);
   const total = subtotal; // placeholder for taxes/discounts
 
-  const order = await OrderModel.create({
+  const orderBase = {
     userId: user.id,
     items,
     deliveryAddress,
@@ -69,7 +71,24 @@ export async function POST(req: Request) {
     subtotal,
     total,
     status: "Pending",
-  });
+  };
+
+  let order: OrderDocument | null = null;
+  const today = new Date();
+  for (let seq = 0; seq < 10; seq++) {
+    try {
+      const candidate = generateOrderNumber(today, seq);
+      order = await OrderModel.create({ ...orderBase, orderNumber: candidate }) as OrderDocument;
+      break;
+    } catch (err) {
+      if (isOrderNumberDuplicateError(err)) continue;
+      throw err;
+    }
+  }
+
+  if (!order) {
+    return NextResponse.json({ error: 'Unable to generate order number' }, { status: 500 });
+  }
 
   // Clear cart
   await CartItemModel.deleteMany({ userId: user.id });
@@ -79,10 +98,10 @@ export async function POST(req: Request) {
   const mail = buildOrderEmail("order_placed", {
     email,
     customer_name: user.name || user.email,
-    order_id: order._id.toString(),
+    order_id: order.orderNumber || order._id.toString(),
     total: total.toFixed(2),
   });
   await mailer.send(mail);
 
-  return NextResponse.json({ orderId: order._id.toString() }, { status: 201 });
+  return NextResponse.json({ orderId: order._id.toString(), orderNumber: order.orderNumber }, { status: 201 });
 }
