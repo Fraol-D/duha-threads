@@ -226,14 +226,14 @@ export default function AnalyticsClient() {
           ) : (
             <div className="h-80">
               <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
+                <PieChart margin={{ top: 0, right: 0, bottom: 0, left: 0 }}>
                   <Pie
                     data={data.orderStatusBreakdown}
                     dataKey="count"
                     nameKey="status"
                     cx="50%"
                     cy="50%"
-                    outerRadius={120}
+                    outerRadius="62%"
                     label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
                     labelLine={{ stroke: '#9ca3af' }}
                   >

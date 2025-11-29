@@ -72,11 +72,11 @@ export default function MyCustomOrdersPage() {
       </div>
       <Card variant="glass" className="p-4 space-y-4">
         <div className="flex gap-3 flex-wrap">
-          <select value={statusFilter} onChange={e=>setStatusFilter(e.target.value)} className="border rounded px-2 py-1 text-sm">
+          <select value={statusFilter} onChange={e=>setStatusFilter(e.target.value)} className="border rounded px-2 py-1 text-sm bg-white dark:bg-black text-zinc-900 dark:text-zinc-100 border-zinc-200 dark:border-zinc-800">
             <option value="">All statuses</option>
             {['PENDING_REVIEW','APPROVED','IN_DESIGN','IN_PRINTING','READY_FOR_PICKUP','OUT_FOR_DELIVERY','DELIVERED','CANCELLED'].map(s => <option key={s} value={s}>{s.replace(/_/g,' ')}</option>)}
           </select>
-          <select value={designTypeFilter} onChange={e=>setDesignTypeFilter(e.target.value)} className="border rounded px-2 py-1 text-sm">
+          <select value={designTypeFilter} onChange={e=>setDesignTypeFilter(e.target.value)} className="border rounded px-2 py-1 text-sm bg-white dark:bg-black text-zinc-900 dark:text-zinc-100 border-zinc-200 dark:border-zinc-800">
             <option value="">All design types</option>
             <option value="text">Text</option>
             <option value="image">Image</option>

@@ -9,6 +9,7 @@ import type { CustomOrder } from '@/types/custom-order';
 
 type AdminOrderItem = CustomOrder & {
   userId?: string | null;
+  userName?: string;
   status: string;
   createdAt: string;
   areas?: string[];
@@ -129,44 +130,43 @@ export default function AdminCustomOrdersPage() {
         <table className="min-w-full text-sm">
           <thead className="bg-[--surface]">
             <tr className="text-left">
+              <th className="p-2 font-medium">Preview</th>
               <th className="p-2 font-medium">Order</th>
               <th className="p-2 font-medium">Created</th>
-              <th className="p-2 font-medium">User</th>
-              <th className="p-2 font-medium">Email</th>
+              <th className="p-2 font-medium">Customer</th>
               <th className="p-2 font-medium">Base</th>
-              <th className="p-2 font-medium">Placements</th>
-              <th className="p-2 font-medium">Vertical</th>
-              <th className="p-2 font-medium">Design</th>
+              <th className="p-2 font-medium">Design Details</th>
               <th className="p-2 font-medium">Qty</th>
               <th className="p-2 font-medium">Status</th>
               <th className="p-2 font-medium">Share</th>
-              <th className="p-2 font-medium">Preview</th>
             </tr>
           </thead>
           <tbody>
             {filtered.map(o => (
               <tr key={o.id} className="border-t hover:bg-[--surface] cursor-pointer" onClick={()=>router.push(`/admin/custom-orders/${o.id}`)}>                
                 <td className="p-2">
-                  <div className="flex flex-col gap-0.5">
-                    <span className="font-semibold">{o.orderNumber || o.id.slice(-6)}</span>
-                    <span className="text-[11px] text-muted-foreground font-mono" title={o.id}>ID: {o.id}</span>
-                  </div>
-                </td>
-                <td className="p-2 whitespace-nowrap">{new Date(o.createdAt).toLocaleDateString()}</td>
-                <td className="p-2 max-w-40 truncate" title={o.userId || ''}>{o.userId ? o.userId.slice(-6) : '—'}</td>
-                <td className="p-2 max-w-48 truncate text-xs" title={o.delivery?.email || ''}>{o.delivery?.email || '—'}</td>
-                <td className="p-2">{o.baseColor || '—'}</td>
-                <td className="p-2">{summarizeAreas(o.areas, o.placement)}</td>
-                <td className="p-2">{formatVertical(o.verticalPosition, o.placement)}</td>
-                <td className="p-2">{o.designType === 'text' ? (o.designText?.slice(0,14) || 'Text') : o.designType === 'image' ? 'Image' : '—'}</td>
-                <td className="p-2">{o.quantity || 1}</td>
-                <td className="p-2"><Badge>{o.status.replace(/_/g,' ')}</Badge></td>
-                <td className="p-2 text-xs capitalize">{(o.publicStatus || (o.isPublic ? 'approved' : 'private')).replace(/_/g,' ')}</td>
-                <td className="p-2">
                   <div className="w-full max-w-[140px]">
                     <CustomOrderPreview order={o} size="sm" />
                   </div>
                 </td>
+                <td className="p-2">
+                  <div className="flex flex-col gap-0.5">
+                    <span className="font-semibold">{o.orderNumber || o.id.slice(-6)}</span>
+                  </div>
+                </td>
+                <td className="p-2 whitespace-nowrap">{new Date(o.createdAt).toLocaleDateString()}</td>
+                <td className="p-2 max-w-40 truncate" title={o.userName || o.userId || ''}>{o.userName || (o.userId ? o.userId.slice(-6) : '—')}</td>
+                <td className="p-2">{o.baseColor || '—'}</td>
+                <td className="p-2">
+                  <div className="flex flex-col gap-0.5 text-xs">
+                    <span className="font-medium">{summarizeAreas(o.areas, o.placement)}</span>
+                    <span className="text-muted-foreground">{formatVertical(o.verticalPosition, o.placement)}</span>
+                    <span className="text-muted-foreground italic">{o.designType === 'text' ? (o.designText?.slice(0,14) || 'Text') : o.designType === 'image' ? 'Image' : '—'}</span>
+                  </div>
+                </td>
+                <td className="p-2">{o.quantity || 1}</td>
+                <td className="p-2"><Badge>{o.status.replace(/_/g,' ')}</Badge></td>
+                <td className="p-2 text-xs capitalize">{(o.publicStatus || (o.isPublic ? 'approved' : 'private')).replace(/_/g,' ')}</td>
               </tr>
             ))}
           </tbody>

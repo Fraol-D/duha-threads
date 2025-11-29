@@ -31,7 +31,7 @@ export async function GET(req: NextRequest) {
     }
     const skip = (page - 1) * pageSize;
     const [ordersRaw, total] = await Promise.all([
-      CustomOrderModel.find(filter).sort({ createdAt: -1 }).skip(skip).limit(pageSize).lean(),
+      CustomOrderModel.find(filter).sort({ createdAt: -1 }).skip(skip).limit(pageSize).populate('userId', 'name').lean(),
       CustomOrderModel.countDocuments(filter)
     ]);
     const orders = ordersRaw.map(o => {
@@ -40,10 +40,13 @@ export async function GET(req: NextRequest) {
       const designAssets = Array.isArray(o.designAssets) ? o.designAssets : [];
       const firstTextAsset = designAssets.find(a => a.type === 'text');
       const firstImageAsset = designAssets.find(a => a.type === 'image');
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const user = o.userId as any;
       return {
         id: o._id.toString(),
         orderNumber: o.orderNumber || o._id.toString().slice(-6),
-        userId: o.userId?.toString() || null,
+        userId: user?._id?.toString() || o.userId?.toString() || null,
+        userName: user?.name || o.deliveryName || 'Guest',
         status: o.status,
         baseColor: o.baseColor || o.baseShirt?.color,
         baseShirt: o.baseShirt,

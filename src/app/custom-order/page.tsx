@@ -505,7 +505,7 @@ export default function CustomOrderBuilderPage() {
                                     <select 
                                       value={active.designFont}
                                       onChange={(e) => setPlacements(prev => prev.map(x => x.id === active.id ? { ...x, designFont: e.target.value as FontId } : x))}
-                                      className="w-full rounded-lg bg-[--surface] border-none text-xs py-2.5 px-3 shadow-sm focus:ring-2 ring-black/5"
+                                      className="w-full rounded-lg bg-white dark:bg-black border-none text-xs py-2.5 px-3 shadow-sm focus:ring-2 ring-black/5 text-zinc-900 dark:text-zinc-100"
                                     >
                                       {FONT_OPTIONS.map(f => (
                                         <option key={f.id} value={f.id}>{f.label}</option>

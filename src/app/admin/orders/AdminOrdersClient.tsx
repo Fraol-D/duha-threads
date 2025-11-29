@@ -111,7 +111,7 @@ export default function AdminOrdersClient() {
             <Button variant="secondary" onClick={applySearch} disabled={loading}>Search</Button>
           </div>
           <div className="flex gap-2">
-            <Select value={status} onChange={changeStatus} options={statusSelectOptions} />
+            <Select value={status} onChange={changeStatus} options={statusSelectOptions} className="min-w-[180px]" />
           </div>
         </div>
         <div className="text-xs text-muted-foreground">Standard Orders (new pipeline). Legacy/custom orders available under /admin/custom-orders.</div>

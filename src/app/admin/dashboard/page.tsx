@@ -1,6 +1,5 @@
 import { BentoGrid, BentoTile } from "@/components/ui/BentoGrid";
 import AnalyticsClient from "./AnalyticsClient";
-import { Button } from "@/components/ui/Button";
 import { getCurrentUser } from "@/lib/auth/session";
 import { isAdmin } from "@/lib/auth/admin";
 import Link from "next/link";
@@ -91,14 +90,18 @@ async function fetchDashboardData(): Promise<DashboardData> {
       CustomOrderModel.countDocuments({}),
     ]);
 
-    const safeTodayOrders = Array.isArray(todayOrders) ? todayOrders : [];
-    const safeTodayCustomOrders = Array.isArray(todayCustomOrders) ? todayCustomOrders : [];
-    const safeRecentOrders = Array.isArray(recentOrders) ? recentOrders : [];
-    const safeRecentCustomOrders = Array.isArray(recentCustomOrders) ? recentCustomOrders : [];
+    // Define types for the data we're working with to avoid 'any'
+    type OrderDoc = { _id?: { toString(): string } | string; total?: number; status?: string; createdAt?: Date | string | number };
+    type CustomOrderDoc = { _id?: { toString(): string } | string; pricing?: { finalTotal?: number; estimatedTotal?: number }; status?: string; createdAt?: Date | string | number };
 
-    const todaySalesFromOrders = safeTodayOrders.reduce((sum: number, o: any) => sum + toNumber(o.total), 0);
+    const safeTodayOrders = (Array.isArray(todayOrders) ? todayOrders : []) as unknown as OrderDoc[];
+    const safeTodayCustomOrders = (Array.isArray(todayCustomOrders) ? todayCustomOrders : []) as unknown as CustomOrderDoc[];
+    const safeRecentOrders = (Array.isArray(recentOrders) ? recentOrders : []) as unknown as OrderDoc[];
+    const safeRecentCustomOrders = (Array.isArray(recentCustomOrders) ? recentCustomOrders : []) as unknown as CustomOrderDoc[];
+
+    const todaySalesFromOrders = safeTodayOrders.reduce((sum: number, o: OrderDoc) => sum + toNumber(o.total), 0);
     const todaySalesFromCustom = safeTodayCustomOrders.reduce(
-      (sum: number, co: any) => sum + toNumber(co.pricing?.finalTotal ?? co.pricing?.estimatedTotal),
+      (sum: number, co: CustomOrderDoc) => sum + toNumber(co.pricing?.finalTotal ?? co.pricing?.estimatedTotal),
       0
     );
 
@@ -116,13 +119,13 @@ async function fetchDashboardData(): Promise<DashboardData> {
     };
 
     safeData.recent = {
-      orders: safeRecentOrders.map((o: any) => ({
+      orders: safeRecentOrders.map((o: OrderDoc) => ({
         id: o?._id?.toString?.() ?? generateTempId(),
         total: toNumber(o?.total),
         status: o?.status ?? "UNKNOWN",
         createdAt: o?.createdAt instanceof Date ? o.createdAt : new Date(o?.createdAt ?? Date.now()),
       })),
-      customOrders: safeRecentCustomOrders.map((co: any) => ({
+      customOrders: safeRecentCustomOrders.map((co: CustomOrderDoc) => ({
         id: co?._id?.toString?.() ?? generateTempId(),
         total: toNumber(co?.pricing?.finalTotal ?? co?.pricing?.estimatedTotal),
         status: co?.status ?? "UNKNOWN",
@@ -165,7 +168,7 @@ export default async function AdminDashboardPage() {
           <div className="flex items-start justify-between">
             <div>
               <h2 className="text-xs uppercase tracking-wider text-muted-foreground mb-2 font-medium">Sales Today</h2>
-              <p className="text-3xl font-bold bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent">{formatCurrency(kpis.todaySales)}</p>
+              <p className="text-3xl font-bold bg-linear-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent">{formatCurrency(kpis.todaySales)}</p>
             </div>
             <div className="p-2 bg-green-500/10 rounded-lg">
               <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
