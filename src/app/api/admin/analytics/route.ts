@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyAuth } from '@/lib/auth/session';
-import { isAdminEmail } from '@/config/admin-public';
+import { isAdmin } from '@/lib/auth/admin';
 import { getDb } from '@/lib/db/connection';
 import { OrderModel } from '@/lib/db/models/Order';
 import { CustomOrderModel } from '@/lib/db/models/CustomOrder';
@@ -51,7 +51,7 @@ const buildEmptyResponse = (startDate: Date): AnalyticsResponse => {
 
 export async function GET(req: NextRequest) {
   const auth = await verifyAuth(req);
-  if (!auth.user || !isAdminEmail(auth.user.email)) {
+  if (!isAdmin(auth.user)) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 

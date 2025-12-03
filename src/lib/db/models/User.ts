@@ -7,6 +7,7 @@ const UserSchema = new Schema<UserDocument>(
     email: { type: String, required: true, unique: true, index: true },
     hashedPassword: { type: String, required: true },
     role: { type: String, enum: ["user", "admin"], default: "user", index: true },
+    status: { type: String, enum: ["active", "inactive"], default: "active", index: true },
     phone: { type: String },
     defaultAddress: { type: String },
     marketingEmailOptIn: { type: Boolean, default: false },

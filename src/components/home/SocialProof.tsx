@@ -1,10 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { BentoGrid, BentoTile } from "@/components/ui/BentoGrid";
 import { fadeInUp, staggerChildren } from "@/lib/motion";
-import { Quote } from "lucide-react";
-import Image from "next/image";
 
 const testimonials = [
   {
@@ -53,9 +50,9 @@ export function SocialProof() {
                 className="p-6 rounded-2xl bg-[--surface] border border-muted/50 relative"
               >
                 <div className="space-y-4">
-                  <p className="text-lg font-medium leading-relaxed">"{t.quote}"</p>
+                  <p className="text-lg font-medium leading-relaxed">&ldquo;{t.quote}&rdquo;</p>
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-gray-200 to-gray-400 flex items-center justify-center text-xs font-bold text-gray-600">
+                    <div className="w-10 h-10 rounded-full bg-linear-to-br from-gray-200 to-gray-400 flex items-center justify-center text-xs font-bold text-gray-600">
                       {t.author.charAt(0)}
                     </div>
                     <div>

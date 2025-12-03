@@ -257,22 +257,22 @@ export default function AdminCustomOrderDetailPage() {
   }));
 
   return (
-    <div className="py-8 space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="max-w-6xl mx-auto px-4 py-8 space-y-6 sm:px-6 lg:px-8">
+      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
-          <Link href="/admin/custom-orders" className="text-sm underline hover:no-underline mb-2 inline-block">
-            ← Back to Admin Orders
+          <Link href="/admin/custom-orders" className="text-sm underline hover:no-underline mb-2 inline-flex items-center gap-1">
+            <span aria-hidden="true">←</span> Back to Admin Orders
           </Link>
-          <h1 className="text-hero">Order Management</h1>
+          <h1 className="text-3xl font-semibold tracking-tight">Order Management</h1>
         </div>
-        <Badge className="text-base px-4 py-2">
+        <Badge className="text-sm md:text-base px-4 py-2 self-start md:self-auto">
           {order.status.replace(/_/g, " ")}
         </Badge>
       </div>
 
       <Card variant="glass" className="p-6 space-y-4">
-        <h2 className="text-xl font-semibold">Update Order</h2>
-        <div className="grid md:grid-cols-3 gap-4">
+        <h2 className="text-lg md:text-xl font-semibold">Update Order</h2>
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <div className="space-y-2">
             <label className="text-sm font-medium">Status</label>
             <Select value={newStatus} onChange={setNewStatus} options={adminStatusOptions} />
@@ -293,19 +293,28 @@ export default function AdminCustomOrderDetailPage() {
               value={adminNotes}
               onChange={(e) => setAdminNotes(e.currentTarget.value)}
               placeholder="Add internal note..."
-              rows={1}
+              rows={2}
             />
           </div>
         </div>
-        <Button onClick={handleUpdate} disabled={updating}>
+        <div className="space-y-2">
+          <label className="text-sm font-medium">New Note</label>
+          <Textarea
+            value={adminNoteDraft}
+            onChange={(e) => setAdminNoteDraft(e.currentTarget.value)}
+            placeholder="Add a new admin note"
+            rows={2}
+          />
+        </div>
+        <Button onClick={handleUpdate} disabled={updating} className="w-full sm:w-auto">
           {updating ? "Updating..." : "Update Order"}
         </Button>
         {error && <p className="text-sm text-red-600">{error}</p>}
       </Card>
 
       <Card variant="glass" className="p-6 space-y-4">
-        <h2 className="text-xl font-semibold">Public Showcase</h2>
-        <div className="grid md:grid-cols-2 gap-4">
+        <h2 className="text-lg md:text-xl font-semibold">Public Showcase</h2>
+        <div className="grid gap-4 md:grid-cols-2">
           <div className="space-y-2">
             <label className="text-sm font-medium">Share Status</label>
             <Select value={publicStatusDraft} onChange={setPublicStatusDraft} options={shareStatusOptions} />
@@ -320,34 +329,37 @@ export default function AdminCustomOrderDetailPage() {
             <p className="text-[11px] text-muted">Leave blank to detach the design from any product.</p>
           </div>
         </div>
-        <div className="space-y-2">
-          <label className="text-sm font-medium">Display Title</label>
-          <Input value={publicTitleDraft} onChange={(e) => setPublicTitleDraft(e.currentTarget.value)} maxLength={80} />
-        </div>
-        <div className="space-y-2">
-          <label className="text-sm font-medium">Short Description</label>
-          <Textarea
-            rows={2}
-            maxLength={400}
-            value={publicDescriptionDraft}
-            onChange={(e) => setPublicDescriptionDraft(e.currentTarget.value)}
-          />
+        <div className="grid gap-4 md:grid-cols-2">
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Display Title</label>
+            <Input value={publicTitleDraft} onChange={(e) => setPublicTitleDraft(e.currentTarget.value)} maxLength={80} />
+          </div>
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Short Description</label>
+            <Textarea
+              rows={2}
+              maxLength={400}
+              value={publicDescriptionDraft}
+              onChange={(e) => setPublicDescriptionDraft(e.currentTarget.value)}
+            />
+          </div>
         </div>
       </Card>
 
       <Card className="p-4">
-        <h2 className="text-xl font-semibold mb-3">Preview</h2>
+        <h2 className="text-lg md:text-xl font-semibold mb-3">Preview</h2>
         <CustomOrderPreview order={order} size="lg" />
       </Card>
 
       <Card variant="glass" className="p-6">
-        <h2 className="text-xl font-semibold mb-4">Status Timeline</h2>
-        <Stepper steps={statusSteps} />
+        <h2 className="text-lg md:text-xl font-semibold mb-4">Status Timeline</h2>
+        <div className="overflow-x-auto">
+          <Stepper steps={statusSteps} />
+        </div>
       </Card>
-
-        <div className="grid md:grid-cols-4 gap-4">
+      <div className="grid gap-4 md:grid-cols-2">
         <Card className="p-6 space-y-4">
-          <h2 className="text-xl font-semibold">Base Shirt</h2>
+          <h2 className="text-lg md:text-xl font-semibold">Base Shirt</h2>
           <div className="space-y-2 text-sm">
             <div>
               <span className="text-muted">Color:</span> {order.baseShirt.color}
@@ -362,7 +374,7 @@ export default function AdminCustomOrderDetailPage() {
         </Card>
 
         <Card className="p-6 space-y-4">
-          <h2 className="text-xl font-semibold">Pricing</h2>
+          <h2 className="text-lg md:text-xl font-semibold">Pricing</h2>
           <div className="space-y-2 text-sm">
             <div className="flex justify-between">
               <span className="text-muted">Base Price:</span>
@@ -379,15 +391,6 @@ export default function AdminCustomOrderDetailPage() {
             <div className="border-t pt-2 flex justify-between font-semibold">
               <span>Estimated Total:</span>
               <span>${order.pricing.estimatedTotal.toFixed(2)}</span>
-          <div className="space-y-2">
-            <label className="text-sm font-medium">New Note</label>
-            <Textarea
-              value={adminNoteDraft}
-              onChange={(e) => setAdminNoteDraft(e.currentTarget.value)}
-              placeholder="Add a new admin note"
-              rows={1}
-            />
-          </div>
             </div>
             {order.pricing.finalTotal && (
               <div className="flex justify-between font-bold text-lg">
@@ -400,10 +403,10 @@ export default function AdminCustomOrderDetailPage() {
       </div>
 
       <Card className="p-6 space-y-4">
-        <h2 className="text-xl font-semibold">Design Overview</h2>
+        <h2 className="text-lg md:text-xl font-semibold">Design Overview</h2>
         {order.sides && (
           <div className="space-y-4 mb-4">
-            <div className="grid md:grid-cols-2 gap-4">
+            <div className="grid gap-4 md:grid-cols-2">
               <Card className="p-4 space-y-2">
                 <h3 className="text-sm font-semibold">Front Print</h3>
                 <div className="text-xs"><span className="text-muted">Enabled:</span> {order.sides.front.enabled ? 'Yes' : 'No'}</div>
@@ -451,7 +454,7 @@ export default function AdminCustomOrderDetailPage() {
             </div>
           </div>
         )}
-        <div className="grid md:grid-cols-2 gap-3 text-sm">
+        <div className="grid gap-3 text-sm md:grid-cols-2">
           <div><span className="text-muted">Base Color:</span> {order.baseColor || order.baseShirt.color}</div>
           <div><span className="text-muted">Placement:</span> {order.placement ? order.placement.replace(/_/g,' ') : (order.legacyPlacements?.[0]?.label || order.legacyPlacements?.[0]?.placementKey || '—')}</div>
           <div><span className="text-muted">Vertical Position:</span> {order.verticalPosition ? order.verticalPosition.replace(/_/g,' ') : '—'}</div>
@@ -474,10 +477,10 @@ export default function AdminCustomOrderDetailPage() {
 
       {Array.isArray(order.placements) && order.placements.length > 0 && (order.placements[0] as { area?: string }).area && (
         <Card className="p-6 space-y-4">
-          <h2 className="text-xl font-semibold">Placements (Advanced)</h2>
+          <h2 className="text-lg md:text-xl font-semibold">Placements (Advanced)</h2>
           <div className="space-y-3">
             {order.placements.map((p: { id?: string; area?: string; verticalPosition?: string; designType?: string; designText?: string | null; designFont?: string | null; designColor?: string | null; designImageUrl?: string | null }) => p && p.area ? (
-              <div key={p.id || p.area} className="border border-muted rounded p-3 text-xs grid md:grid-cols-6 gap-2 items-center">
+              <div key={p.id || p.area} className="border border-muted rounded p-3 text-xs grid gap-2 sm:grid-cols-2 lg:grid-cols-6 items-start">
                 <div className="font-medium md:col-span-1">{p.area.replace(/_/g,' ')}</div>
                 <div className="md:col-span-1">{p.verticalPosition}</div>
                 <div className="md:col-span-1">{p.designType}</div>
@@ -500,7 +503,7 @@ export default function AdminCustomOrderDetailPage() {
 
       {order.legacyPlacements && order.legacyPlacements.length > 0 && (
         <Card className="p-6 space-y-4">
-          <h2 className="text-xl font-semibold">Legacy Placements</h2>
+          <h2 className="text-lg md:text-xl font-semibold">Legacy Placements</h2>
           <div className="flex gap-2 flex-wrap">
             {order.legacyPlacements.map((p, i) => (
               <span key={i} className="soft-3d px-4 py-2 rounded-full text-sm">
@@ -513,7 +516,7 @@ export default function AdminCustomOrderDetailPage() {
 
       {order.designAssets.length > 0 && (
         <Card className="p-6 space-y-4">
-          <h2 className="text-xl font-semibold">Design Assets</h2>
+          <h2 className="text-lg md:text-xl font-semibold">Design Assets</h2>
           <div className="space-y-4">
             {order.designAssets.map((asset, i) => (
               <div key={i} className="border border-muted rounded-lg p-4 space-y-2">
@@ -562,13 +565,13 @@ export default function AdminCustomOrderDetailPage() {
 
       {order.notes && (
         <Card className="p-6 space-y-4">
-          <h2 className="text-xl font-semibold">Customer Notes</h2>
+          <h2 className="text-lg md:text-xl font-semibold">Customer Notes</h2>
           <p className="text-sm whitespace-pre-wrap">{order.notes}</p>
         </Card>
       )}
 
       <Card className="p-6 space-y-4">
-        <h2 className="text-xl font-semibold">Delivery Information</h2>
+        <h2 className="text-lg md:text-xl font-semibold">Delivery Information</h2>
         <div className="space-y-2 text-sm">
           <div>
             <span className="text-muted">Email:</span> {order.delivery.email}
@@ -585,10 +588,10 @@ export default function AdminCustomOrderDetailPage() {
 
       {order.statusHistory.length > 0 && (
         <Card className="p-6 space-y-4">
-          <h2 className="text-xl font-semibold">Status History</h2>
+          <h2 className="text-lg md:text-xl font-semibold">Status History</h2>
           <div className="space-y-2">
             {order.statusHistory.map((entry, i) => (
-              <div key={i} className="text-sm flex justify-between border-b border-muted pb-2">
+              <div key={i} className="text-sm flex flex-col gap-1 border-b border-muted pb-2 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                   <Badge className="mr-2">
                     {entry.status.replace(/_/g, " ")}
@@ -603,11 +606,11 @@ export default function AdminCustomOrderDetailPage() {
       )}
 
       <Card variant="soft3D" className="p-4 text-sm text-muted">
-        <div className="flex justify-between">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <span>Order Created:</span>
           <span>{new Date(order.createdAt).toLocaleString()}</span>
         </div>
-        <div className="flex justify-between">
+        <div className="mt-2 flex flex-col gap-2 sm:mt-0 sm:flex-row sm:items-center sm:justify-between">
           <span>Last Updated:</span>
           <span>{new Date(order.updatedAt).toLocaleString()}</span>
         </div>

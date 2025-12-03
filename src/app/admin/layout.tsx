@@ -8,6 +8,7 @@ const navItems: AdminNavItem[] = [
   { label: "Orders", href: "/admin/orders", icon: "orders" },
   { label: "Custom Orders", href: "/admin/custom-orders", icon: "customOrders" },
   { label: "Products", href: "/admin/products", icon: "products" },
+  { label: "Users", href: "/admin/users", icon: "users" },
 ];
 
 export default async function AdminLayout({ children }: { children: ReactNode }) {

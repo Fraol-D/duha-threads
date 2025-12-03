@@ -154,10 +154,10 @@ export default async function AdminDashboardPage() {
   const formatCurrency = (value?: number) => currencyFormatter.format(toNumber(value));
 
   return (
-    <div className="space-y-8">
-      <div className="flex items-center justify-between">
+    <div className="max-w-7xl mx-auto px-4 pb-12 space-y-8 sm:px-6 lg:px-8">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
+          <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Dashboard</h1>
           <p className="text-sm text-muted-foreground mt-1">Overview of your store performance</p>
         </div>
       </div>
@@ -290,7 +290,7 @@ export default async function AdminDashboardPage() {
       </BentoGrid>
       
       <div className="space-y-6 pt-4">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <h2 className="text-xl font-bold tracking-tight">Analytics</h2>
         </div>
         <AnalyticsClient />

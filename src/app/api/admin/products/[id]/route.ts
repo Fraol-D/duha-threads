@@ -2,13 +2,13 @@ import { NextRequest, NextResponse } from 'next/server';
 import { verifyAuth } from '@/lib/auth/session';
 import { getDb } from '@/lib/db/connection';
 import { ProductModel } from '@/lib/db/models/Product';
-import { isAdminEmail } from '@/config/admin-public';
+import { isAdmin } from '@/lib/auth/admin';
 import { toPublicProduct, type ProductDocument } from '@/types/product';
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const auth = await verifyAuth(_req);
-    if (!auth.user || !isAdminEmail(auth.user.email)) {
+    if (!isAdmin(auth.user)) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
     await getDb();
@@ -25,7 +25,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const auth = await verifyAuth(req);
-    if (!auth.user || !isAdminEmail(auth.user.email)) {
+    if (!isAdmin(auth.user)) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
     const { id } = await params;
@@ -68,7 +68,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const auth = await verifyAuth(req);
-    if (!auth.user || !isAdminEmail(auth.user.email)) {
+    if (!isAdmin(auth.user)) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
     await getDb();

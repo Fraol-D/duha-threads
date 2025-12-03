@@ -203,19 +203,38 @@ export default function OrderDetailClient({ orderId }: { orderId: string }) {
   };
   return (
     <div className="space-y-8">
-      <div className="flex flex-col gap-1">
-        <div className="flex items-center justify-between">
-          <h1 className="text-3xl font-semibold tracking-tight">Order {detail.orderNumber}</h1>
-          <Link href="/admin/orders" className="text-xs underline hover:opacity-80">Back to list</Link>
+      <div className="space-y-2">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <h1 className="text-2xl md:text-3xl font-semibold tracking-tight">Order {detail.orderNumber}</h1>
+          <Link
+            href="/admin/orders"
+            className="inline-flex items-center justify-center rounded-full border border-border/60 px-4 py-1 text-xs font-medium hover:border-primary/60"
+          >
+            ← Back to orders
+          </Link>
         </div>
-        <p className="text-[11px] text-muted-foreground">Mongo ID: <code className="font-mono text-[11px]">{detail.id}</code></p>
+        <p className="text-[11px] text-muted-foreground break-all">
+          Mongo ID: <code className="font-mono text-[11px]">{detail.id}</code>
+        </p>
       </div>
       <OrderDetailView {...sharedProps} />
-      <Card variant="glass" className="p-4 space-y-2">
+      <Card variant="glass" className="p-4 space-y-3">
         <h3 className="text-xs font-medium">Admin Actions</h3>
-        <div className="flex gap-2">
-          <Select value={status} onChange={setStatus} options={adminOrderStatusOptions} className="text-xs" />
-          <Button variant="secondary" disabled={updating || status === detail.status} onClick={updateStatus}>{updating ? 'Saving…' : 'Save Status'}</Button>
+        <div className="flex flex-col sm:flex-row gap-2 sm:items-end">
+          <Select
+            value={status}
+            onChange={setStatus}
+            options={adminOrderStatusOptions}
+            className="text-xs w-full sm:max-w-xs"
+          />
+          <Button
+            variant="secondary"
+            disabled={updating || status === detail.status}
+            onClick={updateStatus}
+            className="w-full sm:w-auto"
+          >
+            {updating ? 'Saving…' : 'Save Status'}
+          </Button>
         </div>
       </Card>
       {detail.isCustomOrder && (

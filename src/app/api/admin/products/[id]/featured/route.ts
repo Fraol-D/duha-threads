@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyAuth } from '@/lib/auth/session';
-import { isAdminEmail } from '@/config/admin-public';
+import { isAdmin } from '@/lib/auth/admin';
 import { getDb } from '@/lib/db/connection';
 import { ProductModel } from '@/lib/db/models/Product';
 
@@ -10,7 +10,7 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<Params> | P
   const params = await ctx.params;
   const { id } = params;
   const auth = await verifyAuth(req);
-  if (!auth.user || !isAdminEmail(auth.user.email)) {
+  if (!isAdmin(auth.user)) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
   const body = await req.json().catch(() => ({}));

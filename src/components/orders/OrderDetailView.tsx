@@ -41,8 +41,8 @@ export function OrderDetailView({ status, createdAt, items, subtotal, totalAmoun
 
   return (
     <div className="space-y-6">
-      <div className="bg-[--surface] border border-muted rounded p-4">
-        <div className="flex items-center justify-between">
+      <div className="bg-[--surface] border border-muted rounded p-4 space-y-3">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <div className="text-xs text-muted-foreground">Placed</div>
             <div className="text-xs">{new Date(createdAt).toLocaleString()}</div>
@@ -56,12 +56,18 @@ export function OrderDetailView({ status, createdAt, items, subtotal, totalAmoun
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-2">
           {items?.map((it, idx) => (
-            <div key={idx} className="flex items-center justify-between border rounded p-3 bg-[--surface-alt]">
+            <div
+              key={idx}
+              className="border rounded p-3 bg-[--surface-alt] space-y-3 sm:space-y-0 sm:flex sm:items-center sm:justify-between"
+            >
               <div>
-                <div className="font-medium truncate max-w-60" title={it.name}>{it.name}</div>
+                <div className="font-medium truncate max-w-[220px]" title={it.name}>{it.name}</div>
                 <div className="text-[11px] text-muted-foreground">Size: {it.size} • Color: {it.color}</div>
               </div>
-              <div className="text-xs text-right min-w-[90px]">{it.unitPrice.toFixed(2)} × {it.quantity}</div>
+              <div className="text-xs text-muted-foreground sm:text-right">
+                <span className="font-semibold text-foreground">${it.unitPrice.toFixed(2)}</span>
+                <span className="ml-1">× {it.quantity}</span>
+              </div>
             </div>
           ))}
           {customDesign && !items && (
@@ -74,13 +80,13 @@ export function OrderDetailView({ status, createdAt, items, subtotal, totalAmoun
               {customDesign.designImageUrl && (
                 <div>
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={customDesign.designImageUrl} alt="Design" className="w-40 h-40 object-cover rounded" />
+                  <img src={customDesign.designImageUrl} alt="Design" className="w-full max-w-xs rounded object-cover" />
                 </div>
               )}
               {customDesign.previewImageUrl && (
                 <div>
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={customDesign.previewImageUrl} alt="Preview" className="w-40 h-40 object-cover rounded" />
+                  <img src={customDesign.previewImageUrl} alt="Preview" className="w-full max-w-xs rounded object-cover" />
                 </div>
               )}
             </div>

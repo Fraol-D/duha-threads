@@ -4,6 +4,8 @@ import { useRouter } from 'next/navigation';
 import { Badge } from '@/components/ui/Badge';
 import { Card } from '@/components/ui/Card';
 import { Select } from '@/components/ui/Select';
+import { Input } from '@/components/ui/Input';
+import { Button } from '@/components/ui/Button';
 import { CustomOrderPreview } from '@/components/custom-order/CustomOrderPreview';
 import type { CustomOrder } from '@/types/custom-order';
 
@@ -79,13 +81,18 @@ export default function AdminCustomOrdersPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  async function load() {
+  async function load(overrides?: { status?: string; designType?: string; publicStatus?: string; search?: string }) {
     setLoading(true); setError(null);
     try {
       const url = new URL('/api/admin/custom-orders', window.location.origin);
-      if (statusFilter) url.searchParams.set('status', statusFilter);
-      if (publicStatusFilter) url.searchParams.set('publicStatus', publicStatusFilter);
-      if (search) url.searchParams.set('q', search);
+      const statusValue = overrides?.status ?? statusFilter;
+      const designValue = overrides?.designType ?? designTypeFilter;
+      const publicValue = overrides?.publicStatus ?? publicStatusFilter;
+      const searchValue = overrides?.search ?? search;
+      if (statusValue) url.searchParams.set('status', statusValue);
+      if (designValue) url.searchParams.set('designType', designValue);
+      if (publicValue) url.searchParams.set('publicStatus', publicValue);
+      if (searchValue) url.searchParams.set('q', searchValue);
       const res = await fetch(url.toString());
       if (res.status === 403) throw new Error('Forbidden');
       if (!res.ok) throw new Error('Failed to load orders');
@@ -105,28 +112,48 @@ export default function AdminCustomOrdersPage() {
 
   return (
     <div className="max-w-7xl mx-auto p-6 md:p-10 space-y-6">
-      <div className="flex items-center justify-between flex-wrap gap-4">
-        <h1 className="text-3xl font-semibold tracking-tight">Custom Orders (Admin)</h1>
-        <div className="flex gap-2">
-          <Select value={statusFilter} onChange={setStatusFilter} options={statusOptions} />
-          <Select value={designTypeFilter} onChange={setDesignTypeFilter} options={designTypeOptions} />
-          <Select value={publicStatusFilter} onChange={setPublicStatusFilter} options={publicStatusOptions} />
-          <input
-            value={search}
-            onChange={(e)=>setSearch(e.target.value)}
-            onKeyDown={(e)=>{ if (e.key==='Enter') load(); }}
-            placeholder="Search email, order #, or ID"
-            className="border rounded px-2 py-1 text-sm"
-          />
-          <button onClick={load} className="px-3 py-1.5 rounded bg-[--accent] text-white text-sm">Filter</button>
+      <div className="space-y-4">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <h1 className="text-3xl font-semibold tracking-tight">Custom Orders (Admin)</h1>
+          <p className="text-sm text-muted-foreground">Review and track builder requests</p>
         </div>
+        <Card variant="glass" className="p-4 space-y-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            <Select value={statusFilter} onChange={setStatusFilter} options={statusOptions} className="w-full" />
+            <Select value={designTypeFilter} onChange={setDesignTypeFilter} options={designTypeOptions} className="w-full" />
+            <Select value={publicStatusFilter} onChange={setPublicStatusFilter} options={publicStatusOptions} className="w-full" />
+            <Input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') load(); }}
+              placeholder="Search email, order #, or ID"
+              className="w-full"
+            />
+          </div>
+          <div className="flex flex-col sm:flex-row gap-2">
+            <Button onClick={() => load()} className="w-full sm:w-auto">Apply filters</Button>
+            <Button
+              variant="secondary"
+              onClick={() => {
+                setStatusFilter('');
+                setDesignTypeFilter('');
+                setPublicStatusFilter('');
+                setSearch('');
+                load({ status: '', designType: '', publicStatus: '', search: '' });
+              }}
+              className="w-full sm:w-auto"
+            >
+              Reset
+            </Button>
+          </div>
+        </Card>
       </div>
       {loading && <div>Loading orders...</div>}
       {error && <div className="text-red-600 text-sm">{error}</div>}
       {!loading && !error && filtered.length === 0 && (
         <Card className="p-6"><p className="text-sm">No matching custom orders.</p></Card>
       )}
-      <div className="overflow-auto border rounded-md">
+      <div className="hidden md:block overflow-auto border rounded-md">
         <table className="min-w-full text-sm">
           <thead className="bg-[--surface]">
             <tr className="text-left">
@@ -171,6 +198,42 @@ export default function AdminCustomOrdersPage() {
             ))}
           </tbody>
         </table>
+      </div>
+
+      <div className="md:hidden space-y-4">
+        {filtered.map((o) => (
+          <Card key={o.id} className="p-4 space-y-3 cursor-pointer hover:bg-[--surface] transition-colors" onClick={()=>router.push(`/admin/custom-orders/${o.id}`)}>
+            <div className="flex gap-3">
+              <div className="w-24">
+                <CustomOrderPreview order={o} size="sm" />
+              </div>
+              <div className="flex-1">
+                <p className="font-semibold text-base">{o.orderNumber || o.id.slice(-6)}</p>
+                <p className="text-xs text-muted-foreground">{new Date(o.createdAt).toLocaleDateString()}</p>
+                <p className="text-sm mt-1">{o.userName || (o.userId ? o.userId.slice(-6) : '—')}</p>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3 text-sm">
+              <div>
+                <p className="text-muted-foreground text-xs uppercase">Base</p>
+                <p className="font-medium">{o.baseColor || '—'}</p>
+              </div>
+              <div>
+                <p className="text-muted-foreground text-xs uppercase">Quantity</p>
+                <p className="font-medium">{o.quantity || 1}</p>
+              </div>
+              <div className="col-span-2">
+                <p className="text-muted-foreground text-xs uppercase">Design</p>
+                <p className="font-medium">{summarizeAreas(o.areas, o.placement)}</p>
+                <p className="text-xs text-muted-foreground">{formatVertical(o.verticalPosition, o.placement)}</p>
+              </div>
+            </div>
+            <div className="flex flex-wrap gap-2 items-center">
+              <Badge>{o.status.replace(/_/g,' ')}</Badge>
+              <Badge className="text-xs">{(o.publicStatus || (o.isPublic ? 'approved' : 'private')).replace(/_/g,' ')}</Badge>
+            </div>
+          </Card>
+        ))}
       </div>
     </div>
   );

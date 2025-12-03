@@ -1,16 +1,6 @@
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
 import HomeClient from "../components/HomeClient";
-import { env } from "@/config/env";
-
-function isAdminEmail(email?: string | null) {
-  if (!email) return false;
-  const list = (env.ADMIN_EMAILS || "")
-    .split(",")
-    .map(e => e.trim().toLowerCase())
-    .filter(Boolean);
-  return list.includes(email.toLowerCase());
-}
 
 export default async function RootPage() {
   // Wrap in try-catch to handle DB connection failures gracefully
@@ -22,8 +12,7 @@ export default async function RootPage() {
     console.warn('[RootPage] Failed to get current user:', (err as Error).message);
   }
   
-  const admin = isAdminEmail(user?.email);
-  if (admin) {
+  if (user?.role === "admin") {
     redirect("/admin/dashboard");
   }
   return <HomeClient />;

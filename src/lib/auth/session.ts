@@ -5,17 +5,21 @@ import { getDb } from "@/lib/db/connection";
 import { UserModel } from "@/lib/db/models/User";
 import { toPublicUser } from "@/types/user";
 
+async function getAuthCookieValue() {
+  const store = await cookies();
+  return store.get(COOKIE_NAME)?.value ?? null;
+}
+
 export async function getCurrentUser() {
   try {
-    const store = await cookies();
-    const token = (store as any).get ? (store as any).get(COOKIE_NAME)?.value : undefined;
+    const token = await getAuthCookieValue();
     if (!token) return null;
     const payload = verifyAuthToken(token);
     if (!payload) return null;
     await getDb();
     const user = await UserModel.findById(payload.uid);
     if (!user) return null;
-    return toPublicUser(user as any);
+    return toPublicUser(user);
   } catch (err) {
     console.error('[getCurrentUser] Error:', err);
     return null;
@@ -38,7 +42,7 @@ export async function verifyAuth(req: NextRequest): Promise<{ user: { id: string
       user: {
         id: user._id.toString(),
         email: user.email,
-        role: (user as any).role || "user",
+        role: user.role || "user",
       },
     };
   } catch (err) {
@@ -50,7 +54,7 @@ export async function verifyAuth(req: NextRequest): Promise<{ user: { id: string
 export async function setAuthCookie(userId: string) {
   const token = signAuthToken(userId);
   const store = await cookies();
-  (store as any).set({
+  store.set({
     name: COOKIE_NAME,
     value: token,
     httpOnly: true,
@@ -61,7 +65,7 @@ export async function setAuthCookie(userId: string) {
 
 export async function clearAuthCookie() {
   const store = await cookies();
-  (store as any).delete(COOKIE_NAME);
+  store.delete(COOKIE_NAME);
 }
 
 // Helpers to attach cookies directly on a NextResponse (more reliable in some runtimes)

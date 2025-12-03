@@ -200,9 +200,15 @@ export default function AdminProductsPage() {
 
   return (
     <div className="max-w-6xl mx-auto py-8 space-y-6">
-      <div className="flex items-center justify-between flex-wrap gap-4">
-        <h1 className="text-3xl font-semibold tracking-tight">Admin Products</h1>
-        <Button onClick={()=>{ if (showForm && editingId) { setEditingId(null); } setShowForm(v=>!v); }} variant={showForm ? 'secondary' : 'primary'}>{showForm? (editingId ? 'Close Edit' : 'Close Form') :'Add Product'}</Button>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <h1 className="text-2xl md:text-3xl font-semibold tracking-tight">Admin Products</h1>
+        <Button
+          onClick={()=>{ if (showForm && editingId) { setEditingId(null); } setShowForm(v=>!v); }}
+          variant={showForm ? 'secondary' : 'primary'}
+          className="w-full sm:w-auto"
+        >
+          {showForm? (editingId ? 'Close Edit' : 'Close Form') :'Add Product'}
+        </Button>
       </div>
       {(error || uploadError) && <div className="text-sm text-red-600 space-y-1">
         {error && <div>{error}</div>}
@@ -212,22 +218,22 @@ export default function AdminProductsPage() {
       {showForm && (
         <Card className="p-6 space-y-4">
           <h2 className="text-lg font-medium">{editingId ? 'Edit Product' : 'New Product'}</h2>
-          <div className="grid md:grid-cols-2 gap-4">
+          <div className="grid gap-4 md:grid-cols-2">
             <div className="space-y-3">
-              <div className="space-y-1"><label className="text-xs font-medium">Name</label><Input value={name} onChange={e=>setName(e.currentTarget.value)} /></div>
-              <div className="space-y-1"><label className="text-xs font-medium">Price</label><Input type="number" value={price} onChange={e=>setPrice(parseFloat(e.currentTarget.value)||0)} /></div>
-              <div className="space-y-1"><label className="text-xs font-medium">Category</label><Input value={category} onChange={e=>setCategory(e.currentTarget.value)} /></div>
-              <div className="space-y-1"><label className="text-xs font-medium">Colors (csv)</label><Input value={colors} onChange={e=>setColors(e.currentTarget.value)} /></div>
-              <div className="space-y-1"><label className="text-xs font-medium">Sizes (csv)</label><Input value={sizes} onChange={e=>setSizes(e.currentTarget.value)} /></div>
-              <div className="space-y-1"><label className="text-xs font-medium">SKU (optional)</label><Input value={sku} onChange={e=>setSku(e.currentTarget.value)} placeholder="e.g. DT-001" /></div>
+              <div className="space-y-1"><label className="text-xs font-medium">Name</label><Input value={name} onChange={e=>setName(e.currentTarget.value)} className="w-full" /></div>
+              <div className="space-y-1"><label className="text-xs font-medium">Price</label><Input type="number" value={price} onChange={e=>setPrice(parseFloat(e.currentTarget.value)||0)} className="w-full" /></div>
+              <div className="space-y-1"><label className="text-xs font-medium">Category</label><Input value={category} onChange={e=>setCategory(e.currentTarget.value)} className="w-full" /></div>
+              <div className="space-y-1"><label className="text-xs font-medium">Colors (csv)</label><Input value={colors} onChange={e=>setColors(e.currentTarget.value)} className="w-full" /></div>
+              <div className="space-y-1"><label className="text-xs font-medium">Sizes (csv)</label><Input value={sizes} onChange={e=>setSizes(e.currentTarget.value)} className="w-full" /></div>
+              <div className="space-y-1"><label className="text-xs font-medium">SKU (optional)</label><Input value={sku} onChange={e=>setSku(e.currentTarget.value)} placeholder="e.g. DT-001" className="w-full" /></div>
               <div className="flex items-center gap-2"><input id="isActive" type="checkbox" checked={isActive} onChange={e=>setIsActive(e.currentTarget.checked)} /><label htmlFor="isActive" className="text-xs">Active</label></div>
             </div>
             <div className="space-y-3">
-              <div className="space-y-1"><label className="text-xs font-medium">Description</label><Textarea value={description} onChange={e=>setDescription(e.currentTarget.value)} rows={8} /></div>
+              <div className="space-y-1"><label className="text-xs font-medium">Description</label><Textarea value={description} onChange={e=>setDescription(e.currentTarget.value)} rows={8} className="w-full" /></div>
               <div className="space-y-2">
                 <label className="text-xs font-medium">Images (max 4)</label>
-                <input type="file" accept="image/*" multiple onChange={e=>handleUploadFiles(e.currentTarget.files)} className="text-xs" />
-                <div className="grid grid-cols-4 gap-2">
+                <input type="file" accept="image/*" multiple onChange={e=>handleUploadFiles(e.currentTarget.files)} className="text-xs w-full" />
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
                   {imageUrls.map(u => (
                     <div key={u} className="aspect-square bg-muted rounded overflow-hidden border">
                       {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -237,12 +243,12 @@ export default function AdminProductsPage() {
                 </div>
               </div>
               {editingId ? (
-                <div className="flex gap-2">
-                  <Button disabled={submitting} onClick={handleUpdate}>{submitting? 'Saving...' : 'Update Product'}</Button>
-                  <Button variant="ghost" onClick={()=>{ setEditingId(null); setShowForm(false); }}>Cancel</Button>
+                <div className="flex flex-col sm:flex-row gap-2">
+                  <Button disabled={submitting} onClick={handleUpdate} className="w-full sm:w-auto">{submitting? 'Saving...' : 'Update Product'}</Button>
+                  <Button variant="ghost" onClick={()=>{ setEditingId(null); setShowForm(false); }} className="w-full sm:w-auto">Cancel</Button>
                 </div>
               ) : (
-                <Button disabled={submitting} onClick={handleCreate}>{submitting? 'Saving...':'Create Product'}</Button>
+                <Button disabled={submitting} onClick={handleCreate} className="w-full sm:w-auto">{submitting? 'Saving...':'Create Product'}</Button>
               )}
             </div>
           </div>
@@ -262,34 +268,36 @@ export default function AdminProductsPage() {
               <div className="font-medium flex items-center gap-2">{p.name} <Badge>{p.category}</Badge>{p.isFeatured && <span className="text-[10px] px-2 py-0.5 rounded bg-yellow-500/20 text-yellow-600">Featured</span>}</div>
               <div className="text-sm">${p.basePrice.toFixed(2)}</div>
               <div className="text-xs text-muted">Sales: {p.salesCount}</div>
-              <div className="flex items-center gap-2 text-[11px]">
+              <div className="flex flex-col gap-2 text-[11px] sm:flex-row sm:items-center">
                 <label htmlFor={`display-order-${p.id}`} className="font-medium">Display order</label>
-                <input
-                  id={`display-order-${p.id}`}
-                  type="number"
-                  className="w-20 border rounded px-2 py-1 text-[11px]"
-                  value={orderDrafts[p.id] ?? String(p.displayOrder ?? 0)}
-                  onChange={(e) => {
-                    const value = e.currentTarget.value;
-                    setOrderDrafts((prev) => ({ ...prev, [p.id]: value }));
-                  }}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      e.preventDefault();
-                      updateDisplayOrder(p.id);
-                    }
-                  }}
-                />
-                <Button
-                  variant="secondary"
-                  className="px-3 py-1 text-[11px]"
-                  onClick={() => updateDisplayOrder(p.id)}
-                  disabled={orderSavingId === p.id}
-                >
-                  {orderSavingId === p.id ? 'Saving…' : 'Save'}
-                </Button>
+                <div className="flex items-center gap-2">
+                  <input
+                    id={`display-order-${p.id}`}
+                    type="number"
+                    className="w-full sm:w-20 border rounded px-2 py-1 text-[11px]"
+                    value={orderDrafts[p.id] ?? String(p.displayOrder ?? 0)}
+                    onChange={(e) => {
+                      const value = e.currentTarget.value;
+                      setOrderDrafts((prev) => ({ ...prev, [p.id]: value }));
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        updateDisplayOrder(p.id);
+                      }
+                    }}
+                  />
+                  <Button
+                    variant="secondary"
+                    className="px-3 py-1 text-[11px]"
+                    onClick={() => updateDisplayOrder(p.id)}
+                    disabled={orderSavingId === p.id}
+                  >
+                    {orderSavingId === p.id ? 'Saving…' : 'Save'}
+                  </Button>
+                </div>
               </div>
-              <div className="flex items-center gap-2 pt-1">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-2 pt-1">
                 <label className="flex items-center gap-1 text-[11px]">
                   <input
                     type="checkbox"
@@ -305,7 +313,7 @@ export default function AdminProductsPage() {
                 {p.isFeatured && (
                   <input
                     type="number"
-                    className="w-16 border rounded px-1 py-0.5 text-[11px]"
+                    className="w-full sm:w-16 border rounded px-1 py-0.5 text-[11px]"
                     defaultValue={p.featuredRank ?? 1}
                     min={1}
                     onBlur={async (e) => {
@@ -317,9 +325,9 @@ export default function AdminProductsPage() {
                   />
                 )}
               </div>
-              <div className="pt-2 flex gap-2">
-                <Button variant="secondary" onClick={()=>openEdit(p.id)}>Edit</Button>
-                <Button variant="ghost" onClick={()=>handleDelete(p.id)}>Delete</Button>
+              <div className="pt-2 flex flex-col sm:flex-row gap-2">
+                <Button variant="secondary" onClick={()=>openEdit(p.id)} className="w-full sm:w-auto">Edit</Button>
+                <Button variant="ghost" onClick={()=>handleDelete(p.id)} className="w-full sm:w-auto">Delete</Button>
               </div>
             </div>
           </Card>
