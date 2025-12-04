@@ -130,6 +130,16 @@ export interface CustomOrderDocument extends Document {
   finalPrice?: number | null;
   status: CustomOrderStatus;
   statusHistory: IStatusHistoryEntry[];
+  paymentProvider?: "chapa" | "manual" | "none";
+  paymentStatus?: "unpaid" | "pending" | "paid" | "failed" | "refunded";
+  paymentReference?: string | null;
+  paymentChannel?: string | null;
+  paymentCurrency?: string | null;
+  paymentAmount?: number | null;
+  refundStatus?: "none" | "requested" | "processing" | "refunded" | "rejected";
+  refundAmount?: number | null;
+  refundReason?: string | null;
+  refundAt?: Date | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -259,6 +269,16 @@ const CustomOrderSchema = new Schema<CustomOrderDocument>(
       required: true,
     },
     statusHistory: { type: [StatusHistorySchema], default: [] },
+    paymentProvider: { type: String, enum: ["chapa","manual","none"], default: "none" },
+    paymentStatus: { type: String, enum: ["unpaid","pending","paid","failed","refunded"], default: "unpaid" },
+    paymentReference: { type: String, default: null },
+    paymentChannel: { type: String, default: null },
+    paymentCurrency: { type: String, default: null },
+    paymentAmount: { type: Number, default: null, min: 0 },
+    refundStatus: { type: String, enum: ["none","requested","processing","refunded","rejected"], default: "none" },
+    refundAmount: { type: Number, default: null, min: 0 },
+    refundReason: { type: String, default: null },
+    refundAt: { type: Date, default: null },
   },
   { timestamps: true }
 );
@@ -271,6 +291,8 @@ CustomOrderSchema.index({ verticalPosition: 1 });
 CustomOrderSchema.index({ isPublic: 1, publicStatus: 1 });
 CustomOrderSchema.index({ linkedProductId: 1, publicStatus: 1 });
 CustomOrderSchema.index({ orderNumber: 1 });
+CustomOrderSchema.index({ paymentReference: 1 });
+CustomOrderSchema.index({ paymentStatus: 1 });
 
 export const CustomOrderModel: Model<CustomOrderDocument> =
   mongoose.models.CustomOrder || mongoose.model<CustomOrderDocument>("CustomOrder", CustomOrderSchema);

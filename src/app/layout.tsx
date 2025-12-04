@@ -2,10 +2,9 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { Header } from "@/components/Header";
-import { CartProvider } from "@/components/CartProvider";
-import { WishlistProvider } from "@/components/WishlistProvider";
 import { Footer } from "@/components/Footer";
 import { Container } from "@/components/Container";
+import { Providers } from "@/components/Providers";
 import { Analytics } from "@vercel/analytics/react";
 
 const geistSans = Geist({
@@ -48,16 +47,14 @@ export default function RootLayout({
   return (
     <html lang="en" className="h-full">
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-screen flex flex-col bg-[--bg] text-[--fg]`}>
-        <CartProvider>
-          <WishlistProvider>
-            <Header />
-            <main className="flex-1 pt-20">
-              <Container>{children}</Container>
-            </main>
-            <Footer />
-            <Analytics />
-          </WishlistProvider>
-        </CartProvider>
+        <Providers>
+          <Header />
+          <main className="flex-1 pt-20">
+            <Container>{children}</Container>
+          </main>
+          <Footer />
+          <Analytics />
+        </Providers>
       </body>
     </html>
   );

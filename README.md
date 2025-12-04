@@ -51,22 +51,22 @@ Define vars in `.env.local` (copy from `.env.example`). They are validated by `s
 Required now:
 
 - `MONGODB_URI` (empty string allowed in dev; connection skipped)
-- `AUTH_JWT_SECRET` (>=32 chars, used to sign auth tokens)
+- `AUTH_SECRET` (>=32 chars, shared secret for Auth.js JWT + email links)
 
 Optional (placeholders for future features):
 
 - `EMAIL_API_KEY`
 - `APP_BASE_URL`
+- `CHAPA_PUBLIC_KEY`, `CHAPA_SECRET_KEY`, `CHAPA_ENCRYPTION_KEY` (needed for Chapa checkout in dev/test)
 
-## Authentication Endpoints (Added)
+## Authentication
 
-- `POST /api/auth/signup` — Create account, sets HTTP-only `auth_token` cookie.
-- `POST /api/auth/login` — Authenticate credentials, sets cookie.
-- `POST /api/auth/logout` — Clears auth cookie.
-- `GET /api/user/me` — Returns current user (sanitized).
-- `PATCH /api/user/me` — Updates profile & marketing preferences.
+Sign-in flows are powered by Auth.js (NextAuth) and configured in `src/auth.ts` with Google and passwordless email providers. The framework exposes `/api/auth/[...nextauth]` automatically for OAuth/email callbacks.
 
-Use `getCurrentUser()` in server components or route handlers to access the logged-in user. The `hashedPassword` field is never returned to clients.
+- Call `signIn()` / `signOut()` from client components (see `src/app/login/page.tsx`).
+- Use `getCurrentUser()` or `verifyAuth()` from `src/lib/auth/session.ts` inside server components and route handlers to read the current Mongo user, including role + 2FA metadata.
+- Admin-only email 2FA APIs live under `/api/admin/2fa/*`.
+- `/api/user/me` remains for profile reads/updates but now relies on Auth.js sessions internally.
 
 ## Using the DB Connection
 

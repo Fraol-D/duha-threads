@@ -11,6 +11,7 @@ const patchSchema = z.object({
   defaultAddress: z.string().optional(),
   marketingEmailOptIn: z.boolean().optional(),
   marketingSmsOptIn: z.boolean().optional(),
+  twoFactorEnabled: z.boolean().optional(),
 });
 
 export async function GET() {
@@ -34,7 +35,24 @@ export async function PATCH(req: Request) {
       return NextResponse.json({ error: "Invalid input" }, { status: 400 });
     }
     await getDb();
-    const update = parsed.data;
+    const update: Record<string, unknown> = {};
+    for (const [key, value] of Object.entries(parsed.data)) {
+      if (value !== undefined) update[key] = value;
+    }
+
+    if (typeof parsed.data.twoFactorEnabled === "boolean") {
+      if (current.role !== "admin") {
+        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      }
+      update.twoFactorEnabled = parsed.data.twoFactorEnabled;
+      update.twoFactorVerifiedAt = null;
+      if (!parsed.data.twoFactorEnabled) {
+        update.twoFactorCode = null;
+        update.twoFactorExpiresAt = null;
+      }
+    } else {
+      delete update.twoFactorEnabled;
+    }
     const doc = await UserModel.findByIdAndUpdate(current.id, update, { new: true });
     if (!doc) return NextResponse.json({ error: "Not found" }, { status: 404 });
     return NextResponse.json({ user: toPublicUser(doc) });

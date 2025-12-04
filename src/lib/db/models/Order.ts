@@ -48,6 +48,16 @@ export interface OrderDocument extends Document {
   status: OrderStatus;
   isCustomOrder: boolean;
   customOrderId?: Types.ObjectId | null;
+  paymentProvider?: "chapa" | "manual" | "none";
+  paymentStatus?: "unpaid" | "pending" | "paid" | "failed" | "refunded";
+  paymentReference?: string | null;
+  paymentChannel?: string | null;
+  paymentCurrency?: string | null;
+  paymentAmount?: number | null;
+  refundStatus?: "none" | "requested" | "processing" | "refunded" | "rejected";
+  refundAmount?: number | null;
+  refundReason?: string | null;
+  refundAt?: Date | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -103,6 +113,16 @@ const OrderSchema = new Schema<OrderDocument>(
     },
     isCustomOrder: { type: Boolean, required: true, default: false },
     customOrderId: { type: Schema.Types.ObjectId, ref: 'CustomOrder', default: null },
+    paymentProvider: { type: String, enum: ["chapa","manual","none"], default: "none" },
+    paymentStatus: { type: String, enum: ["unpaid","pending","paid","failed","refunded"], default: "unpaid", index: true },
+    paymentReference: { type: String, default: null, index: true },
+    paymentChannel: { type: String, default: null },
+    paymentCurrency: { type: String, default: null },
+    paymentAmount: { type: Number, default: null, min: 0 },
+    refundStatus: { type: String, enum: ["none","requested","processing","refunded","rejected"], default: "none", index: true },
+    refundAmount: { type: Number, default: null, min: 0 },
+    refundReason: { type: String, default: null },
+    refundAt: { type: Date, default: null },
   },
   { timestamps: true }
 );
@@ -110,6 +130,8 @@ const OrderSchema = new Schema<OrderDocument>(
 OrderSchema.index({ userId: 1, createdAt: -1 });
 OrderSchema.index({ status: 1, createdAt: -1 });
 OrderSchema.index({ orderNumber: 1 });
+OrderSchema.index({ paymentReference: 1 });
+OrderSchema.index({ paymentStatus: 1 });
 
 // Pre-save normalization: ensure subtotal & totalAmount consistent if items changed.
 OrderSchema.pre('save', function(next) {

@@ -1,14 +1,17 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { ShoppingCart } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
+import { useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { MascotState } from "@/components/ui/MascotState";
 import { fadeInUp } from "@/lib/motion";
 import { useCart } from "@/components/CartProvider";
+import { readGuestCart, updateGuestCartItem } from "@/lib/cart/guestCart";
 
 interface EnrichedCartItem {
   _id: string;
@@ -16,6 +19,7 @@ interface EnrichedCartItem {
   size: string;
   color: string;
   quantity: number;
+  source?: "guest" | "user";
   product?: {
     id: string;
     name: string;
@@ -34,44 +38,93 @@ export default function CartPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const { refresh } = useCart();
+  const router = useRouter();
+  const { status } = useSession();
+  const isAuthenticated = status === "authenticated";
 
-  useEffect(() => {
-    fetch("/api/cart")
-      .then(async (r) => {
-        if (r.status === 401) throw new Error("Please log in to view your cart.");
-        if (!r.ok) throw new Error("Failed to load cart");
-        return r.json();
-      })
-      .then((json) => setItems(json.items))
-      .catch((e) => setError(e.message))
-      .finally(() => setLoading(false));
+  const loadGuestCart = useCallback(async () => {
+    const guest = readGuestCart();
+    if (!guest.length) {
+      setItems([]);
+      return;
+    }
+    const res = await fetch("/api/cart/preview", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ items: guest }),
+    });
+    if (!res.ok) {
+      setItems([]);
+      return;
+    }
+    const data = await res.json();
+    setItems((data.items || []).map((line: EnrichedCartItem) => ({ ...line, source: "guest" })));
   }, []);
 
+  useEffect(() => {
+    if (status === "loading") return;
+    let cancelled = false;
+    const run = async () => {
+      if (cancelled) return;
+      setLoading(true);
+      setError(null);
+      try {
+        if (status === "authenticated") {
+          const r = await fetch("/api/cart");
+          if (!r.ok) throw new Error("Failed to load cart");
+          const json = await r.json();
+          if (!cancelled) {
+            setItems((json.items || []).map((line: EnrichedCartItem) => ({ ...line, source: "user" })));
+          }
+        } else {
+          await loadGuestCart();
+        }
+      } catch (e: unknown) {
+        if (!cancelled) setError(e instanceof Error ? e.message : "Failed to load cart");
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
+    void run();
+    return () => {
+      cancelled = true;
+    };
+  }, [status, loadGuestCart]);
+
   async function adjustQuantity(line: EnrichedCartItem, delta: number) {
+    if (line.source === "guest") {
+      updateGuestCartItem({ productId: line.productId, size: line.size, color: line.color, quantity: line.quantity }, delta);
+      await loadGuestCart();
+      window.dispatchEvent(new CustomEvent('cart:updated'));
+      return;
+    }
     setItems(prev => prev.map(p => p._id === line._id ? { ...p, quantity: Math.max(1, p.quantity + delta) } : p));
-    window.dispatchEvent(new CustomEvent('cart:updated')); // trigger badge refresh
+    window.dispatchEvent(new CustomEvent('cart:updated'));
     const res = await fetch('/api/cart/adjust', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ productId: line.productId, size: line.size, color: line.color, delta })
     });
     if (!res.ok) {
-      // revert on failure by refreshing
       refresh();
     } else {
       const data = await res.json();
       if (data.deleted) {
         setItems(prev => prev.filter(p => p._id !== line._id));
-        window.dispatchEvent(new CustomEvent('cart:updated'));
       } else if (data.item) {
         setItems(prev => prev.map(p => p._id === line._id ? { ...p, quantity: data.item.quantity } : p));
-        window.dispatchEvent(new CustomEvent('cart:updated'));
       }
     }
   }
 
   function removeLine(line: EnrichedCartItem) {
-    adjustQuantity(line, -line.quantity); // use adjust to delete
+    if (line.source === "guest") {
+      updateGuestCartItem({ productId: line.productId, size: line.size, color: line.color, quantity: line.quantity }, -line.quantity);
+      void loadGuestCart();
+      window.dispatchEvent(new CustomEvent('cart:updated', { detail: { type: 'optimistic-remove', productId: line.productId, size: line.size, color: line.color, quantity: line.quantity } }));
+      return;
+    }
+    adjustQuantity(line, -line.quantity);
   }
 
   if (loading) return <div className="py-12"><MascotState variant="loading" message="Loading your cart" /></div>;
@@ -172,8 +225,10 @@ export default function CartPage() {
             </div>
             {items.length === 0 ? (
               <Button disabled className="w-full">Continue to checkout</Button>
-            ) : (
+            ) : isAuthenticated ? (
               <Link href="/checkout" className="w-full inline-flex items-center justify-center rounded-lg px-6 py-3 text-sm font-medium bg-black text-white hover:shadow-[0_6px_20px_rgba(0,0,0,0.3)] hover:-translate-y-0.5 active:translate-y-0 active:shadow-[0_2px_8px_rgba(0,0,0,0.2)] focus:outline-none focus:ring-2 ring-token">Continue to checkout</Link>
+            ) : (
+              <Button className="w-full" onClick={() => router.push(`/login?callbackUrl=${encodeURIComponent('/checkout')}`)}>Sign in to checkout</Button>
             )}
             <p className="text-xs text-muted">Taxes and shipping calculated at checkout.</p>
           </Card>

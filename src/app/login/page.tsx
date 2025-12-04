@@ -2,70 +2,85 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
+import { signIn } from "next-auth/react";
+import { Mail, Loader2, Chrome } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { fadeInUp } from "@/lib/motion";
 
 export default function LoginPage() {
-  const router = useRouter();
+  const params = useSearchParams();
+  const callbackUrl = params.get("callbackUrl") || "/";
   const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [status, setStatus] = useState<"idle" | "sending" | "sent">("idle");
+  const [googleLoading, setGoogleLoading] = useState(false);
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    setError("");
-    setLoading(true);
-
+  async function handleGoogle() {
+    setGoogleLoading(true);
+    setError(null);
     try {
-      const res = await fetch("/api/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
-      });
-
-      if (res.ok) {
-        router.push("/");
-        router.refresh();
-      } else {
-        const data = await res.json();
-        setError(data.error || "Login failed");
-      }
-    } catch (err) {
-      setError("Something went wrong");
+      await signIn("google", { callbackUrl });
     } finally {
-      setLoading(false);
+      setGoogleLoading(false);
+    }
+  }
+
+  async function handleEmailSignIn(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
+    setStatus("sending");
+    const result = await signIn("email", { email, redirect: false, callbackUrl });
+    if (result?.error) {
+      setError("Unable to send magic link. Please try again.");
+      setStatus("idle");
+    } else {
+      setStatus("sent");
     }
   }
 
   return (
     <div className="min-h-screen flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8 relative overflow-hidden">
-      {/* Background decoration */}
       <div className="absolute inset-0 z-0">
         <div className="absolute top-0 left-1/4 w-96 h-96 bg-primary/20 rounded-full blur-[100px] animate-pulse" />
         <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-secondary/20 rounded-full blur-[100px] animate-pulse delay-1000" />
       </div>
 
-      <motion.div 
-        initial="hidden" 
-        animate="show" 
-        variants={fadeInUp} 
+      <motion.div
+        initial="hidden"
+        animate="show"
+        variants={fadeInUp}
         className="w-full max-w-md z-10"
       >
         <Card variant="glass" className="p-8 space-y-8 shadow-2xl border-white/10 backdrop-blur-xl">
           <div className="text-center space-y-2">
             <h1 className="text-3xl font-bold tracking-tight">Welcome back</h1>
-            <p className="text-sm text-muted-foreground">Sign in to your account to continue</p>
+            <p className="text-sm text-muted-foreground">Use Google or a magic link to continue</p>
           </div>
 
-          <form className="space-y-6" onSubmit={handleSubmit}>
-            <div className="space-y-4">
+          <div className="space-y-4">
+            <Button
+              type="button"
+              className="w-full shadow-lg shadow-primary/20 gap-2"
+              size="lg"
+              onClick={handleGoogle}
+              disabled={googleLoading}
+            >
+              {googleLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Chrome className="h-4 w-4" />}
+              Continue with Google
+            </Button>
+
+            <div className="relative flex items-center justify-center text-xs uppercase text-muted-foreground">
+              <span className="px-2 bg-transparent backdrop-blur-sm">or continue with email</span>
+              <div className="absolute inset-x-0 h-px bg-linear-to-r from-transparent via-border to-transparent" />
+            </div>
+
+            <form className="space-y-4" onSubmit={handleEmailSignIn}>
               <div className="space-y-2">
-                <label htmlFor="email" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                <label htmlFor="email" className="text-sm font-medium leading-none">
                   Email address
                 </label>
                 <Input
@@ -75,32 +90,19 @@ export default function LoginPage() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="you@example.com"
+                  disabled={status === "sending" || status === "sent"}
                   className="bg-white/50 dark:bg-black/20 border-transparent focus:border-primary/50 transition-all"
                 />
               </div>
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <label htmlFor="password" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-                    Password
-                  </label>
-                  <Link href="/forgot-password" className="text-xs font-medium text-primary hover:underline">
-                    Forgot password?
-                  </Link>
-                </div>
-                <Input
-                  id="password"
-                  type="password"
-                  required
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="••••••••"
-                  className="bg-white/50 dark:bg-black/20 border-transparent focus:border-primary/50 transition-all"
-                />
-              </div>
-            </div>
+
+              <Button type="submit" className="w-full gap-2" size="lg" disabled={status === "sending"}>
+                {status === "sending" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Mail className="h-4 w-4" />}
+                {status === "sent" ? "Resend magic link" : "Send magic link"}
+              </Button>
+            </form>
 
             {error && (
-              <motion.div 
+              <motion.div
                 initial={{ opacity: 0, y: -10 }}
                 animate={{ opacity: 1, y: 0 }}
                 className="p-3 text-sm text-red-500 bg-red-50 dark:bg-red-900/20 rounded-lg border border-red-200 dark:border-red-900/50"
@@ -109,15 +111,21 @@ export default function LoginPage() {
               </motion.div>
             )}
 
-            <Button type="submit" className="w-full shadow-lg shadow-primary/20" size="lg" disabled={loading}>
-              {loading ? "Signing in..." : "Sign in"}
-            </Button>
-          </form>
+            {status === "sent" && !error && (
+              <motion.div
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="p-3 text-sm text-emerald-500 bg-emerald-50 dark:bg-emerald-900/20 rounded-lg border border-emerald-200 dark:border-emerald-900/50"
+              >
+                Check your email for a link to finish signing in. The link expires in a few minutes.
+              </motion.div>
+            )}
+          </div>
 
           <div className="text-center text-sm">
-            <span className="text-muted-foreground">Don&apos;t have an account? </span>
+            <span className="text-muted-foreground">New to Duha Threads? </span>
             <Link href="/signup" className="font-medium text-primary hover:underline underline-offset-4">
-              Sign up
+              Create an account
             </Link>
           </div>
         </Card>

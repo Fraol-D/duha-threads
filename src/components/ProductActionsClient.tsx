@@ -1,6 +1,7 @@
 "use client";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { addGuestCartItem } from "@/lib/cart/guestCart";
 
 export default function ProductActionsClient({ productId, sizes, colors }: { productId: string; sizes: string[]; colors: string[] }) {
   const router = useRouter();
@@ -12,13 +13,19 @@ export default function ProductActionsClient({ productId, sizes, colors }: { pro
   async function addToCart() {
     setError(null);
     setLoading("cart");
+    const payload = { productId, size, color, quantity: 1 };
     const res = await fetch("/api/cart", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ productId, size, color, quantity: 1 }),
+      body: JSON.stringify(payload),
     });
     setLoading(null);
-    if (res.status === 401) return router.push("/login");
+    if (res.status === 401) {
+      addGuestCartItem(payload);
+      window.dispatchEvent(new CustomEvent('cart:updated', { detail: { type: 'optimistic-add', ...payload } }));
+      setError(null);
+      return router.push("/cart");
+    }
     if (!res.ok) {
       const data = await res.json().catch(() => ({}));
       setError(data.error || "Failed to add to cart");

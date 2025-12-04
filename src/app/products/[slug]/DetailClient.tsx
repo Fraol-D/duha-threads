@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
 import { useRouter } from 'next/navigation';
+import { addGuestCartItem } from '@/lib/cart/guestCart';
 
 export default function DetailClient({ product }: { product: PublicProduct }) {
   const router = useRouter();
@@ -105,18 +106,25 @@ export default function DetailClient({ product }: { product: PublicProduct }) {
     try {
       if (product.sizes.length && !size) { setError('Select a size'); setAdding(false); return; }
       if (product.colors.length && !color) { setError('Select a color'); setAdding(false); return; }
+      const payload = { productId: product.id, size: size || 'standard', color: color || 'standard', quantity: qty };
       const res = await fetch('/api/cart', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ productId: product.id, size: size || 'standard', color: color || 'standard', quantity: qty })
+        body: JSON.stringify(payload)
       });
+      if (res.status === 401) {
+        addGuestCartItem(payload);
+        window.dispatchEvent(new CustomEvent('cart:updated', { detail: { type: 'optimistic-add', ...payload } }));
+        setSuccess('Added to cart (guest)');
+        return;
+      }
       if (!res.ok) {
         type CartError = { error?: string };
         const j: CartError = await res.json().catch(() => ({} as CartError));
         throw new Error(j.error || 'Failed to add to cart');
       }
       // Fire optimistic cart update event so badge updates immediately
-      window.dispatchEvent(new CustomEvent('cart:updated', { detail: { type: 'optimistic-add', productId: product.id, size: size || 'standard', color: color || 'standard', quantity: qty } }));
+      window.dispatchEvent(new CustomEvent('cart:updated', { detail: { type: 'optimistic-add', ...payload } }));
       setSuccess('Added to cart');
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to add to cart');

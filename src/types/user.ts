@@ -4,13 +4,17 @@ export interface UserDocument {
   _id: string | Types.ObjectId;
   name: string;
   email: string;
-  hashedPassword: string;
+  hashedPassword?: string;
   role: "user" | "admin";
   status: "active" | "inactive";
   phone?: string;
   defaultAddress?: string;
   marketingEmailOptIn: boolean;
   marketingSmsOptIn: boolean;
+  twoFactorEnabled?: boolean;
+  twoFactorCode?: string | null;
+  twoFactorExpiresAt?: Date | null;
+  twoFactorVerifiedAt?: Date | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -25,6 +29,8 @@ export interface PublicUser {
   defaultAddress?: string;
   marketingEmailOptIn: boolean;
   marketingSmsOptIn: boolean;
+  twoFactorEnabled?: boolean;
+  twoFactorVerifiedAt?: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -46,6 +52,8 @@ export function toPublicUser(doc: SerializableUser): PublicUser {
     defaultAddress: doc.defaultAddress,
     marketingEmailOptIn: doc.marketingEmailOptIn,
     marketingSmsOptIn: doc.marketingSmsOptIn,
+    twoFactorEnabled: doc.twoFactorEnabled,
+    twoFactorVerifiedAt: doc.twoFactorVerifiedAt ? new Date(doc.twoFactorVerifiedAt).toISOString() : null,
     createdAt: createdAt.toISOString(),
     updatedAt: updatedAt.toISOString(),
   };

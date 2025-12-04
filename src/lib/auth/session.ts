@@ -1,23 +1,19 @@
-import { cookies } from "next/headers";
-import { NextRequest, NextResponse } from "next/server";
-import { COOKIE_NAME, verifyAuthToken, signAuthToken } from "@/lib/auth/token";
+import { NextRequest } from "next/server";
+import { auth } from "@/auth";
 import { getDb } from "@/lib/db/connection";
 import { UserModel } from "@/lib/db/models/User";
 import { toPublicUser } from "@/types/user";
 
-async function getAuthCookieValue() {
-  const store = await cookies();
-  return store.get(COOKIE_NAME)?.value ?? null;
-}
-
 export async function getCurrentUser() {
   try {
-    const token = await getAuthCookieValue();
-    if (!token) return null;
-    const payload = verifyAuthToken(token);
-    if (!payload) return null;
+    const session = await auth();
+    if (!session?.user?.email) return null;
+
     await getDb();
-    const user = await UserModel.findById(payload.uid);
+    const lookupId = session.user.id;
+    const user = lookupId
+      ? await UserModel.findById(lookupId)
+      : await UserModel.findOne({ email: session.user.email.toLowerCase() });
     if (!user) return null;
     return toPublicUser(user);
   } catch (err) {
@@ -26,23 +22,25 @@ export async function getCurrentUser() {
   }
 }
 
-export async function verifyAuth(req: NextRequest): Promise<{ user: { id: string; email: string; role: "user" | "admin" } | null }> {
+export async function verifyAuth(req?: NextRequest): Promise<{ user: { id: string; email: string; role: "user" | "admin"; twoFactorEnabled?: boolean; twoFactorVerifiedAt?: string | null } | null }> {
   try {
-    const token = req.cookies.get(COOKIE_NAME)?.value;
-    if (!token) return { user: null };
-    
-    const payload = verifyAuthToken(token);
-    if (!payload) return { user: null };
-    
+    const session = req ? await auth(req) : await auth();
+    if (!session?.user?.email) return { user: null };
+
     await getDb();
-    const user = await UserModel.findById(payload.uid);
+    const lookupId = session.user.id;
+    const user = lookupId
+      ? await UserModel.findById(lookupId)
+      : await UserModel.findOne({ email: session.user.email.toLowerCase() });
     if (!user) return { user: null };
-    
+
     return {
       user: {
         id: user._id.toString(),
         email: user.email,
         role: user.role || "user",
+        twoFactorEnabled: user.twoFactorEnabled,
+        twoFactorVerifiedAt: user.twoFactorVerifiedAt ? user.twoFactorVerifiedAt.toISOString() : null,
       },
     };
   } catch (err) {
@@ -51,38 +49,3 @@ export async function verifyAuth(req: NextRequest): Promise<{ user: { id: string
   }
 }
 
-export async function setAuthCookie(userId: string) {
-  const token = signAuthToken(userId);
-  const store = await cookies();
-  store.set({
-    name: COOKIE_NAME,
-    value: token,
-    httpOnly: true,
-    sameSite: "lax",
-    path: "/",
-  });
-}
-
-export async function clearAuthCookie() {
-  const store = await cookies();
-  store.delete(COOKIE_NAME);
-}
-
-// Helpers to attach cookies directly on a NextResponse (more reliable in some runtimes)
-export function attachAuthCookie(res: NextResponse, userId: string) {
-  const token = signAuthToken(userId);
-  res.cookies.set({
-    name: COOKIE_NAME,
-    value: token,
-    httpOnly: true,
-    sameSite: "lax",
-    path: "/",
-    maxAge: 60 * 60 * 24 * 7, // 7 days, aligns with JWT expiry
-  });
-  return res;
-}
-
-export function attachClearAuthCookie(res: NextResponse) {
-  res.cookies.delete(COOKIE_NAME);
-  return res;
-}

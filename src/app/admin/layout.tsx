@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { getCurrentUser } from "@/lib/auth/session";
 import { isAdmin } from "@/lib/auth/admin";
 import { AdminShell, type AdminNavItem } from "@/components/admin/AdminShell";
+import { AdminTwoFactorGate } from "@/components/admin/AdminTwoFactorGate";
 
 const navItems: AdminNavItem[] = [
   { label: "Dashboard", href: "/admin/dashboard", icon: "dashboard" },
@@ -14,6 +15,12 @@ const navItems: AdminNavItem[] = [
 export default async function AdminLayout({ children }: { children: ReactNode }) {
   const user = await getCurrentUser();
   const isAllowed = user && isAdmin(user);
+  const windowMs = 15 * 60 * 1000;
+  const needsTwoFactor = Boolean(
+    isAllowed &&
+    user?.twoFactorEnabled &&
+    (!user.twoFactorVerifiedAt || Date.now() - new Date(user.twoFactorVerifiedAt).getTime() > windowMs)
+  );
 
   if (!isAllowed) {
     return (
@@ -24,6 +31,10 @@ export default async function AdminLayout({ children }: { children: ReactNode })
         </div>
       </div>
     );
+  }
+
+  if (needsTwoFactor && user?.email) {
+    return <AdminTwoFactorGate email={user.email} />;
   }
 
   return <AdminShell navItems={navItems}>{children}</AdminShell>;

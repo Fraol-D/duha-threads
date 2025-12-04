@@ -8,6 +8,7 @@ import { Card } from "@/components/ui/Card";
 import { Select } from "@/components/ui/Select";
 import { Button } from "@/components/ui/Button";
 import { fadeInUp, staggerChildren } from "@/lib/motion";
+import { addGuestCartItem } from "@/lib/cart/guestCart";
 
 interface ProductListItem {
   id: string;
@@ -151,13 +152,28 @@ export default function ProductsClient() {
     const color = (p.colors && p.colors[0]) || "Default";
     setAddingId(p.id);
     try {
+      const payload = { productId: p.id, size, color, quantity: 1 };
       const res = await fetch("/api/cart", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ productId: p.id, size, color, quantity: 1 }),
+        body: JSON.stringify(payload),
       });
       if (res.status === 401) {
-        router.push("/login");
+        addGuestCartItem(payload);
+        window.dispatchEvent(new CustomEvent('cart:updated', { detail: { type: 'optimistic-add', ...payload } }));
+        setAddedIds(prev => {
+          const next = new Set(prev);
+          next.add(p.id);
+          return next;
+        });
+        setTimeout(() => {
+          setAddedIds(prev => {
+            const next = new Set(prev);
+            next.delete(p.id);
+            return next;
+          });
+        }, 1500);
+        router.push('/cart');
         return;
       }
       if (!res.ok) return;
@@ -167,7 +183,7 @@ export default function ProductsClient() {
         next.add(p.id);
         return next;
       });
-      window.dispatchEvent(new CustomEvent('cart:updated', { detail: { type: 'optimistic-add', productId: p.id, size, color, quantity: 1 } }));
+      window.dispatchEvent(new CustomEvent('cart:updated', { detail: { type: 'optimistic-add', ...payload } }));
       
       setTimeout(() => {
         setAddedIds(prev => {

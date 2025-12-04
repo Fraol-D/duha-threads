@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
 import Image from "next/image";
 import Link from "next/link";
 import { Card } from "@/components/ui/Card";
@@ -29,6 +30,7 @@ interface EnrichedCartItem {
 
 export default function CheckoutPage() {
   const router = useRouter();
+  const { status } = useSession();
   const [items, setItems] = useState<EnrichedCartItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -40,13 +42,16 @@ export default function CheckoutPage() {
   const total = useMemo(() => items.reduce((sum, i) => sum + (i.product?.basePrice || 0) * i.quantity, 0), [items]);
 
   useEffect(() => {
+    if (status === "loading") return;
+    if (status === "unauthenticated") {
+      router.replace(`/login?callbackUrl=${encodeURIComponent('/checkout')}`);
+      return;
+    }
     (async () => {
       try {
         const r = await fetch("/api/cart");
-        if (r.status === 401) throw new Error("Please log in to checkout.");
         if (!r.ok) throw new Error("Failed to load cart");
         const data = await r.json();
-        // items already enriched by updated /api/cart route
         setItems(data.items);
       } catch (e: unknown) {
         const msg = e instanceof Error ? e.message : "Failed to load";
@@ -55,7 +60,7 @@ export default function CheckoutPage() {
         setLoading(false);
       }
     })();
-  }, []);
+  }, [status, router]);
 
   async function placeOrder(e: React.FormEvent) {
     e.preventDefault();

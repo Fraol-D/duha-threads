@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/Badge";
 import { Stepper } from "@/components/ui/Stepper";
 import Link from "next/link";
 import Image from "next/image";
-import { cookies } from "next/headers";
+import { getCurrentUser } from "@/lib/auth/session";
 
 const STATUS_ORDER = [
   "PENDING_REVIEW",
@@ -24,11 +24,9 @@ export default async function CustomOrderDetailPage({
 }) {
   const { id } = params;
   
-  // Verify auth server-side
-  const cookieStore = await cookies();
-  const token = cookieStore.get("auth_token")?.value;
-  
-  if (!token) {
+  const currentUser = await getCurrentUser();
+
+  if (!currentUser) {
     return (
       <div className="py-24 text-center">
         <Card variant="glass" className="p-8 inline-block">

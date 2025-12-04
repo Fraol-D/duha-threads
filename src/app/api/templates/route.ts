@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import '../auth/signup/route'; // ensure DB init side-effects if any
 import { DesignTemplate } from '@/lib/db/models/DesignTemplate';
 import '@/lib/db/connection';
 

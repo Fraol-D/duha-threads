@@ -7,12 +7,37 @@ import { MascotState } from "@/components/ui/MascotState";
 import { fadeInUp, staggerChildren } from "@/lib/motion";
 import { useWishlist } from "@/components/WishlistProvider";
 import { useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
 import Image from "next/image";
 import { Button } from "@/components/ui/Button";
+import { addGuestCartItem } from "@/lib/cart/guestCart";
 
 export default function WishlistPage() {
   const { items, count, removeFromWishlist } = useWishlist();
   const router = useRouter();
+  const { status } = useSession();
+
+  if (status === "loading") {
+    return (
+      <div className="py-10">
+        <MascotState variant="loading" message="Loading your wishlist" />
+      </div>
+    );
+  }
+
+  if (status === "unauthenticated") {
+    return (
+      <div className="py-10">
+        <MascotState
+          variant="empty"
+          title="Sign in to save favorites"
+          message="Create or log into your account to build a wishlist."
+          actionLabel="Sign in"
+          onActionClick={() => router.push(`/login?callbackUrl=${encodeURIComponent('/wishlist')}`)}
+        />
+      </div>
+    );
+  }
 
   if (count === 0) {
     return (
@@ -32,14 +57,20 @@ export default function WishlistPage() {
     // Quick add with first color/size then stay on page
     const size = sizes && sizes[0] ? sizes[0] : "Default";
     const color = colors && colors[0] ? colors[0] : "Default";
+    const payload = { productId, size, color, quantity: 1 };
     fetch("/api/cart", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ productId, size, color, quantity: 1 })
+      body: JSON.stringify(payload)
     }).then(res => {
-      if (res.status === 401) router.push('/login');
+      if (res.status === 401) {
+        addGuestCartItem(payload);
+        window.dispatchEvent(new CustomEvent('cart:updated', { detail: { type: 'optimistic-add', ...payload } }));
+        router.push('/cart');
+        return;
+      }
       if (res.ok) {
-        window.dispatchEvent(new CustomEvent('cart:updated', { detail: { type: 'optimistic-add', productId, size, color, quantity: 1 } }));
+        window.dispatchEvent(new CustomEvent('cart:updated', { detail: { type: 'optimistic-add', ...payload } }));
       }
     });
   }

@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { signOut } from "next-auth/react";
 
 interface PublicUser {
   id: string;
@@ -10,6 +11,9 @@ interface PublicUser {
   defaultAddress?: string;
   marketingEmailOptIn: boolean;
   marketingSmsOptIn: boolean;
+  role: "user" | "admin";
+  twoFactorEnabled?: boolean;
+  twoFactorVerifiedAt?: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -19,6 +23,9 @@ export default function ProfilePage() {
   const [user, setUser] = useState<PublicUser | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [twoFactorMessage, setTwoFactorMessage] = useState<string | null>(null);
+  const [twoFactorError, setTwoFactorError] = useState<string | null>(null);
+  const [twoFactorSaving, setTwoFactorSaving] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -61,8 +68,27 @@ export default function ProfilePage() {
   }
 
   async function logout() {
-    await fetch("/api/auth/logout", { method: "POST" });
-    router.push("/login");
+    await signOut({ callbackUrl: "/login" });
+  }
+
+  async function toggleTwoFactor(nextValue: boolean) {
+    if (!user) return;
+    setTwoFactorMessage(null);
+    setTwoFactorError(null);
+    setTwoFactorSaving(true);
+    const res = await fetch("/api/user/me", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ twoFactorEnabled: nextValue }),
+    });
+    setTwoFactorSaving(false);
+    const data = await res.json().catch(() => null);
+    if (!res.ok || !data?.user) {
+      setTwoFactorError(data?.error || "Unable to update security settings");
+      return;
+    }
+    setUser(data.user);
+    setTwoFactorMessage(nextValue ? "Two-factor enabled. You will be asked for a code next time you visit the admin area." : "Two-factor disabled for your admin access.");
   }
 
   if (loading) return <div className="py-12 text-center">Loading...</div>;
@@ -102,6 +128,30 @@ export default function ProfilePage() {
         </label>
         <button className="bg-black text-white py-2 px-4 rounded">Save Changes</button>
       </form>
+      {user.role === "admin" && (
+        <div className="rounded-lg border p-4 space-y-3">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-base font-semibold">Admin 2FA</h2>
+              <p className="text-sm text-gray-500">Send a code to {user.email} before entering /admin.</p>
+            </div>
+            <label className="flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={Boolean(user.twoFactorEnabled)}
+                onChange={(e) => toggleTwoFactor(e.target.checked)}
+                disabled={twoFactorSaving}
+              />
+              <span>{user.twoFactorEnabled ? "Enabled" : "Disabled"}</span>
+            </label>
+          </div>
+          {user.twoFactorEnabled && user.twoFactorVerifiedAt && (
+            <p className="text-xs text-gray-500">Last verified {new Date(user.twoFactorVerifiedAt).toLocaleString()}</p>
+          )}
+          {twoFactorMessage && <p className="text-xs text-emerald-600">{twoFactorMessage}</p>}
+          {twoFactorError && <p className="text-xs text-red-500">{twoFactorError}</p>}
+        </div>
+      )}
       <p className="text-xs text-gray-500">Password changes and advanced account settings will be added later.</p>
     </div>
   );
