@@ -22,6 +22,7 @@ interface ProductListItem {
   ratingAverage?: number;
   ratingCount?: number;
   displayOrder?: number | null;
+  isHero?: boolean;
 }
 
 interface ProductListResponse {

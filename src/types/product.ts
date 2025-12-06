@@ -23,6 +23,7 @@ export interface ProductDocument {
   displayOrder?: number | null;
   ratingAverage?: number;
   ratingCount?: number;
+   isHero?: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -44,6 +45,7 @@ export interface PublicProduct {
   displayOrder?: number | null;
   ratingAverage?: number;
   ratingCount?: number;
+   isHero?: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -66,6 +68,7 @@ export interface ProductListItem {
   isFeatured?: boolean;
   featuredRank?: number | null;
   displayOrder?: number | null;
+  isHero?: boolean;
 }
 
 export interface ProductFilters {
@@ -104,6 +107,7 @@ export function toPublicProduct(doc: ProductDocument): PublicProduct {
     displayOrder: doc.displayOrder ?? null,
     ratingAverage: doc.ratingAverage ?? 0,
     ratingCount: doc.ratingCount ?? 0,
+    isHero: doc.isHero ?? false,
     createdAt: doc.createdAt.toISOString(),
     updatedAt: doc.updatedAt.toISOString(),
   };
@@ -127,5 +131,6 @@ export function toProductListItem(doc: ProductDocument): ProductListItem {
     displayOrder: doc.displayOrder ?? null,
     ratingAverage: doc.ratingAverage ?? 0,
     ratingCount: doc.ratingCount ?? 0,
+    isHero: doc.isHero ?? false,
   };
 }

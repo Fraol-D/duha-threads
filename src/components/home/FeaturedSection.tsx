@@ -1,162 +1,125 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
-import { motion, type Variants, type Transition } from "framer-motion";
-import { BentoGrid } from "@/components/ui/BentoGrid";
+import { motion } from "framer-motion";
+import { ArrowRight, Star } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { fadeInUp } from "@/lib/motion";
-import { ArrowRight } from "lucide-react";
+import type { FeaturedProduct } from "@/lib/products/queries";
 
-type FeaturedDrop = {
-  id: string;
-  label: string;
-  title: string;
-  description: string;
-  href: string;
-  badge?: string;
-  accentGradient: string;
-  motif?: string;
-  spotlight?: boolean;
+type FeaturedSectionProps = {
+  products: FeaturedProduct[];
 };
 
-const cardTransition: Transition = {
-  duration: 0.25,
-  ease: [0.16, 1, 0.3, 1],
-};
+const currency = new Intl.NumberFormat("en-US", {
+  style: "currency",
+  currency: "USD",
+});
 
-const cardMotion: Variants = {
-  rest: {
-    y: 0,
-    boxShadow: "0 0 0 rgba(0,0,0,0)",
-    transition: cardTransition,
-  },
-  hover: {
-    y: -4,
-    boxShadow: "0 24px 60px rgba(0,0,0,0.35)",
-    transition: cardTransition,
-  },
-};
-
-const featuredDrops: FeaturedDrop[] = [
-  {
-    id: "sunrise-glow",
-    label: "Signature Drop",
-    title: "Sunrise Glow Tee",
-    description: "A clean everyday tee inspired by DUHA’s morning light aesthetic.",
-    href: "/products",
-    badge: "New",
-    accentGradient: "from-amber-500/50 via-rose-500/40 to-orange-400/40",
-    motif: "after:absolute after:inset-0 after:bg-[radial-gradient(circle_at_top,_rgba(255,255,255,0.3),_transparent_60%)] after:opacity-70",
-    spotlight: true,
-  },
-  {
-    id: "minimal-pack",
-    label: "Everyday Essential",
-    title: "Minimal Essentials Pack",
-    description: "A set of versatile tees that pair with anything — engineered for daily wear.",
-    href: "/products",
-    badge: "Popular",
-    accentGradient: "from-slate-900/70 via-slate-800/60 to-slate-900/70",
-    motif: "after:absolute after:inset-0 after:bg-[radial-gradient(circle_at_bottom,_rgba(255,255,255,0.15),_transparent_65%)]",
-  },
-  {
-    id: "atelier-program",
-    label: "Studio Capsule",
-    title: "Atelier Program",
-    description: "Limited artist collaborations, produced in micro batches with archival inks.",
-    href: "/products",
-    accentGradient: "from-indigo-600/40 via-purple-500/30 to-cyan-400/30",
-    motif: "after:absolute after:inset-0 after:bg-[radial-gradient(circle_at_center,_rgba(255,255,255,0.25),_transparent_70%)]",
-  },
-  {
-    id: "heritage-classics",
-    label: "Seasonless Favorite",
-    title: "Heritage Classics",
-    description: "Vintage-washed tees with subtle embroidery inspired by Addis street culture.",
-    href: "/products",
-    accentGradient: "from-emerald-500/35 via-lime-500/25 to-cyan-400/35",
-  },
-];
-
-export function FeaturedSection() {
-  if (featuredDrops.length === 0) return null;
-
+export function FeaturedSection({ products }: FeaturedSectionProps) {
   return (
-    <section className="py-12 md:py-20">
+    <section className="py-14 md:py-24">
       <div className="mx-auto max-w-7xl px-4 space-y-8">
-        <div className="flex items-end justify-between">
+        <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
           <div className="space-y-2">
-            <h2 className="text-section-title">Featured Drops</h2>
-            <p className="text-muted-foreground max-w-md">
-              Our latest and greatest. Limited runs, premium materials.
+            <p className="text-xs font-semibold uppercase tracking-[0.3em] text-muted-foreground">Featured Drops</p>
+            <h2 className="text-section-title">The pieces everyone is asking for</h2>
+              <p className="max-w-2xl text-muted-foreground text-lg">
+              Curated by our studio. Marked as featured by the team so you can see what’s trending without scrolling forever.
             </p>
           </div>
-          <Link href="/products" className="hidden md:flex items-center text-sm font-medium hover:text-primary transition-colors">
-            View all products <ArrowRight className="ml-1 w-4 h-4" />
+          <Link href="/products" className="hidden md:inline-flex items-center text-sm font-medium hover:text-primary">
+            View all products
+            <ArrowRight className="ml-2 h-4 w-4" />
           </Link>
         </div>
 
-        <BentoGrid>
-          {featuredDrops.map((drop, index) => (
-            <motion.div
-              key={drop.id}
-              variants={fadeInUp}
-              initial="initial"
-              whileInView="animate"
-              viewport={{ once: true, margin: "-50px" }}
-              transition={{ delay: index * 0.1 }}
-              className={drop.spotlight ? "md:col-span-2 md:row-span-2" : "md:col-span-1"}
-            >
-              <Link href={drop.href} className="block h-full">
-                <motion.div
-                  variants={cardMotion}
-                  initial="rest"
-                  whileHover="hover"
-                  className="group relative h-full rounded-2xl overflow-hidden border border-white/10 bg-[--surface]"
+        {products.length > 0 ? (
+          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            {products.map((product, index) => (
+              <Link key={product.id} href={`/products/${product.slug}`} className="group block h-full">
+                <motion.article
+                  variants={fadeInUp}
+                  initial="initial"
+                  whileInView="animate"
+                  viewport={{ once: true, margin: "-80px" }}
+                  transition={{ delay: index * 0.05 }}
+                  className="relative flex h-full flex-col rounded-2xl border border-white/10 bg-[--surface] p-4 shadow-[0_20px_60px_rgba(0,0,0,0.2)] transition-transform duration-300 hover:-translate-y-1"
                 >
-                  <div className={`absolute inset-0 bg-linear-to-br ${drop.accentGradient} opacity-80 transition-opacity duration-500 group-hover:opacity-100`} />
-                  {drop.motif && <div className={`absolute inset-0 pointer-events-none ${drop.motif}`} />}
-                  <div className="absolute inset-0 bg-linear-to-t from-black/40 via-black/10 to-transparent opacity-60" />
-
-                  <div className="relative z-10 flex flex-col h-full p-6 text-white">
-                    <div className="space-y-3 flex-1">
-                      <span className="inline-flex items-center text-[11px] font-semibold uppercase tracking-[0.2em] text-white/70">
-                        {drop.label}
-                      </span>
-                      <div className="flex flex-wrap items-center gap-3">
-                        <h3 className={`font-bold leading-tight ${drop.spotlight ? 'text-3xl md:text-[2.75rem]' : 'text-xl'}`}>
-                          {drop.title}
-                        </h3>
-                        {drop.badge && (
-                          <span className="px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide bg-white/20 rounded-full border border-white/30">
-                            {drop.badge}
-                          </span>
-                        )}
+                  <div className="relative mb-4 aspect-square w-full overflow-hidden rounded-xl border border-white/10 bg-[--bg]">
+                    {product.primaryImage ? (
+                      <Image
+                        src={product.primaryImage.url}
+                        alt={product.primaryImage.alt || product.name}
+                        fill
+                        className="object-cover transition-transform duration-700 group-hover:scale-[1.05]"
+                      />
+                    ) : (
+                      <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
+                        Photo coming soon
                       </div>
-                      <p className={`text-sm text-white/80 ${drop.spotlight ? 'max-w-xl' : 'max-w-sm'}`}>
-                        {drop.description}
-                      </p>
-                    </div>
+                    )}
+                  </div>
 
-                    <div className="pt-6 flex items-center justify-between">
-                      <Button size="sm" variant="outline" className="bg-white/90 text-black border-white hover:bg-white">
-                        Explore drop
-                      </Button>
-                      <ArrowRight className="w-4 h-4 text-white/80 group-hover:translate-x-1 transition-transform" />
+                  <div className="flex flex-1 flex-col gap-3">
+                    <div className="flex items-center justify-between text-xs text-muted-foreground">
+                      <span>Featured #{index + 1}</span>
+                      <RatingPill rating={product.ratingAverage} count={product.ratingCount} />
+                    </div>
+                      <h3 className="text-base font-medium text-foreground line-clamp-1">{product.name}</h3>
+                      <p className="text-sm text-muted-foreground line-clamp-2">{product.description}</p>
+                    <div className="flex items-center justify-between pt-2">
+                      <span className="text-sm font-semibold text-foreground">
+                        {currency.format(product.basePrice)}
+                      </span>
+                      <span className="inline-flex items-center text-xs font-medium uppercase tracking-wide text-primary">
+                        View tee
+                        <ArrowRight className="ml-1 h-3.5 w-3.5" />
+                      </span>
                     </div>
                   </div>
-                </motion.div>
+                </motion.article>
               </Link>
-            </motion.div>
-          ))}
-        </BentoGrid>
+            ))}
+          </div>
+        ) : (
+          <div className="rounded-2xl border border-dashed border-muted/60 bg-[--surface] p-10 text-center">
+            <p className="text-lg font-semibold text-foreground">Featured drops coming soon</p>
+            <p className="mt-2 text-sm text-muted-foreground">We’re curating the next wave of tees. Browse all products while you wait.</p>
+            <div className="mt-6 flex justify-center">
+              <Link href="/products">
+                <Button variant="outline">Browse products</Button>
+              </Link>
+            </div>
+          </div>
+        )}
 
         <div className="md:hidden flex justify-center">
           <Link href="/products">
-            <Button variant="outline">View all products</Button>
+            <Button variant="ghost" className="text-sm">
+              View all products
+            </Button>
           </Link>
         </div>
       </div>
     </section>
+  );
+}
+
+type RatingPillProps = {
+  rating?: number;
+  count?: number;
+};
+
+function RatingPill({ rating, count }: RatingPillProps) {
+  if (!rating || rating <= 0 || !count) {
+    return <span className="rounded-full border border-muted/40 px-2 py-0.5 text-[11px] uppercase tracking-wide text-muted-foreground">New</span>;
+  }
+  return (
+    <span className="inline-flex items-center gap-1 rounded-full border border-amber-500/40 bg-amber-500/10 px-2 py-0.5 text-[11px] font-medium text-amber-400">
+      <Star className="h-3 w-3 fill-current" />
+      {rating.toFixed(1)} · {count}
+    </span>
   );
 }

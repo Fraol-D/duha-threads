@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, type FormEvent } from 'react';
 import type { PublicProduct } from '@/types/product';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -9,6 +9,7 @@ import { useWishlist } from '@/components/WishlistProvider';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
+import { Textarea } from '@/components/ui/Textarea';
 import { useRouter } from 'next/navigation';
 
 export default function DetailClient({ product }: { product: PublicProduct }) {
@@ -21,13 +22,31 @@ export default function DetailClient({ product }: { product: PublicProduct }) {
   const [success, setSuccess] = useState<string | null>(null);
   const [activeImage, setActiveImage] = useState<string | null>(product.images.find(i => i.isPrimary)?.url || product.images[0]?.url || null);
   const { productIds, toggleWishlist } = useWishlist();
-  type RatingEntry = { id: string; rating: number; comment: string | null; updatedAt: string };
-  type ApiRatingResponse = { id: string; rating: number; comment?: string | null; updatedAt: string };
+  type ApiReviewResponse = {
+    id: string;
+    rating: number;
+    comment?: string | null;
+    updatedAt: string;
+    author?: string | null;
+    featured?: boolean;
+    isOwner?: boolean;
+  };
+  type ReviewEntry = {
+    id: string;
+    rating: number;
+    comment: string | null;
+    updatedAt: string;
+    author: string;
+    featured: boolean;
+    isOwner: boolean;
+  };
+  type ReviewEligibility = { eligible: boolean; orderId: string | null; orderNumber: string | null };
   type RatingSnapshot = {
     ratingAverage: number;
     ratingCount: number;
-    userRating: { rating: number; comment: string | null; updatedAt?: string } | null;
-    recentRatings: RatingEntry[];
+    userRating: { rating: number; comment: string | null; updatedAt?: string; orderId: string | null } | null;
+    reviews: ReviewEntry[];
+    reviewEligibility: ReviewEligibility;
   };
   type PublicDesign = { id: string; title: string; description: string | null; previewImageUrl: string | null; baseColor?: string | null; createdAt?: string };
   const [ratingSummary, setRatingSummary] = useState<RatingSnapshot & { loading: boolean }>(
@@ -35,12 +54,16 @@ export default function DetailClient({ product }: { product: PublicProduct }) {
       ratingAverage: product.ratingAverage ?? 0,
       ratingCount: product.ratingCount ?? 0,
       userRating: null,
-      recentRatings: [],
+      reviews: [],
+      reviewEligibility: { eligible: false, orderId: null, orderNumber: null },
       loading: false,
     }
   );
   const [ratingError, setRatingError] = useState<string | null>(null);
-  const [submittingRating, setSubmittingRating] = useState(false);
+  const [reviewSuccess, setReviewSuccess] = useState<string | null>(null);
+  const [submittingReview, setSubmittingReview] = useState(false);
+  const [reviewRating, setReviewRating] = useState(0);
+  const [reviewComment, setReviewComment] = useState("");
   const [publicDesigns, setPublicDesigns] = useState<{ items: PublicDesign[]; loading: boolean; error: string | null }>({
     items: [],
     loading: true,
@@ -56,15 +79,30 @@ export default function DetailClient({ product }: { product: PublicProduct }) {
     return {
       ratingAverage: data.ratingAverage ?? 0,
       ratingCount: data.ratingCount ?? 0,
-      userRating: data.userRating ?? null,
-      recentRatings: Array.isArray(data.recentRatings)
-        ? (data.recentRatings as ApiRatingResponse[]).map((entry) => ({
+      userRating: data.userRating
+        ? {
+            rating: data.userRating.rating,
+            comment: data.userRating.comment ?? null,
+            updatedAt: data.userRating.updatedAt,
+            orderId: data.userRating.orderId ?? null,
+          }
+        : null,
+      reviews: Array.isArray(data.reviews)
+        ? (data.reviews as ApiReviewResponse[]).map((entry) => ({
             id: entry.id,
             rating: entry.rating,
             comment: entry.comment ?? null,
             updatedAt: entry.updatedAt,
+            author: entry.author || 'Verified customer',
+            featured: !!entry.featured,
+            isOwner: !!entry.isOwner,
           }))
         : [],
+      reviewEligibility: {
+        eligible: Boolean(data.reviewEligibility?.eligible),
+        orderId: data.reviewEligibility?.orderId ?? null,
+        orderNumber: data.reviewEligibility?.orderNumber ?? null,
+      },
     };
   }, [product.id]);
 
@@ -81,6 +119,13 @@ export default function DetailClient({ product }: { product: PublicProduct }) {
       });
     return () => controller.abort();
   }, [fetchRatingSnapshot]);
+
+  useEffect(() => {
+    if (ratingSummary.userRating) {
+      setReviewRating(ratingSummary.userRating.rating);
+      setReviewComment(ratingSummary.userRating.comment ?? "");
+    }
+  }, [ratingSummary.userRating]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -125,44 +170,70 @@ export default function DetailClient({ product }: { product: PublicProduct }) {
     }
   }
 
-  async function handleRate(value: number) {
-    if (submittingRating) return;
+  function handleSelectRating(value: number) {
+    setReviewRating(value);
+  }
+
+  async function handleReviewSubmit(event?: FormEvent<HTMLFormElement>) {
+    event?.preventDefault();
+    if (submittingReview) return;
+    if (reviewRating < 1) {
+      setRatingError('Select a star rating to continue.');
+      return;
+    }
     setRatingError(null);
-    setSubmittingRating(true);
+    setReviewSuccess(null);
+    setSubmittingReview(true);
     try {
+      const payload: Record<string, unknown> = { rating: reviewRating };
+      const trimmedComment = reviewComment.trim();
+      if (trimmedComment) {
+        payload.comment = trimmedComment;
+      }
+      const orderIdToSend = ratingSummary.reviewEligibility.orderId || ratingSummary.userRating?.orderId || null;
+      if (orderIdToSend) {
+        payload.orderId = orderIdToSend;
+      }
       const res = await fetch(`/api/products/${product.id}/rating`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ rating: value }),
+        body: JSON.stringify(payload),
       });
       if (res.status === 401) {
-        router.push(`/login?redirect=/products/${product.slug}`);
+        router.push(`/login?redirect=/products/${product.slug}#reviews`);
         return;
       }
       if (!res.ok) {
-        const payload = await res.json().catch(() => ({}));
-        throw new Error(payload.error || 'Failed to save rating');
+        const responsePayload = await res.json().catch(() => ({}));
+        throw new Error(responsePayload.error || 'Failed to save review');
       }
       const data = await res.json();
       setRatingSummary(prev => ({
         ...prev,
         ratingAverage: data.ratingAverage ?? prev.ratingAverage,
         ratingCount: data.ratingCount ?? prev.ratingCount,
-        userRating: data.userRating ?? { rating: value, comment: null },
+        userRating: data.userRating ?? prev.userRating,
       }));
-      void fetchRatingSnapshot()
+      setReviewSuccess('Thanks for sharing your thoughts!');
+      await fetchRatingSnapshot()
         .then(snapshot => setRatingSummary({ ...snapshot, loading: false }))
-        .catch(() => {
-          // ignore refresh errors; optimistic stats already applied
-        });
+        .catch(() => undefined);
     } catch (err: unknown) {
-      setRatingError(err instanceof Error ? err.message : 'Failed to save rating');
+      setRatingError(err instanceof Error ? err.message : 'Failed to save review');
     } finally {
-      setSubmittingRating(false);
+      setSubmittingReview(false);
     }
   }
 
   const mainImage = product.images.find(i => i.url === activeImage) || product.images[0];
+  const showDeliveredReminder = ratingSummary.reviewEligibility.eligible && !ratingSummary.userRating;
+  const reviewHelperText = ratingSummary.reviewEligibility.eligible
+    ? 'You received this product — tell us what you think.'
+    : 'Help other makers decide by sharing fit, print, or fabric notes.';
+  const reviewCharLimit = 300;
+  const lastReviewUpdateLabel = ratingSummary.userRating?.updatedAt
+    ? new Date(ratingSummary.userRating.updatedAt).toLocaleDateString()
+    : null;
 
   return (
     <div className="max-w-6xl mx-auto py-8 px-4 space-y-6">
@@ -265,7 +336,7 @@ export default function DetailClient({ product }: { product: PublicProduct }) {
           </div>
         </div>
       </div>
-        <Card className="p-6 space-y-4">
+        <Card id="reviews" className="p-6 space-y-5">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <h2 className="text-xl font-semibold">Ratings &amp; Reviews</h2>
@@ -284,56 +355,91 @@ export default function DetailClient({ product }: { product: PublicProduct }) {
               </div>
             </div>
           </div>
-          <div className="space-y-2">
-            <span className="text-sm font-medium">Your rating</span>
-            <div className="flex items-center gap-2 flex-wrap">
-              {Array.from({ length: 5 }).map((_, idx) => {
-                const value = idx + 1;
-                const active = (ratingSummary.userRating?.rating ?? 0) >= value;
-                return (
-                  <button
-                    key={value}
-                    type="button"
-                    onClick={() => handleRate(value)}
-                    disabled={submittingRating}
-                    className={`text-2xl transition-transform ${active ? 'text-yellow-500' : 'text-muted'} ${submittingRating ? 'opacity-60' : 'hover:scale-110'}`}
-                    aria-label={`Rate ${value} star${value > 1 ? 's' : ''}`}
-                  >
-                    {active ? '★' : '☆'}
-                  </button>
-                );
-              })}
-              {submittingRating && <span className="text-xs text-muted">Saving…</span>}
-              {!ratingSummary.userRating && !ratingSummary.loading && (
-                <span className="text-xs text-muted">Tap a star to rate</span>
-              )}
-              {ratingSummary.userRating && (
-                <span className="text-xs text-muted">You rated {ratingSummary.userRating.rating}/5</span>
-              )}
+          <div className="space-y-3">
+            <div className="space-y-1">
+              <span className="text-sm font-medium">Share your review</span>
+              <p className="text-xs text-muted">{reviewHelperText}</p>
             </div>
+            {showDeliveredReminder && (
+              <div className="rounded-lg border border-green-500/40 bg-green-500/10 p-3 text-xs text-green-700">
+                {ratingSummary.reviewEligibility.orderNumber
+                  ? `Order ${ratingSummary.reviewEligibility.orderNumber} arrived — tell us how it went.`
+                  : 'You bought this — tell us what you think.'}
+              </div>
+            )}
+            <form onSubmit={(event) => void handleReviewSubmit(event)} className="space-y-3">
+              <div className="flex items-center gap-2 flex-wrap">
+                {Array.from({ length: 5 }).map((_, idx) => {
+                  const value = idx + 1;
+                  const active = reviewRating >= value;
+                  return (
+                    <button
+                      key={value}
+                      type="button"
+                      onClick={() => handleSelectRating(value)}
+                      disabled={submittingReview}
+                      className={`text-2xl transition-transform ${active ? 'text-yellow-500' : 'text-muted'} ${submittingReview ? 'opacity-60' : 'hover:scale-110'}`}
+                      aria-label={`Rate ${value} star${value > 1 ? 's' : ''}`}
+                    >
+                      {active ? '★' : '☆'}
+                    </button>
+                  );
+                })}
+                <span className="text-xs text-muted">
+                  {reviewRating > 0 ? `${reviewRating}/5 selected` : 'Tap a star to rate'}
+                </span>
+                {submittingReview && <span className="text-xs text-muted">Saving…</span>}
+              </div>
+              <Textarea
+                value={reviewComment}
+                onChange={(e) => setReviewComment(e.currentTarget.value)}
+                maxLength={reviewCharLimit}
+                rows={4}
+                placeholder="Share fit, fabric, and print notes (optional)"
+              />
+              <div className="flex flex-col gap-2 text-[11px] text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
+                <span>{reviewComment.length}/{reviewCharLimit} characters</span>
+                <Button type="submit" disabled={submittingReview} variant="primary">
+                  {submittingReview ? 'Submitting…' : ratingSummary.userRating ? 'Update review' : 'Submit review'}
+                </Button>
+              </div>
+            </form>
             {ratingError && <p className="text-xs text-red-600">{ratingError}</p>}
+            {reviewSuccess && <p className="text-xs text-green-600">{reviewSuccess}</p>}
+            {lastReviewUpdateLabel && (
+              <p className="text-[11px] text-muted-foreground">Last updated {lastReviewUpdateLabel}</p>
+            )}
           </div>
           {ratingSummary.loading ? (
-            <p className="text-xs text-muted">Loading recent ratings…</p>
-          ) : ratingSummary.recentRatings.length > 0 ? (
-            <div className="space-y-2">
-              <div className="text-sm font-medium">Recent ratings</div>
-              <div className="space-y-2">
-                {ratingSummary.recentRatings.map((r) => (
-                  <div key={r.id} className="border border-muted rounded-md p-3 text-sm bg-[--surface]">
-                    <div className="flex items-center gap-2 text-xs text-yellow-500">
+            <p className="text-xs text-muted">Loading reviews…</p>
+          ) : ratingSummary.reviews.length > 0 ? (
+            <div className="space-y-3">
+              <div className="text-sm font-medium">What people are saying</div>
+              <div className="space-y-3">
+                {ratingSummary.reviews.map((r) => (
+                  <div key={r.id} className="border border-muted rounded-md p-3 bg-[--surface] space-y-2 text-sm">
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <span className="font-semibold text-foreground">{r.author}</span>
+                      {r.featured && (
+                        <span className="px-2 py-0.5 rounded-full text-[10px] uppercase tracking-wide text-amber-600 border border-amber-500/40">Featured</span>
+                      )}
+                      {r.isOwner && (
+                        <span className="px-2 py-0.5 rounded-full text-[10px] text-emerald-600 border border-emerald-500/40">You</span>
+                      )}
+                      <span className="ml-auto text-[10px]">{r.updatedAt ? new Date(r.updatedAt).toLocaleDateString() : ''}</span>
+                    </div>
+                    <div className="flex text-yellow-500 text-base gap-0.5">
                       {Array.from({ length: 5 }).map((_, starIdx) => (
                         <span key={starIdx}>{starIdx < r.rating ? '★' : '☆'}</span>
                       ))}
-                      <span className="text-[10px] text-muted ml-auto">{r.updatedAt ? new Date(r.updatedAt).toLocaleDateString() : ''}</span>
                     </div>
-                    {r.comment && <p className="text-xs text-muted mt-1">{r.comment}</p>}
+                    {r.comment && <p className="text-xs text-muted">{r.comment}</p>}
                   </div>
                 ))}
               </div>
             </div>
           ) : (
-            <p className="text-xs text-muted">No public ratings yet.</p>
+            <p className="text-xs text-muted">No reviews yet. Be the first to share.</p>
           )}
         </Card>
         <Card className="p-6 space-y-4">

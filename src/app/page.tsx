@@ -1,5 +1,7 @@
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
+import { getFeaturedProducts, getHeroProduct } from "@/lib/products/queries";
+import { getFeaturedReviews } from "@/lib/reviews/queries";
 import HomeClient from "../components/HomeClient";
 
 export default async function RootPage() {
@@ -15,5 +17,9 @@ export default async function RootPage() {
   if (user?.role === "admin") {
     redirect("/admin/dashboard");
   }
-  return <HomeClient />;
+
+  const heroProduct = await getHeroProduct();
+  const featuredProducts = await getFeaturedProducts(8, heroProduct?.id);
+  const testimonials = await getFeaturedReviews();
+  return <HomeClient heroProduct={heroProduct} featuredProducts={featuredProducts} testimonials={testimonials} />;
 }

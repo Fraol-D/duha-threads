@@ -6,7 +6,19 @@ import { Input } from '@/components/ui/Input';
 import { Textarea } from '@/components/ui/Textarea';
 import { Badge } from '@/components/ui/Badge';
 
-interface ProductListItem { id: string; name: string; slug: string; basePrice: number; category: string; primaryImage?: { url: string; alt: string }; salesCount: number; isFeatured?: boolean; featuredRank?: number | null; displayOrder?: number | null }
+interface ProductListItem {
+  id: string;
+  name: string;
+  slug: string;
+  basePrice: number;
+  category: string;
+  primaryImage?: { url: string; alt: string };
+  salesCount: number;
+  isFeatured?: boolean;
+  featuredRank?: number | null;
+  displayOrder?: number | null;
+  isHero?: boolean;
+}
 
 export default function AdminProductsPage() {
   const [products, setProducts] = useState<ProductListItem[]>([]);
@@ -28,6 +40,7 @@ export default function AdminProductsPage() {
   const [submitting, setSubmitting] = useState(false);
   const [orderDrafts, setOrderDrafts] = useState<Record<string, string>>({});
   const [orderSavingId, setOrderSavingId] = useState<string | null>(null);
+  const [heroSavingId, setHeroSavingId] = useState<string | null>(null);
 
   useEffect(()=>{ load(); },[]);
 
@@ -74,6 +87,27 @@ export default function AdminProductsPage() {
       setError(e instanceof Error ? e.message : 'Failed to update display order');
     } finally {
       setOrderSavingId(null);
+    }
+  }
+
+  async function toggleHero(productId: string, next: boolean) {
+    setHeroSavingId(productId);
+    setError(null);
+    try {
+      const res = await fetch(`/api/admin/products/${productId}/hero`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ isHero: next }),
+      });
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}));
+        throw new Error(j.error || 'Failed to update hero product');
+      }
+      await load();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to update hero product');
+    } finally {
+      setHeroSavingId(null);
     }
   }
 
@@ -265,7 +299,7 @@ export default function AdminProductsPage() {
               )}
             </div>
             <div className="space-y-1">
-              <div className="font-medium flex items-center gap-2">{p.name} <Badge>{p.category}</Badge>{p.isFeatured && <span className="text-[10px] px-2 py-0.5 rounded bg-yellow-500/20 text-yellow-600">Featured</span>}</div>
+              <div className="font-medium flex items-center gap-2">{p.name} <Badge>{p.category}</Badge>{p.isFeatured && <span className="text-[10px] px-2 py-0.5 rounded bg-yellow-500/20 text-yellow-600">Featured</span>}{p.isHero && <span className="text-[10px] px-2 py-0.5 rounded bg-blue-500/20 text-blue-600">Hero</span>}</div>
               <div className="text-sm">${p.basePrice.toFixed(2)}</div>
               <div className="text-xs text-muted">Sales: {p.salesCount}</div>
               <div className="flex flex-col gap-2 text-[11px] sm:flex-row sm:items-center">
@@ -324,6 +358,18 @@ export default function AdminProductsPage() {
                     aria-label="Featured rank"
                   />
                 )}
+              </div>
+              <div className="flex flex-col sm:flex-row sm:items-center gap-2 pt-1">
+                <Button
+                  variant={p.isHero ? 'primary' : 'outline'}
+                  size="sm"
+                  className="text-[11px]"
+                  onClick={() => toggleHero(p.id, !p.isHero)}
+                  disabled={heroSavingId === p.id}
+                >
+                  {p.isHero ? 'Hero product' : 'Set as hero'}
+                </Button>
+                {p.isHero && <span className="text-[11px] text-muted-foreground">Only one hero product can be active.</span>}
               </div>
               <div className="pt-2 flex flex-col sm:flex-row gap-2">
                 <Button variant="secondary" onClick={()=>openEdit(p.id)} className="w-full sm:w-auto">Edit</Button>

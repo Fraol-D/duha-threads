@@ -30,6 +30,7 @@ const ProductSchema = new Schema<ProductDocument>(
     displayOrder: { type: Number, default: 0, index: true },
     ratingAverage: { type: Number, default: 0 },
     ratingCount: { type: Number, default: 0 },
+    isHero: { type: Boolean, default: false, index: true },
   },
   { timestamps: true }
 );
@@ -41,6 +42,7 @@ ProductSchema.index({ isActive: 1, createdAt: -1 });
 ProductSchema.index({ isActive: 1, basePrice: 1 });
 // Featured query optimization
 ProductSchema.index({ isFeatured: 1, featuredRank: 1 });
+ProductSchema.index({ isHero: 1 }, { unique: true, partialFilterExpression: { isHero: true } });
 
 export const ProductModel =
   mongoose.models.Product || mongoose.model<ProductDocument>("Product", ProductSchema);

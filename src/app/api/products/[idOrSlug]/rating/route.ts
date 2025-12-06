@@ -4,12 +4,26 @@ import { z } from "zod";
 import { verifyAuth } from "@/lib/auth/session";
 import { getDb } from "@/lib/db/connection";
 import { ProductModel } from "@/lib/db/models/Product";
-import { ProductRatingModel } from "@/lib/db/models/ProductRating";
+import { ProductRatingModel, type ProductRatingDocument } from "@/lib/db/models/ProductRating";
+import { OrderModel } from "@/lib/db/models/Order";
+import { DELIVERED_STATUSES, isDeliveredStatus } from "@/lib/orders/status";
+
+const deliveredStatusRegexes = DELIVERED_STATUSES.map((status) => new RegExp(`^${status}$`, "i"));
 
 const RatingSchema = z.object({
   rating: z.coerce.number().int().min(1).max(5),
   comment: z.string().max(500).optional().nullable(),
+  orderId: z.string().regex(/^[a-f\d]{24}$/i, "Invalid order reference").optional().nullable(),
 });
+
+type ReviewWithUser = {
+  _id: { toString(): string } | string;
+  rating: ProductRatingDocument["rating"];
+  comment: ProductRatingDocument["comment"];
+  updatedAt: ProductRatingDocument["updatedAt"];
+  featured?: boolean;
+  userId: { _id?: Types.ObjectId; name?: string | null } | Types.ObjectId | null;
+};
 
 async function recomputeProductRating(productId: Types.ObjectId) {
   const [stats] = await ProductRatingModel.aggregate<{
@@ -51,10 +65,49 @@ export async function GET(
     const userRatingDoc = auth.user
       ? await ProductRatingModel.findOne({ productId: productObjectId, userId: auth.user.id }).lean()
       : null;
-    const recent = await ProductRatingModel.find({ productId: productObjectId })
+
+    const reviews = await ProductRatingModel.find({ productId: productObjectId })
       .sort({ updatedAt: -1 })
-      .limit(5)
-      .lean();
+      .limit(20)
+      .populate([{ path: "userId", select: "name" }])
+      .lean<ReviewWithUser[]>();
+
+    const normalizedReviews = reviews.map((doc) => {
+      const userRef = doc.userId;
+      const reviewerName = userRef && typeof userRef === "object" && "name" in userRef ? userRef.name : null;
+      const reviewerId =
+        userRef && typeof userRef === "object" && "_id" in userRef && userRef._id
+          ? (userRef._id as Types.ObjectId).toString()
+          : null;
+      return {
+        id: doc._id.toString(),
+        rating: doc.rating,
+        comment: doc.comment || null,
+        updatedAt: doc.updatedAt,
+        author: reviewerName || "Verified customer",
+        featured: !!doc.featured,
+        isOwner: !!(auth.user && reviewerId && reviewerId === auth.user.id),
+      };
+    });
+
+    const deliveredOrder = auth.user
+      ? await OrderModel.findOne({
+          userId: auth.user.id,
+          status: { $in: deliveredStatusRegexes },
+          "items.productId": productObjectId,
+        })
+          .select("_id orderNumber status")
+          .sort({ updatedAt: -1 })
+          .lean<{ _id: Types.ObjectId; orderNumber?: string | null; status?: string | null }>()
+      : null;
+
+    const reviewEligibility = deliveredOrder && isDeliveredStatus(deliveredOrder.status)
+      ? {
+          eligible: true,
+          orderId: deliveredOrder._id.toString(),
+          orderNumber: deliveredOrder.orderNumber || null,
+        }
+      : { eligible: false, orderId: null, orderNumber: null };
 
     return NextResponse.json({
       ratingAverage: product.ratingAverage ?? 0,
@@ -64,14 +117,11 @@ export async function GET(
             rating: userRatingDoc.rating,
             comment: userRatingDoc.comment || null,
             updatedAt: userRatingDoc.updatedAt,
+            orderId: userRatingDoc.orderId ? userRatingDoc.orderId.toString() : null,
           }
         : null,
-      recentRatings: recent.map((r) => ({
-        id: r._id.toString(),
-        rating: r.rating,
-        comment: r.comment || null,
-        updatedAt: r.updatedAt,
-      })),
+      reviews: normalizedReviews,
+      reviewEligibility,
     });
   } catch (error) {
     console.error("[GET] product rating error", error);
@@ -93,7 +143,7 @@ export async function POST(
     if (!parsed.success) {
       return NextResponse.json({ error: "Invalid rating" }, { status: 400 });
     }
-    const { rating, comment } = parsed.data;
+    const { rating, comment, orderId } = parsed.data;
 
     await getDb();
     const { idOrSlug } = await params;
@@ -109,28 +159,54 @@ export async function POST(
     }
 
     const productObjectId = product._id;
-
-    const trimmedComment = comment?.trim() || null;
-    const existing = await ProductRatingModel.findOne({ productId: productObjectId, userId: auth.user.id });
-    if (existing) {
-      existing.rating = rating;
-      existing.comment = trimmedComment;
-      await existing.save();
-    } else {
-      await ProductRatingModel.create({
-        productId: productObjectId,
+    const trimmedComment = typeof comment === "string" ? comment.trim() : null;
+    let linkedOrderId: Types.ObjectId | null = null;
+    if (orderId) {
+      const orderObjectId = new Types.ObjectId(orderId);
+      const order = await OrderModel.findOne({
+        _id: orderObjectId,
         userId: auth.user.id,
-        rating,
-        comment: trimmedComment,
-      });
+        "items.productId": productObjectId,
+      })
+        .select("_id status")
+        .lean<{ _id: Types.ObjectId; status?: string | null }>();
+      if (!order) {
+        return NextResponse.json({ error: "Order not found for review" }, { status: 400 });
+      }
+      if (!isDeliveredStatus(order.status)) {
+        return NextResponse.json({ error: "Order has not been delivered yet" }, { status: 400 });
+      }
+      linkedOrderId = order._id;
     }
+
+    const existing = await ProductRatingModel.findOne({ productId: productObjectId, userId: auth.user.id });
+    const savedRating = existing
+      ? await (async () => {
+          existing.rating = rating;
+          existing.comment = trimmedComment;
+          if (linkedOrderId) {
+            existing.orderId = linkedOrderId;
+          }
+          return existing.save();
+        })()
+      : await ProductRatingModel.create({
+          productId: productObjectId,
+          userId: auth.user.id,
+          rating,
+          comment: trimmedComment,
+          orderId: linkedOrderId,
+        });
 
     const stats = await recomputeProductRating(productObjectId);
 
     return NextResponse.json({
       ratingAverage: stats.ratingAverage,
       ratingCount: stats.ratingCount,
-      userRating: { rating, comment: trimmedComment },
+      userRating: {
+        rating: savedRating.rating,
+        comment: savedRating.comment || null,
+        orderId: savedRating.orderId ? savedRating.orderId.toString() : null,
+      },
     });
   } catch (error) {
     console.error("[POST] product rating error", error);
