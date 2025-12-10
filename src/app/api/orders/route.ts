@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { Types, type LeanDocument } from "mongoose";
+import { Types, type Document } from "mongoose";
 import { getCurrentUser } from "@/lib/auth/session";
 import { getDb } from "@/lib/db/connection";
 import { OrderModel, type OrderDocument } from "@/lib/db/models/Order";
@@ -11,7 +11,7 @@ import { env } from "@/config/env";
 import { generateOrderNumber, isOrderNumberDuplicateError } from '@/lib/orders/orderNumber';
 import { isDeliveredStatus } from '@/lib/orders/status';
 
-type OrderLean = LeanDocument<OrderDocument>;
+type OrderLean = Omit<OrderDocument, keyof Document> & { _id: Types.ObjectId };
 type CartProduct = {
   _id: Types.ObjectId;
   name: string;
