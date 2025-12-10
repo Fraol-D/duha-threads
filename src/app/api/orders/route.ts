@@ -51,7 +51,7 @@ export async function GET() {
         ProductModel.find({ _id: { $in: validObjectIds } }).select("_id slug").lean(),
       ]);
       reviewedProductIds = new Set(ratings.map((doc) => doc.productId.toString()));
-      productSlugMap = new Map(products.map((doc) => [doc._id.toString(), doc.slug]));
+      productSlugMap = new Map(products.map((doc) => [String(doc._id), doc.slug] as const));
     }
   }
 
