@@ -1,6 +1,7 @@
 "use client";
 
-import { signOut } from "next-auth/react";
+import { useState } from "react";
+import { useRouter } from "next/navigation";
 
 type ProfileClientProps = {
   user: {
@@ -12,6 +13,25 @@ type ProfileClientProps = {
 };
 
 export default function ProfileClient({ user }: ProfileClientProps) {
+  const router = useRouter();
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function handleLogout() {
+    setError(null);
+    setIsLoggingOut(true);
+    try {
+      await fetch("/api/auth/logout", { method: "POST" });
+      router.replace("/");
+      router.refresh();
+    } catch (err) {
+      console.error("Logout failed", err);
+      setError("Failed to log out. Please try again.");
+    } finally {
+      setIsLoggingOut(false);
+    }
+  }
+
   return (
     <div className="max-w-2xl mx-auto space-y-6 py-10">
       <h1 className="text-2xl font-semibold">Your profile</h1>
@@ -25,12 +45,16 @@ export default function ProfileClient({ user }: ProfileClientProps) {
         {user.role && <p className="text-sm text-muted-foreground">Role: {user.role}</p>}
       </div>
 
-      <button
-        onClick={() => signOut({ callbackUrl: "/" })}
-        className="px-4 py-2 rounded-lg border border-muted/60 hover:bg-muted text-sm"
-      >
-        Log out
-      </button>
+      <div className="space-y-2">
+        <button
+          onClick={handleLogout}
+          disabled={isLoggingOut}
+          className="px-4 py-2 rounded-lg border border-muted/60 hover:bg-muted text-sm disabled:opacity-50"
+        >
+          {isLoggingOut ? "Logging out..." : "Log out"}
+        </button>
+        {error && <p className="text-sm text-red-500">{error}</p>}
+      </div>
     </div>
   );
 }
