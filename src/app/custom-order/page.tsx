@@ -8,14 +8,13 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Textarea } from "@/components/ui/Textarea";
 import { Stepper } from "@/components/ui/Stepper";
-import { MascotSlot } from "@/components/ui/MascotSlot";
 import { fadeInUp } from "@/lib/motion";
 import { DesignPreviewCanvas, type CanvasPlacement, PREVIEW_ASPECT_RATIO, DEFAULT_FONT_SIZE_CONTROL } from "@/components/preview/DesignPreviewCanvas";
 import { BaseShirtColor } from "@/config/baseShirts";
 import { resolveBasePreviewImage } from "@/lib/preview/baseImage";
-import { DesignAssistant } from "@/components/DesignAssistant";
 import { logEvent } from "@/lib/loggerEvents";
 import type { TextBoxWidthPreset } from "@/types/custom-order";
+import { validateCustomDesignDescription } from "@/lib/validation/customDesign";
 
 // Stable placement order constant (outside component to avoid hook deps)
 const PLACEMENT_ORDER_REF = Object.freeze(['front','back','left_chest','right_chest'] as const);
@@ -253,6 +252,19 @@ export default function CustomOrderBuilderPage() {
     setLoading(true); setError(null);
     try {
       if (currentStep !== 'review') { setError('Go to Review to submit'); setLoading(false); return; }
+      
+      // Validate all text placements against content policy
+      for (const p of placements) {
+        if (p.designType === 'text' && p.designText) {
+          const validation = validateCustomDesignDescription(p.designText);
+          if (!validation.valid) {
+            setError(validation.reason || 'This design doesn\'t meet our guidelines.');
+            setLoading(false);
+            return;
+          }
+        }
+      }
+      
       const payload = {
         baseColor: selectedBaseColor,
         quantity,
@@ -286,42 +298,6 @@ export default function CustomOrderBuilderPage() {
       logEvent({ type: 'custom_order_completed', entityId: orderId });
       router.push(`/custom-order/confirmation/${orderId}`);
     } catch (e: unknown) { setError(e instanceof Error ? e.message : 'Submit failed'); } finally { setLoading(false); }
-  }
-
-  function applyTemplatePlacements(payload: { placements: { placementKey: string; type: string; imageUrl?: string | null; text?: string | null; font?: string | null; color?: string | null }[] }) {
-    const first = payload.placements[0];
-    if (!first) return;
-    setPlacements(prev => {
-      const frontIdx = prev.findIndex(p=>p.area==='front');
-      if (frontIdx >=0) {
-        const updated = [...prev];
-        if (first.type==='image' && first.imageUrl) {
-          updated[frontIdx].designType='image';
-          updated[frontIdx].designImageUrl=first.imageUrl;
-          updated[frontIdx].localImagePreviewUrl=first.imageUrl;
-        } else if (first.type==='text' && first.text) {
-          updated[frontIdx].designType='text';
-          updated[frontIdx].designText=first.text;
-          updated[frontIdx].designColor=first.color || '#000000';
-          updated[frontIdx].designFont=DEFAULT_FONT_ID;
-          updated[frontIdx].fontSize=DEFAULT_FONT_SIZE_CONTROL;
-          updated[frontIdx].textWidthPreset='standard';
-        }
-        return updated;
-      }
-      const newPlacement: PlacementConfig = {
-        id: 'front-1', area:'front', verticalPosition:'upper', designType: first.type==='image'?'image':'text',
-        designText: first.type==='text'? first.text || '' : '',
-        designFont: DEFAULT_FONT_ID,
-        fontSize: DEFAULT_FONT_SIZE_CONTROL,
-        textWidthPreset: 'standard',
-        designColor: first.type==='text' ? first.color || '#000000' : '#000000',
-        designImageUrl: first.type==='image'? first.imageUrl || null : null,
-        localImagePreviewUrl: first.type==='image'? first.imageUrl || null : null,
-      };
-      return [...prev, newPlacement];
-    });
-    setCurrentStep('design');
   }
 
   const unitEstimate = useMemo(() => {
@@ -379,6 +355,27 @@ export default function CustomOrderBuilderPage() {
                       <h2 className="text-section-title">Placements</h2>
                       <span className="text-xs text-muted">Select areas to customize</span>
                     </div>
+                    
+                    {/* Custom Print Guidelines */}
+                    <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-600 dark:border-amber-800/60 rounded-xl p-4 shadow-[0_14px_36px_rgba(191,141,0,0.16)]">
+                      <div className="flex gap-3">
+                        <div className="shrink-0 w-9 h-9 rounded-full bg-amber-300 dark:bg-amber-900/50 flex items-center justify-center text-sm shadow-inner shadow-amber-700/40">
+                          <span className="text-amber-950 dark:text-amber-300">📋</span>
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <h3 className="text-sm font-semibold text-amber-950 dark:text-amber-100 mb-1">Custom Print Guidelines</h3>
+                          <ul className="text-[13px] text-amber-950 dark:text-amber-200 space-y-1 font-semibold leading-snug">
+                            <li>• No living beings (people, animals, etc.)</li>
+                            <li>• No offensive, hateful, or explicit content</li>
+                            <li>• No religious prints (of any faith or belief)</li>
+                          </ul>
+                          <p className="text-[12px] text-amber-950 dark:text-amber-100 mt-2 font-semibold leading-snug">
+                            These boundaries help us keep Duha Threads consistent and welcoming for everyone. Thank you for understanding.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                    
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                       {(['front','back','left_chest','right_chest'] as PlacementArea[]).map(area => {
                         const enabled = enabledAreas.includes(area);
@@ -478,7 +475,7 @@ export default function CustomOrderBuilderPage() {
                                       key={v} 
                                       type="button" 
                                       onClick={()=>setPlacements(prev => prev.map(x => x.id===active.id ? { ...x, verticalPosition:v } : x))} 
-                                      className={`flex-1 py-2 rounded-lg text-[10px] font-medium transition-all ${active.verticalPosition===v?'bg-black text-white shadow-md':'bg-muted/30 text-muted-foreground hover:bg-muted/50'}`}
+                                      className={`flex-1 py-2 rounded-lg text-[10px] font-medium transition-all ${active.verticalPosition===v?'bg-black text-white shadow-[0_6px_18px_rgba(0,0,0,0.2)] ring-1 ring-black/15 dark:bg-white dark:text-black dark:shadow-[0_0_0_1px_rgba(255,255,255,0.4)] dark:ring-white/60':'bg-muted/30 text-muted-foreground hover:bg-muted/50 dark:bg-white/5 dark:text-muted-foreground dark:hover:bg-white/10'}`}
                                     >
                                       {v.charAt(0).toUpperCase() + v.slice(1)}
                                     </button>
@@ -505,7 +502,7 @@ export default function CustomOrderBuilderPage() {
                                     <select 
                                       value={active.designFont}
                                       onChange={(e) => setPlacements(prev => prev.map(x => x.id === active.id ? { ...x, designFont: e.target.value as FontId } : x))}
-                                      className="w-full rounded-lg bg-white dark:bg-black border-none text-xs py-2.5 px-3 shadow-sm focus:ring-2 ring-black/5 text-zinc-900 dark:text-zinc-100"
+                                      className="w-full rounded-lg bg-white text-black border border-black/10 py-2.5 px-3 shadow-sm focus:ring-2 focus:ring-black/15 dark:bg-black dark:text-white dark:border-white/30 dark:focus:ring-white/30 text-xs"
                                     >
                                       {FONT_OPTIONS.map(f => (
                                         <option key={f.id} value={f.id}>{f.label}</option>
@@ -526,7 +523,7 @@ export default function CustomOrderBuilderPage() {
                                           const next = clampFontSize(Number(e.currentTarget.value));
                                           setPlacements((prev) => prev.map((x) => (x.id === active.id ? { ...x, fontSize: next } : x)));
                                         }}
-                                        className="flex-1 h-1 bg-muted rounded-full appearance-none cursor-pointer accent-black ml-2"
+                                        className="flex-1 h-1 bg-muted rounded-full appearance-none cursor-pointer ml-2 accent-black dark:accent-white dark:bg-muted/50 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-black [&::-webkit-slider-thumb]:border [&::-webkit-slider-thumb]:border-white/70 [&::-webkit-slider-thumb]:shadow-[0_1px_3px_rgba(0,0,0,0.25)] [&::-moz-range-thumb]:appearance-none [&::-moz-range-thumb]:h-4 [&::-moz-range-thumb]:w-4 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:bg-black [&::-moz-range-thumb]:border [&::-moz-range-thumb]:border-white/70 [&::-moz-range-thumb]:shadow-[0_1px_3px_rgba(0,0,0,0.25)] dark:[&::-webkit-slider-thumb]:bg-white dark:[&::-webkit-slider-thumb]:border-black/40 dark:[&::-moz-range-thumb]:bg-white dark:[&::-moz-range-thumb]:border-black/40"
                                       />
                                       <span className="text-[10px] font-mono w-8 text-center">{active.fontSize}</span>
                                     </div>
@@ -762,14 +759,6 @@ export default function CustomOrderBuilderPage() {
               ))}
             </div>
           </Card>
-          <Card variant="glass" className="p-6 space-y-4 border-none shadow-lg">
-            <MascotSlot variant="customBuilderHelper" />
-            <div className="text-xs text-muted-foreground leading-relaxed">
-              <p className="font-bold text-foreground mb-1">Design Tips</p>
-              <p>Use high-resolution images for best print quality. Keep text within the safe zones.</p>
-            </div>
-          </Card>
-          <DesignAssistant onApplyTemplate={applyTemplatePlacements} />
         </div>
       </div>
     </div>

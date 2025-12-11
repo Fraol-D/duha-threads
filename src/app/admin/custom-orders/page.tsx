@@ -81,16 +81,15 @@ export default function AdminCustomOrdersPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  async function load(overrides?: { status?: string; designType?: string; publicStatus?: string; search?: string }) {
+  async function load(overrides?: { status?: string; publicStatus?: string; search?: string }) {
     setLoading(true); setError(null);
     try {
       const url = new URL('/api/admin/custom-orders', window.location.origin);
       const statusValue = overrides?.status ?? statusFilter;
-      const designValue = overrides?.designType ?? designTypeFilter;
       const publicValue = overrides?.publicStatus ?? publicStatusFilter;
       const searchValue = overrides?.search ?? search;
+      // Only send API-supported filters
       if (statusValue) url.searchParams.set('status', statusValue);
-      if (designValue) url.searchParams.set('designType', designValue);
       if (publicValue) url.searchParams.set('publicStatus', publicValue);
       if (searchValue) url.searchParams.set('q', searchValue);
       const res = await fetch(url.toString());
@@ -103,10 +102,9 @@ export default function AdminCustomOrdersPage() {
     } finally { setLoading(false); }
   }
 
+  // Client-side filtering for designType (not supported by API)
   const filtered = orders.filter(o => {
-    if (statusFilter && o.status !== statusFilter) return false;
     if (designTypeFilter && o.designType !== designTypeFilter) return false;
-    if (publicStatusFilter && (o.publicStatus || (o.isPublic ? 'approved' : 'private')) !== publicStatusFilter) return false;
     return true;
   });
 
@@ -139,7 +137,7 @@ export default function AdminCustomOrdersPage() {
                 setDesignTypeFilter('');
                 setPublicStatusFilter('');
                 setSearch('');
-                load({ status: '', designType: '', publicStatus: '', search: '' });
+                load({ status: '', publicStatus: '', search: '' });
               }}
               className="w-full sm:w-auto"
             >

@@ -15,11 +15,13 @@ import {
   List,
   Menu,
   X,
+  Download,
 } from "lucide-react";
 import { motion, AnimatePresence, useScroll, useMotionValueEvent } from "framer-motion";
 import { useCart } from "./CartProvider";
 import { useWishlist } from "./WishlistProvider";
 import { BrandLogo } from "./BrandLogo";
+import { usePwaInstallPrompt } from "@/hooks/usePwaInstallPrompt";
 
 type NavItem = { href: string; label: string; icon: React.ComponentType<{ className?: string }>; title?: string };
 
@@ -40,6 +42,7 @@ export function Header() {
   const [isMobileView, setIsMobileView] = useState(false);
   const { totalQuantity } = useCart();
   const { count: wishlistCount } = useWishlist();
+  const { canInstall, promptInstall, isStandalone } = usePwaInstallPrompt();
 
   const { scrollY } = useScroll();
   const [hidden, setHidden] = useState(false);
@@ -172,6 +175,18 @@ export function Header() {
               {!loaded && <span className="text-muted-foreground animate-pulse px-4">…</span>}
             </nav>
             <div className="flex items-center gap-2">
+              {/* Desktop PWA Install Button */}
+              {!isStandalone && canInstall && (
+                <button
+                  aria-label="Install app"
+                  title="Install Duha Threads"
+                  onClick={promptInstall}
+                  className="inline-flex items-center gap-1.5 rounded-full px-3 py-2 text-xs font-medium hover:bg-[--surface] transition-colors focus:outline-none focus:ring-2 focus:ring-foreground/40"
+                >
+                  <Download className="h-4 w-4" />
+                  <span>Install</span>
+                </button>
+              )}
               <button
                 aria-label="Toggle theme"
                 title="Toggle theme"

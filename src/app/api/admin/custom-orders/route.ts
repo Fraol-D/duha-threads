@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDb } from '@/lib/db/connection';
 import { CustomOrderModel } from '@/lib/db/models/CustomOrder';
+import { Types } from 'mongoose';
 import { verifyAuth } from '@/lib/auth/session';
 import { isAdmin } from '@/lib/auth/admin';
 
@@ -22,12 +23,16 @@ export async function GET(req: NextRequest) {
       filter.publicStatus = publicStatus;
     }
     if (q) {
-      const rx = { $regex: q, $options: 'i' };
-      filter.$or = [
+      const rx = { $regex: q, $options: 'i' } as const;
+      const ors: any[] = [
         { 'delivery.email': rx },
         { orderNumber: rx },
-        { _id: rx },
+        { $expr: { $regexMatch: { input: { $toString: '$_id' }, regex: q, options: 'i' } } },
       ];
+      if (Types.ObjectId.isValid(q)) {
+        ors.unshift({ _id: new Types.ObjectId(q) });
+      }
+      filter.$or = ors;
     }
     const skip = (page - 1) * pageSize;
     const [ordersRaw, total] = await Promise.all([

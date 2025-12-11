@@ -9,6 +9,7 @@ import { ConsoleEmailService, sendCustomOrderCreated } from '@/lib/email/EmailSe
 import { generateCustomOrderPreview } from '@/lib/preview/generateCustomOrderPreview';
 import { Types } from "mongoose";
 import { generateOrderNumber, isOrderNumberDuplicateError } from '@/lib/orders/orderNumber';
+import { validateCustomDesignDescription } from "@/lib/validation/customDesign";
 
 const PlacementSchema = z.object({
   placementKey: z.string().min(1),
@@ -210,6 +211,46 @@ export async function POST(req: NextRequest) {
     const directProductId = shareFields.showcaseProductId?.trim() || null;
 
     const data = validationResult.data as LegacyShape | SingleBuilderShape | MultiBuilderShape;
+
+    // Validate design content against content policy
+    // Check multi-placement builder format
+    if ('placements' in data && Array.isArray(data.placements)) {
+      for (const placement of data.placements) {
+        if ('designType' in placement && placement.designType === 'text' && placement.designText) {
+          const contentValidation = validateCustomDesignDescription(placement.designText);
+          if (!contentValidation.valid) {
+            return NextResponse.json(
+              { error: contentValidation.reason ?? "This custom design doesn't meet our guidelines." },
+              { status: 400 }
+            );
+          }
+        }
+      }
+    }
+    // Check single-side builder format
+    if ('designText' in data && data.designText) {
+      const contentValidation = validateCustomDesignDescription(data.designText);
+      if (!contentValidation.valid) {
+        return NextResponse.json(
+          { error: contentValidation.reason ?? "This custom design doesn't meet our guidelines." },
+          { status: 400 }
+        );
+      }
+    }
+    // Check legacy format designAssets
+    if ('designAssets' in data && Array.isArray(data.designAssets)) {
+      for (const asset of data.designAssets) {
+        if (asset.type === 'text' && asset.text) {
+          const contentValidation = validateCustomDesignDescription(asset.text);
+          if (!contentValidation.valid) {
+            return NextResponse.json(
+              { error: contentValidation.reason ?? "This custom design doesn't meet our guidelines." },
+              { status: 400 }
+            );
+          }
+        }
+      }
+    }
 
     // Connect to database
     await getDb();

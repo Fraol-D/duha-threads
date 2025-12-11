@@ -66,14 +66,29 @@ interface OrderDetail {
 }
 
 const ADMIN_STATUS_VALUES = [
+  // Canonical states
+  'PENDING_REVIEW','APPROVED','IN_DESIGN','IN_PRINTING','READY_FOR_PICKUP','OUT_FOR_DELIVERY','DELIVERED','CANCELLED',
+  // Legacy aliases (kept for compatibility but deduped in UI)
   'Pending','Accepted','In Printing','Out for Delivery','Delivered','Cancelled',
-  'PENDING_REVIEW','APPROVED','IN_DESIGN','IN_PRINTING','READY_FOR_PICKUP','OUT_FOR_DELIVERY','DELIVERED','CANCELLED'
 ];
 
-const adminOrderStatusOptions = ADMIN_STATUS_VALUES.map((statusValue) => ({
-  label: statusValue.replace(/_/g, ' '),
-  value: statusValue,
-}));
+const humanizeStatus = (statusValue: string) =>
+  statusValue
+    .replace(/_/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .toLowerCase()
+    .replace(/(^|\s)\S/g, (c) => c.toUpperCase());
+
+const adminOrderStatusOptions = Array.from(
+  new Map(
+    ADMIN_STATUS_VALUES.map((value) => {
+      const label = humanizeStatus(value);
+      const key = label.toLowerCase().replace(/\s+/g, '_');
+      return [key, { label, value }];
+    })
+  ).values()
+);
 
 export default function OrderDetailClient({ orderId }: { orderId: string }) {
   const [detail, setDetail] = useState<OrderDetail | null>(null);
@@ -139,7 +154,12 @@ export default function OrderDetailClient({ orderId }: { orderId: string }) {
             setDebugInfo(d => ({ ...(d||{}), malformed: json }));
           } else {
             setDetail(json.order);
-            setStatus(json.order.status);
+            const incomingStatus = json.order.status;
+            const hasStatusInOptions = adminOrderStatusOptions.some((opt) => opt.value === incomingStatus);
+            if (incomingStatus && !hasStatusInOptions) {
+              adminOrderStatusOptions.unshift({ label: humanizeStatus(incomingStatus), value: incomingStatus });
+            }
+            setStatus(incomingStatus);
             setError(null);
             console.debug('[ADMIN_ORDER_DETAIL_FETCH_SUCCESS]', json.order.id);
             setDebugInfo(d => ({ ...(d||{}), success: { id: json.order.id, status: json.order.status } }));

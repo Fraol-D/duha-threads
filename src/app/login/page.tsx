@@ -75,7 +75,7 @@ export default function LoginPage() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="you@example.com"
-                  className="bg-white/50 dark:bg-black/20 border-transparent focus:border-primary/50 transition-all"
+                  className="bg-[--surface] dark:bg-[--surface] border-[--muted-border] text-[--fg] focus:border-[--ring] transition-all"
                 />
               </div>
               <div className="space-y-2">
@@ -94,7 +94,7 @@ export default function LoginPage() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••"
-                  className="bg-white/50 dark:bg-black/20 border-transparent focus:border-primary/50 transition-all"
+                  className="bg-[--surface] dark:bg-[--surface] border-[--muted-border] text-[--fg] focus:border-[--ring] transition-all"
                 />
               </div>
             </div>

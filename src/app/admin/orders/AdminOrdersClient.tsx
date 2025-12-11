@@ -47,17 +47,17 @@ const normalizeStatus = (value?: string) => {
 
 const statusTone = (value?: string) => {
   const normalized = value?.toLowerCase();
-  if (!normalized) return 'bg-[--surface-alt] text-foreground';
+  if (!normalized) return 'bg-gray-100 text-black dark:bg-gray-500/20 dark:text-black';
   if (['pending','pending_review','pending approval','in printing','confirmed','accepted'].includes(normalized)) {
-    return 'bg-amber-100 text-amber-900 dark:bg-amber-500/20 dark:text-amber-100';
+    return 'bg-amber-100 text-black dark:bg-amber-500/20 dark:text-black';
   }
   if (['shipped','out for delivery','completed','delivered'].includes(normalized)) {
-    return 'bg-emerald-100 text-emerald-900 dark:bg-emerald-500/20 dark:text-emerald-100';
+    return 'bg-emerald-100 text-black dark:bg-emerald-500/20 dark:text-black';
   }
   if (normalized.startsWith('cancel') || normalized === 'refunded') {
-    return 'bg-red-100 text-red-900 dark:bg-red-500/20 dark:text-red-100';
+    return 'bg-red-100 text-black dark:bg-red-500/20 dark:text-black';
   }
-  return 'bg-[--surface-alt] text-foreground';
+  return 'bg-gray-100 text-black dark:bg-gray-500/20 dark:text-black';
 };
 
 export default function AdminOrdersClient() {

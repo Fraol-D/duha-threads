@@ -5,8 +5,8 @@ import { usePathname } from "next/navigation";
 import clsx from "clsx";
 
 const LOGO_SOURCES = {
-  light: "/logo/duha_logo.PNG",
-  dark: "/logo/duha_logo.PNG",
+  light: "/logo/logo-black.png",
+  dark: "/logo/logo-white.png",
 };
 
 interface BrandLogoProps {
@@ -31,8 +31,8 @@ export function BrandLogo({ theme = "light", className }: BrandLogoProps) {
         width={160}
         height={44}
         priority={priority}
-        className="h-9 w-auto md:h-10 select-none"
-        sizes="(max-width: 640px) 120px, 160px"
+        className="h-7 w-auto md:h-8 select-none"
+        sizes="(max-width: 1240px)"
       />
     </Link>
   );

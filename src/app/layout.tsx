@@ -7,6 +7,8 @@ import { WishlistProvider } from "@/components/WishlistProvider";
 import { Footer } from "@/components/Footer";
 import { Container } from "@/components/Container";
 import { Analytics } from "@vercel/analytics/react";
+import { MobileBottomNav } from "@/components/layout/MobileBottomNav";
+import { MobileInstallBanner } from "@/components/layout/MobileInstallBanner";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -51,10 +53,12 @@ export default function RootLayout({
         <CartProvider>
           <WishlistProvider>
             <Header />
-            <main className="flex-1 pt-20">
+            <main className="flex-1 pt-20 pb-20 lg:pb-0">
               <Container>{children}</Container>
             </main>
             <Footer />
+            <MobileBottomNav />
+            <MobileInstallBanner />
             <Analytics />
           </WishlistProvider>
         </CartProvider>

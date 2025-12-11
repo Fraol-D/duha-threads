@@ -43,15 +43,15 @@ export function Select({ value, onChange, options, placeholder = "Select...", la
         onClick={() => setIsOpen(!isOpen)}
         className={clsx(
           "w-full flex items-center justify-between px-4 py-2.5 rounded-xl text-sm transition-all duration-200",
-          "bg-[--surface] border border-muted/40 text-foreground shadow-sm hover:bg-muted/40 focus:outline-none focus:ring-2 focus:ring-foreground/10",
-          isOpen && "ring-2 ring-foreground/10"
+          "bg-[--surface] border border-[--muted-border] text-[--fg] shadow-sm hover:bg-[--surface]/80 focus:outline-none focus:ring-2 focus:ring-[--ring]/20",
+          isOpen && "ring-2 ring-[--ring]/20"
         )}
       >
-        <span className={clsx("truncate", !selectedOption && "text-muted-foreground")}> 
+        <span className={clsx("truncate", !selectedOption && "text-[--muted-text]")}> 
           {selectedOption ? selectedOption.label : placeholder}
         </span>
         <ChevronDown
-          className={clsx("w-4 h-4 text-muted-foreground transition-transform duration-200", isOpen && "rotate-180")}
+          className={clsx("w-4 h-4 text-[--muted-text] transition-transform duration-200", isOpen && "rotate-180")}
         />
       </button>
 
@@ -62,7 +62,7 @@ export function Select({ value, onChange, options, placeholder = "Select...", la
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -10, scale: 0.95 }}
             transition={{ duration: 0.15, ease: "easeOut" }}
-            className="absolute z-50 w-full mt-2 overflow-hidden rounded-xl bg-[--surface] border border-muted/40 shadow-xl ring-1 ring-foreground/10"
+            className="absolute z-50 w-full mt-2 overflow-hidden rounded-xl bg-[--surface]/95 backdrop-blur-xl border border-[--muted-border] shadow-xl"
           >
             <div className="max-h-60 overflow-auto py-1 custom-scrollbar">
               {options.map((option) => (
@@ -73,11 +73,11 @@ export function Select({ value, onChange, options, placeholder = "Select...", la
                     onChange(option.value);
                     setIsOpen(false);
                   }}
-                    className={clsx(
-                      "w-full flex items-center justify-between px-4 py-2.5 text-sm text-left transition-colors",
-                      "hover:bg-muted/40",
-                      option.value === value ? "text-foreground font-medium bg-muted/40" : "text-muted-foreground"
-                    )}
+                  className={clsx(
+                    "w-full flex items-center justify-between px-4 py-2.5 text-sm text-left transition-colors",
+                    "hover:bg-[--surface]",
+                    option.value === value ? "text-[--fg] font-medium bg-[--surface]" : "text-[--muted-text]"
+                  )}
                 >
                   <span>{option.label}</span>
                   {option.value === value && <Check className="w-3.5 h-3.5" />}

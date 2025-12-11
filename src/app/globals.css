@@ -6,6 +6,7 @@
   --bg: #ffffff;
   --surface: #f9fafb;
   --fg: #050505;
+  --foreground: #050505;
   --muted-text: #9ca3af;
   --muted-border: #e5e7eb;
   --ring: #111827;
@@ -35,6 +36,7 @@
   --bg: #000000;
   --surface: #050505;
   --fg: #f9fafb;
+  --foreground: #f9fafb;
   --muted-text: #9ca3af;
   --muted-border: #1f2933;
   --ring: #f9fafb;

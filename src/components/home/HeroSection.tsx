@@ -92,8 +92,7 @@ function HeroProductCard({ product }: { product: HeroProduct }) {
             <p className="text-xs font-semibold uppercase tracking-[0.3em] text-muted-foreground">Hero Product</p>
             <h3 className="text-2xl font-semibold text-foreground">{product.name}</h3>
             <p className="text-muted-foreground text-sm line-clamp-3">{product.description}</p>
-            <div className="flex items-center justify-between pt-2 text-sm text-muted-foreground">
-              <span className="font-semibold text-foreground">${product.basePrice.toFixed(2)}</span>
+            <div className="flex items-center justify-end pt-2 text-sm text-muted-foreground">
               <span className="inline-flex items-center text-xs font-semibold uppercase tracking-wide text-primary">
                 View this tee
                 <ArrowRight className="ml-1 h-3.5 w-3.5" />
