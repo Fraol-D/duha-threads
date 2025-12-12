@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import clsx from "clsx";
 import { motion } from "framer-motion";
-import { Menu, X, LayoutDashboard, ShoppingBag, Sparkles, Shirt, Users, BarChart3 } from "lucide-react";
+import { Menu, X, LayoutDashboard, ShoppingBag, Sparkles, Shirt, Users, BarChart3, MessageSquare } from "lucide-react";
 
 export type AdminNavItem = {
   label: string;
@@ -19,6 +19,7 @@ const iconRegistry = {
   products: Shirt,
   users: Users,
   analytics: BarChart3,
+  reviews: MessageSquare,
 } as const;
 
 interface AdminShellProps {

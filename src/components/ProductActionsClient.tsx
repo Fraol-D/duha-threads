@@ -50,12 +50,12 @@ export default function ProductActionsClient({ productId, sizes, colors }: { pro
   return (
     <div className="space-y-3">
       <div className="flex gap-3">
-        <select className="border rounded px-2 py-1" value={size} onChange={(e) => setSize(e.target.value)}>
+        <select className="border rounded px-2 py-1 bg-white dark:bg-black text-zinc-900 dark:text-zinc-100 border-zinc-200 dark:border-zinc-800" value={size} onChange={(e) => setSize(e.target.value)}>
           {(sizes.length ? sizes : ["Default"]).map((s) => (
             <option key={s} value={s}>{s}</option>
           ))}
         </select>
-        <select className="border rounded px-2 py-1" value={color} onChange={(e) => setColor(e.target.value)}>
+        <select className="border rounded px-2 py-1 bg-white dark:bg-black text-zinc-900 dark:text-zinc-100 border-zinc-200 dark:border-zinc-800" value={color} onChange={(e) => setColor(e.target.value)}>
           {(colors.length ? colors : ["Default"]).map((c) => (
             <option key={c} value={c}>{c}</option>
           ))}
