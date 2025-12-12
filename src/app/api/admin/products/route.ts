@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { verifyAuth } from '@/lib/auth/session';
 import { getDb } from '@/lib/db/connection';
 import { ProductModel } from '@/lib/db/models/Product';
-import { isAdmin } from '@/lib/auth/admin';
+import { isAdminEmail } from '@/config/admin-public';
 import { toProductListItem, toPublicProduct, type ProductDocument } from '@/types/product';
 
 function slugify(name: string) {
@@ -12,7 +12,7 @@ function slugify(name: string) {
 export async function GET(req: NextRequest) {
   try {
     const auth = await verifyAuth(req);
-    if (!isAdmin(auth.user)) {
+    if (!auth.user || !isAdminEmail(auth.user.email)) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
     await getDb();
@@ -40,7 +40,7 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const auth = await verifyAuth(req);
-    if (!isAdmin(auth.user)) {
+    if (!auth.user || !isAdminEmail(auth.user.email)) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
     const body = await req.json();

@@ -65,31 +65,6 @@ interface OrderDetail {
   } | null;
 }
 
-const ADMIN_STATUS_VALUES = [
-  // Canonical states
-  'PENDING_REVIEW','APPROVED','IN_DESIGN','IN_PRINTING','READY_FOR_PICKUP','OUT_FOR_DELIVERY','DELIVERED','CANCELLED',
-  // Legacy aliases (kept for compatibility but deduped in UI)
-  'Pending','Accepted','In Printing','Out for Delivery','Delivered','Cancelled',
-];
-
-const humanizeStatus = (statusValue: string) =>
-  statusValue
-    .replace(/_/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim()
-    .toLowerCase()
-    .replace(/(^|\s)\S/g, (c) => c.toUpperCase());
-
-const adminOrderStatusOptions = Array.from(
-  new Map(
-    ADMIN_STATUS_VALUES.map((value) => {
-      const label = humanizeStatus(value);
-      const key = label.toLowerCase().replace(/\s+/g, '_');
-      return [key, { label, value }];
-    })
-  ).values()
-);
-
 export default function OrderDetailClient({ orderId }: { orderId: string }) {
   const [detail, setDetail] = useState<OrderDetail | null>(null);
   const [loading, setLoading] = useState(true);
@@ -154,12 +129,7 @@ export default function OrderDetailClient({ orderId }: { orderId: string }) {
             setDebugInfo(d => ({ ...(d||{}), malformed: json }));
           } else {
             setDetail(json.order);
-            const incomingStatus = json.order.status;
-            const hasStatusInOptions = adminOrderStatusOptions.some((opt) => opt.value === incomingStatus);
-            if (incomingStatus && !hasStatusInOptions) {
-              adminOrderStatusOptions.unshift({ label: humanizeStatus(incomingStatus), value: incomingStatus });
-            }
-            setStatus(incomingStatus);
+            setStatus(json.order.status);
             setError(null);
             console.debug('[ADMIN_ORDER_DETAIL_FETCH_SUCCESS]', json.order.id);
             setDebugInfo(d => ({ ...(d||{}), success: { id: json.order.id, status: json.order.status } }));
@@ -223,38 +193,21 @@ export default function OrderDetailClient({ orderId }: { orderId: string }) {
   };
   return (
     <div className="space-y-8">
-      <div className="space-y-2">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <h1 className="text-2xl md:text-3xl font-semibold tracking-tight">Order {detail.orderNumber}</h1>
-          <Link
-            href="/admin/orders"
-            className="inline-flex items-center justify-center rounded-full border border-border/60 px-4 py-1 text-xs font-medium hover:border-primary/60"
-          >
-            ← Back to orders
-          </Link>
+      <div className="flex flex-col gap-1">
+        <div className="flex items-center justify-between">
+          <h1 className="text-3xl font-semibold tracking-tight">Order {detail.orderNumber}</h1>
+          <Link href="/admin/orders" className="text-xs underline hover:opacity-80">Back to list</Link>
         </div>
-        <p className="text-[11px] text-muted-foreground break-all">
-          Mongo ID: <code className="font-mono text-[11px]">{detail.id}</code>
-        </p>
+        <p className="text-[11px] text-muted-foreground">Mongo ID: <code className="font-mono text-[11px]">{detail.id}</code></p>
       </div>
       <OrderDetailView {...sharedProps} />
-      <Card variant="glass" className="p-4 space-y-3">
+      <Card variant="glass" className="p-4 space-y-2">
         <h3 className="text-xs font-medium">Admin Actions</h3>
-        <div className="flex flex-col sm:flex-row gap-2 sm:items-end">
-          <Select
-            value={status}
-            onChange={setStatus}
-            options={adminOrderStatusOptions}
-            className="text-xs w-full sm:max-w-xs"
-          />
-          <Button
-            variant="secondary"
-            disabled={updating || status === detail.status}
-            onClick={updateStatus}
-            className="w-full sm:w-auto"
-          >
-            {updating ? 'Saving…' : 'Save Status'}
-          </Button>
+        <div className="flex gap-2">
+          <Select value={status} onChange={e => setStatus(e.currentTarget.value)} className="text-xs">
+            {['Pending','Accepted','In Printing','Out for Delivery','Delivered','Cancelled','PENDING_REVIEW','APPROVED','IN_DESIGN','IN_PRINTING','READY_FOR_PICKUP','OUT_FOR_DELIVERY','DELIVERED','CANCELLED'].map(s => <option key={s} value={s}>{s}</option>)}
+          </Select>
+          <Button variant="secondary" disabled={updating || status === detail.status} onClick={updateStatus}>{updating ? 'Saving…' : 'Save Status'}</Button>
         </div>
       </Card>
       {detail.isCustomOrder && (

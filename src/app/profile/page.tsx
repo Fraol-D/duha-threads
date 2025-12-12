@@ -82,11 +82,7 @@ export default function ProfilePage() {
         </div>
         <div>
           <label className="block text-sm mb-1">Email</label>
-          <input
-            disabled
-            className="w-full border p-2 rounded bg-gray-100 text-gray-800 disabled:opacity-80 dark:bg-black dark:text-white dark:border-gray-700"
-            value={user.email}
-          />
+          <input disabled className="w-full border p-2 rounded bg-gray-100" value={user.email} />
         </div>
         <div>
           <label className="block text-sm mb-1">Phone</label>

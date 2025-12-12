@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDb } from '@/lib/db/connection';
 import { CustomOrderModel } from '@/lib/db/models/CustomOrder';
-import { Types } from 'mongoose';
 import { verifyAuth } from '@/lib/auth/session';
 import { isAdmin } from '@/lib/auth/admin';
 
@@ -23,20 +22,16 @@ export async function GET(req: NextRequest) {
       filter.publicStatus = publicStatus;
     }
     if (q) {
-      const rx = { $regex: q, $options: 'i' } as const;
-      const ors: any[] = [
+      const rx = { $regex: q, $options: 'i' };
+      filter.$or = [
         { 'delivery.email': rx },
         { orderNumber: rx },
-        { $expr: { $regexMatch: { input: { $toString: '$_id' }, regex: q, options: 'i' } } },
+        { _id: rx },
       ];
-      if (Types.ObjectId.isValid(q)) {
-        ors.unshift({ _id: new Types.ObjectId(q) });
-      }
-      filter.$or = ors;
     }
     const skip = (page - 1) * pageSize;
     const [ordersRaw, total] = await Promise.all([
-      CustomOrderModel.find(filter).sort({ createdAt: -1 }).skip(skip).limit(pageSize).populate('userId', 'name').lean(),
+      CustomOrderModel.find(filter).sort({ createdAt: -1 }).skip(skip).limit(pageSize).lean(),
       CustomOrderModel.countDocuments(filter)
     ]);
     const orders = ordersRaw.map(o => {
@@ -45,13 +40,10 @@ export async function GET(req: NextRequest) {
       const designAssets = Array.isArray(o.designAssets) ? o.designAssets : [];
       const firstTextAsset = designAssets.find(a => a.type === 'text');
       const firstImageAsset = designAssets.find(a => a.type === 'image');
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const user = o.userId as any;
       return {
         id: o._id.toString(),
         orderNumber: o.orderNumber || o._id.toString().slice(-6),
-        userId: user?._id?.toString() || o.userId?.toString() || null,
-        userName: user?.name || o.deliveryName || 'Guest',
+        userId: o.userId?.toString() || null,
         status: o.status,
         baseColor: o.baseColor || o.baseShirt?.color,
         baseShirt: o.baseShirt,

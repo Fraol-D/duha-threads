@@ -20,7 +20,7 @@ export async function GET() {
     return NextResponse.json({ products: [] });
   }
   await getDb();
-  const docs = await ProductModel.find({ isFeatured: true, isActive: true, isHero: { $ne: true } })
+  const docs = await ProductModel.find({ isFeatured: true, isActive: true })
     .sort({ featuredRank: 1, createdAt: -1 })
     .limit(8)
     .lean<FeaturedProductDoc[]>();

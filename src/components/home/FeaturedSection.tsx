@@ -1,125 +1,125 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
+import Image from "next/image";
 import { motion } from "framer-motion";
-import { ArrowRight, Star } from "lucide-react";
+import { BentoGrid, BentoTile } from "@/components/ui/BentoGrid";
 import { Button } from "@/components/ui/Button";
-import { fadeInUp } from "@/lib/motion";
-import type { FeaturedProduct } from "@/lib/products/queries";
+import { cardMotion, fadeInUp } from "@/lib/motion";
+import { ArrowRight, Star } from "lucide-react";
 
-type FeaturedSectionProps = {
+interface FeaturedProduct {
+  id: string;
+  slug: string;
+  name: string;
+  basePrice: number;
+  description: string;
+  primaryImage?: { url: string; alt: string } | null;
+  featuredRank: number | null;
+}
+
+interface FeaturedSectionProps {
   products: FeaturedProduct[];
-};
-
-const currency = new Intl.NumberFormat("en-US", {
-  style: "currency",
-  currency: "USD",
-});
+}
 
 export function FeaturedSection({ products }: FeaturedSectionProps) {
+  if (products.length === 0) return null;
+
   return (
-    <section className="py-14 md:py-24">
+    <section className="py-12 md:py-20">
       <div className="mx-auto max-w-7xl px-4 space-y-8">
-        <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+        <div className="flex items-end justify-between">
           <div className="space-y-2">
-            <p className="text-xs font-semibold uppercase tracking-[0.3em] text-muted-foreground">Featured Drops</p>
-            <h2 className="text-section-title">The pieces everyone is asking for</h2>
-              <p className="max-w-2xl text-muted-foreground text-lg">
-              Curated by our studio. Marked as featured by the team so you can see what’s trending without scrolling forever.
+            <h2 className="text-section-title">Featured Drops</h2>
+            <p className="text-muted-foreground max-w-md">
+              Our latest and greatest. Limited runs, premium materials.
             </p>
           </div>
-          <Link href="/products" className="hidden md:inline-flex items-center text-sm font-medium hover:text-primary">
-            View all products
-            <ArrowRight className="ml-2 h-4 w-4" />
+          <Link href="/products" className="hidden md:flex items-center text-sm font-medium hover:text-primary transition-colors">
+            View all products <ArrowRight className="ml-1 w-4 h-4" />
           </Link>
         </div>
 
-        {products.length > 0 ? (
-          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {products.map((product, index) => (
-              <Link key={product.id} href={`/products/${product.slug}`} className="group block h-full">
-                <motion.article
-                  variants={fadeInUp}
-                  initial="initial"
-                  whileInView="animate"
-                  viewport={{ once: true, margin: "-80px" }}
-                  transition={{ delay: index * 0.05 }}
-                  className="relative flex h-full flex-col rounded-2xl border border-white/10 bg-[--surface] p-4 shadow-[0_20px_60px_rgba(0,0,0,0.2)] transition-transform duration-300 hover:-translate-y-1"
+        <BentoGrid>
+          {products.slice(0, 3).map((product, index) => (
+            <motion.div
+              key={product.id}
+              variants={fadeInUp}
+              initial="initial"
+              whileInView="animate"
+              viewport={{ once: true, margin: "-50px" }}
+              transition={{ delay: index * 0.1 }}
+              className={index === 0 ? "md:col-span-2 md:row-span-2" : "md:col-span-1 md:row-span-1"}
+            >
+              <Link href={`/products/${product.slug}`} className="block h-full">
+                <motion.div
+                  variants={cardMotion}
+                  initial="rest"
+                  whileHover="hover"
+                  className="group relative h-full rounded-2xl overflow-hidden bg-[--surface] border border-muted/50"
                 >
-                  <div className="relative mb-4 aspect-square w-full overflow-hidden rounded-xl border border-white/10 bg-[--bg]">
+                  <div className="absolute inset-0 z-10 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-60 transition-opacity group-hover:opacity-70" />
+
+                  <div className={`relative ${index === 0 ? 'aspect-[4/3] md:h-full' : 'aspect-square'} overflow-hidden bg-muted`}>
                     {product.primaryImage ? (
                       <Image
                         src={product.primaryImage.url}
                         alt={product.primaryImage.alt || product.name}
                         fill
-                        className="object-cover transition-transform duration-700 group-hover:scale-[1.05]"
+                        sizes={index === 0 ? "(max-width: 768px) 100vw, 66vw" : "(max-width: 768px) 50vw, 33vw"}
+                        className="object-cover transition-transform duration-500 group-hover:scale-105"
                       />
                     ) : (
-                      <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
-                        Photo coming soon
+                      <div className="w-full h-full flex items-center justify-center bg-muted">
+                        <span className="text-muted-foreground">No Image</span>
                       </div>
                     )}
                   </div>
 
-                  <div className="flex flex-1 flex-col gap-3">
-                    <div className="flex items-center justify-between text-xs text-muted-foreground">
-                      <span>Featured #{index + 1}</span>
-                      <RatingPill rating={product.ratingAverage} count={product.ratingCount} />
+                  <div className="absolute bottom-0 left-0 right-0 z-20 p-6 text-white">
+                    <div className="flex items-start justify-between gap-4">
+                      <div>
+                        {index === 0 && (
+                          <span className="inline-block px-2 py-1 mb-2 text-[10px] font-bold uppercase tracking-wider bg-white/20 backdrop-blur-md rounded-md border border-white/10">
+                            Best Seller
+                          </span>
+                        )}
+                        <h3 className={`font-bold ${index === 0 ? 'text-2xl md:text-3xl' : 'text-lg'}`}>
+                          {product.name}
+                        </h3>
+                        {index === 0 && (
+                          <p className="mt-2 text-sm text-white/80 line-clamp-2 max-w-md">
+                            {product.description}
+                          </p>
+                        )}
+                      </div>
+                      <div className="text-right">
+                        <div className="font-bold text-lg">${product.basePrice.toFixed(2)}</div>
+                        <div className="flex items-center justify-end gap-1 text-xs text-yellow-400 mt-1">
+                          <Star className="w-3 h-3 fill-current" />
+                          <span className="text-white/90">4.9</span>
+                        </div>
+                      </div>
                     </div>
-                      <h3 className="text-base font-medium text-foreground line-clamp-1">{product.name}</h3>
-                      <p className="text-sm text-muted-foreground line-clamp-2">{product.description}</p>
-                    <div className="flex items-center justify-between pt-2">
-                      <span className="text-sm font-semibold text-foreground">
-                        {currency.format(product.basePrice)}
-                      </span>
-                      <span className="inline-flex items-center text-xs font-medium uppercase tracking-wide text-primary">
-                        View tee
-                        <ArrowRight className="ml-1 h-3.5 w-3.5" />
-                      </span>
+
+                    <div className="mt-4 overflow-hidden h-0 opacity-0 transition-all duration-300 group-hover:h-10 group-hover:opacity-100">
+                      <Button size="sm" className="w-full bg-white text-black hover:bg-white/90">
+                        View Details
+                      </Button>
                     </div>
                   </div>
-                </motion.article>
+                </motion.div>
               </Link>
-            ))}
-          </div>
-        ) : (
-          <div className="rounded-2xl border border-dashed border-muted/60 bg-[--surface] p-10 text-center">
-            <p className="text-lg font-semibold text-foreground">Featured drops coming soon</p>
-            <p className="mt-2 text-sm text-muted-foreground">We’re curating the next wave of tees. Browse all products while you wait.</p>
-            <div className="mt-6 flex justify-center">
-              <Link href="/products">
-                <Button variant="outline">Browse products</Button>
-              </Link>
-            </div>
-          </div>
-        )}
+            </motion.div>
+          ))}
+        </BentoGrid>
 
         <div className="md:hidden flex justify-center">
           <Link href="/products">
-            <Button variant="ghost" className="text-sm">
-              View all products
-            </Button>
+            <Button variant="outline">View all products</Button>
           </Link>
         </div>
       </div>
     </section>
-  );
-}
-
-type RatingPillProps = {
-  rating?: number;
-  count?: number;
-};
-
-function RatingPill({ rating, count }: RatingPillProps) {
-  if (!rating || rating <= 0 || !count) {
-    return <span className="rounded-full border border-muted/40 px-2 py-0.5 text-[11px] uppercase tracking-wide text-muted-foreground">New</span>;
-  }
-  return (
-    <span className="inline-flex items-center gap-1 rounded-full border border-amber-500/40 bg-amber-500/10 px-2 py-0.5 text-[11px] font-medium text-amber-400">
-      <Star className="h-3 w-3 fill-current" />
-      {rating.toFixed(1)} · {count}
-    </span>
   );
 }

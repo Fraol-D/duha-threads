@@ -1,23 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
-import { Types, type Document } from "mongoose";
 import { getCurrentUser } from "@/lib/auth/session";
 import { getDb } from "@/lib/db/connection";
-import { OrderModel, type OrderDocument } from "@/lib/db/models/Order";
+import { OrderModel } from "@/lib/db/models/Order";
 import { CartItemModel } from '@/lib/db/models/CartItem';
 import { ProductModel } from '@/lib/db/models/Product';
-import { ProductRatingModel } from '@/lib/db/models/ProductRating';
 import { z } from 'zod';
 import { env } from "@/config/env";
 import { generateOrderNumber, isOrderNumberDuplicateError } from '@/lib/orders/orderNumber';
-import { isDeliveredStatus } from '@/lib/orders/status';
-
-type OrderLean = Omit<OrderDocument, keyof Document> & { _id: Types.ObjectId };
-type CartProduct = {
-  _id: Types.ObjectId;
-  name: string;
-  basePrice: number;
-  images?: Array<{ url?: string | null }>;
-};
 
 export async function GET() {
   const user = await getCurrentUser();
@@ -26,50 +15,8 @@ export async function GET() {
     return NextResponse.json({ orders: [] });
   }
   await getDb();
-  const orders = await OrderModel.find({ userId: user.id }).sort({ createdAt: -1 }).lean<OrderLean[]>();
-
-  const productIdStrings = Array.from(
-    new Set(
-      orders.flatMap((order) =>
-        (order.items ?? [])
-          .map((item) => {
-            const rawId = item.productId;
-            return rawId ? rawId.toString() : null;
-          })
-          .filter((id): id is string => Boolean(id))
-      )
-    )
-  );
-
-  let reviewedProductIds = new Set<string>();
-  let productSlugMap = new Map<string, string>();
-  if (productIdStrings.length > 0) {
-    const validObjectIds = productIdStrings.filter((id) => Types.ObjectId.isValid(id)).map((id) => new Types.ObjectId(id));
-    if (validObjectIds.length > 0) {
-      const [ratings, products] = await Promise.all([
-        ProductRatingModel.find({ userId: user.id, productId: { $in: validObjectIds } }).select("productId").lean(),
-        ProductModel.find({ _id: { $in: validObjectIds } }).select("_id slug").lean(),
-      ]);
-      reviewedProductIds = new Set(ratings.map((doc) => doc.productId.toString()));
-      productSlugMap = new Map(products.map((doc) => [String(doc._id), doc.slug] as const));
-    }
-  }
-
-  const ordersWithReviewMeta = orders.map((order) => {
-    const delivered = isDeliveredStatus(order.status);
-    const itemsWithMeta = (order.items ?? []).map((item) => {
-      const productIdString = item.productId ? item.productId.toString() : "";
-      const needsReview = delivered && productIdString ? !reviewedProductIds.has(productIdString) : false;
-      return {
-        ...item,
-        productSlug: productIdString ? productSlugMap.get(productIdString) || null : null,
-        needsReview,
-      };
-    });
-    return { ...order, items: itemsWithMeta };
-  });
-
-  return NextResponse.json({ orders: ordersWithReviewMeta });
+  const orders = await OrderModel.find({ userId: user.id }).sort({ createdAt: -1 }).lean();
+  return NextResponse.json({ orders });
 }
 
 // Shared delivery payload schema
@@ -94,8 +41,8 @@ export async function POST(req: NextRequest) {
   if (!cartItems.length) return NextResponse.json({ error: 'Cart is empty' }, { status: 409 });
 
   const productIds = cartItems.map(i => i.productId);
-  const products = await ProductModel.find({ _id: { $in: productIds }, isActive: true }).lean<CartProduct[]>();
-  const productMap = new Map(products.map((p) => [p._id.toString(), p]));
+  const products = await ProductModel.find({ _id: { $in: productIds }, isActive: true }).lean();
+  const productMap = new Map(products.map((p: any) => [p._id.toString(), p]));
   for (const c of cartItems) {
     if (!productMap.get(c.productId.toString())) {
       return NextResponse.json({ error: 'Some items are unavailable' }, { status: 409 });
@@ -103,17 +50,14 @@ export async function POST(req: NextRequest) {
   }
 
   const items = cartItems.map(c => {
-    const productDoc = productMap.get(c.productId.toString());
-    if (!productDoc) {
-      throw new Error("Product missing during order build");
-    }
-    const unitPrice = productDoc.basePrice;
+    const p: any = productMap.get(c.productId.toString());
+    const unitPrice = p.basePrice;
     const quantity = c.quantity || 1;
     const subtotal = unitPrice * quantity;
     return {
       productId: c.productId,
-      name: productDoc.name,
-      imageUrl: productDoc.images?.[0]?.url || null,
+      name: p.name,
+      imageUrl: p.images?.[0]?.url || null,
       unitPrice,
       quantity,
       subtotal,

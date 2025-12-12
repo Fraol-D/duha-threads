@@ -38,13 +38,12 @@ export async function POST(req: Request) {
       email: data.email.toLowerCase(),
       hashedPassword: hashed,
       role,
-      status: "active",
       phone: data.phone,
       defaultAddress: data.defaultAddress,
       marketingEmailOptIn: data.marketingEmailOptIn,
       marketingSmsOptIn: data.marketingSmsOptIn,
     });
-    const res = NextResponse.json({ user: toPublicUser(user) }, { status: 201 });
+    const res = NextResponse.json({ user: toPublicUser(user as any) }, { status: 201 });
     attachAuthCookie(res, user._id.toString());
     return res;
   } catch (err) {

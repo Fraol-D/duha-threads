@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
-import { Shirt, Heart } from "lucide-react";
+import { Shirt, Filter, Heart } from "lucide-react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { useWishlist } from "@/components/WishlistProvider";
@@ -22,7 +22,6 @@ interface ProductListItem {
   ratingAverage?: number;
   ratingCount?: number;
   displayOrder?: number | null;
-  isHero?: boolean;
 }
 
 interface ProductListResponse {
@@ -78,6 +77,7 @@ export default function ProductsClient() {
   const [addingId, setAddingId] = useState<string | null>(null);
   const [addedIds, setAddedIds] = useState<Set<string>>(new Set());
   const { productIds, toggleWishlist } = useWishlist();
+  const [view, setView] = useState<'grid' | 'list'>('grid');
   
   // Fix 6: Scroll detection for hiding/showing filter bar
   const [isFilterVisible, setIsFilterVisible] = useState(true);
@@ -185,7 +185,7 @@ export default function ProductsClient() {
     <div className="min-h-screen pb-20">
       {/* Header & Filters - Fix 5: No border, Fix 6: Scroll hide/show */}
       <div 
-        className="bg-[--bg] sticky top-16 z-30 transition-all duration-300"
+        className="bg-[--surface]/80 backdrop-blur-md sticky top-16 z-30 transition-all duration-300"
         style={{
           transform: isFilterVisible ? 'translateY(0)' : 'translateY(-100%)',
           opacity: isFilterVisible ? 1 : 0
@@ -201,6 +201,28 @@ export default function ProductsClient() {
               <div>
                 <h1 className="text-xl font-bold tracking-tight">All Products</h1>
                 <p className="text-xs text-muted-foreground">{data?.total || 0} items found</p>
+              </div>
+            </div>
+            
+            {/* View Controller */}
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-muted-foreground hidden sm:inline">View:</span>
+              <div className="flex bg-[--surface] p-1 rounded-lg border border-muted/20">
+                <button onClick={()=>setView('grid')} className={`p-1.5 rounded transition-all ${view==='grid'?'bg-white shadow-sm text-black':'text-muted-foreground hover:text-foreground'}`}>
+                  <div className="grid grid-cols-2 gap-0.5 w-3 h-3">
+                    <div className="bg-current rounded-[1px]" />
+                    <div className="bg-current rounded-[1px]" />
+                    <div className="bg-current rounded-[1px]" />
+                    <div className="bg-current rounded-[1px]" />
+                  </div>
+                </button>
+                <button onClick={()=>setView('list')} className={`p-1.5 rounded transition-all ${view==='list'?'bg-white shadow-sm text-black':'text-muted-foreground hover:text-foreground'}`}>
+                  <div className="flex flex-col gap-0.5 w-3 h-3">
+                    <div className="bg-current h-[2px] w-full rounded-[1px]" />
+                    <div className="bg-current h-[2px] w-full rounded-[1px]" />
+                    <div className="bg-current h-[2px] w-full rounded-[1px]" />
+                  </div>
+                </button>
               </div>
             </div>
           </div>
@@ -220,7 +242,7 @@ export default function ProductsClient() {
               value={params.get("sort") || "newest"}
               onChange={(val) => setParam("sort", val)}
               options={sortOptions}
-              className="min-w-40"
+              className="min-w-[160px]"
             />
             
             {/* Fix 1: DO NOT MODIFY - Color, Size, Per-page dropdowns (reference implementation) */}
@@ -253,7 +275,7 @@ export default function ProductsClient() {
         {!loading && data && (
           <>
             <motion.div 
-              className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4"
+              className={view === 'grid' ? "grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4" : "space-y-4"}
               initial="hidden"
               animate="show"
               variants={staggerChildren}

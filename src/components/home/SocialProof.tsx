@@ -1,73 +1,72 @@
 "use client";
 
-import Link from "next/link";
 import { motion } from "framer-motion";
-import { Quote, Star } from "lucide-react";
+import { BentoGrid, BentoTile } from "@/components/ui/BentoGrid";
 import { fadeInUp, staggerChildren } from "@/lib/motion";
-import type { FeaturedReview } from "@/lib/reviews/queries";
+import { Quote } from "lucide-react";
+import Image from "next/image";
 
-type SocialProofProps = {
-  testimonials: FeaturedReview[];
-};
+const testimonials = [
+  {
+    quote: "The quality of the cotton is insane. Best custom tee I've ever ordered.",
+    author: "Alex M.",
+    role: "Designer",
+    image: null
+  },
+  {
+    quote: "Finally a builder that actually works on mobile. Love the interface.",
+    author: "Sarah K.",
+    role: "Artist",
+    image: null
+  },
+  {
+    quote: "Fast shipping and the print quality is retail-grade. Highly recommend.",
+    author: "James L.",
+    role: "Brand Owner",
+    image: null
+  }
+];
 
-export function SocialProof({ testimonials }: SocialProofProps) {
-  const hasTestimonials = testimonials.length > 0;
-
+export function SocialProof() {
   return (
-    <section className="py-14 md:py-24">
+    <section className="py-12 md:py-20">
       <div className="mx-auto max-w-7xl px-4">
-        <motion.div
+        <motion.div 
           initial="initial"
           whileInView="animate"
-          viewport={{ once: true, margin: "-100px" }}
+          viewport={{ once: true }}
           variants={staggerChildren}
           className="space-y-10"
         >
-          <motion.div variants={fadeInUp} className="mx-auto max-w-2xl text-center space-y-3">
-            <p className="text-xs font-semibold uppercase tracking-[0.4em] text-muted-foreground">Testimonials</p>
-            <h2 className="text-section-title">Makers who trust Duha</h2>
-            <p className="text-muted-foreground text-lg">Real teams, indie brands, and community groups sharing launches powered by our shop.</p>
+          <motion.div variants={fadeInUp} className="text-center max-w-2xl mx-auto">
+            <h2 className="text-section-title mb-4">Community Love</h2>
+            <p className="text-muted-foreground">
+              See what creators are saying about Duha Threads.
+            </p>
           </motion.div>
 
-          {hasTestimonials ? (
-            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-              {testimonials.map((testimonial, index) => (
-                <motion.article
-                  key={testimonial.id}
-                  variants={fadeInUp}
-                  transition={{ delay: index * 0.05 }}
-                  className="relative flex h-full flex-col gap-5 rounded-2xl border border-white/10 bg-[--surface] p-6 shadow-[0_20px_50px_rgba(0,0,0,0.25)]"
-                >
-                  <Quote className="h-6 w-6 text-muted-foreground" />
-                  <p className="flex-1 text-base leading-relaxed text-foreground">{testimonial.message || "Rated our tees five stars."}</p>
-                  <div className="space-y-1 border-t border-white/5 pt-4 text-sm">
-                    <p className="font-semibold text-foreground">{testimonial.author}</p>
-                    {testimonial.productName && <p className="text-xs text-muted-foreground">{testimonial.productName}</p>}
-                    {testimonial.rating && testimonial.rating > 0 && (
-                      <div className="flex items-center gap-1 text-xs text-amber-400">
-                        <Star className="h-3.5 w-3.5 fill-current" />
-                        {testimonial.rating.toFixed(1)} / 5
-                      </div>
-                    )}
+          <div className="grid md:grid-cols-3 gap-6">
+            {testimonials.map((t, i) => (
+              <motion.div 
+                key={i} 
+                variants={fadeInUp}
+                className="p-6 rounded-2xl bg-[--surface] border border-muted/50 relative"
+              >
+                <div className="space-y-4">
+                  <p className="text-lg font-medium leading-relaxed">"{t.quote}"</p>
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-gray-200 to-gray-400 flex items-center justify-center text-xs font-bold text-gray-600">
+                      {t.author.charAt(0)}
+                    </div>
+                    <div>
+                      <div className="font-bold text-sm">{t.author}</div>
+                      <div className="text-xs text-muted-foreground">{t.role}</div>
+                    </div>
                   </div>
-                </motion.article>
-              ))}
-            </div>
-          ) : (
-            <motion.div
-              variants={fadeInUp}
-              className="rounded-2xl border border-dashed border-muted/60 bg-[--surface] p-10 text-center"
-            >
-              <p className="text-lg font-semibold text-foreground">No featured reviews yet</p>
-              <p className="mt-2 text-sm text-muted-foreground">Be the first to leave a review after your next custom drop.</p>
-              <Link href="/products" className="mt-4 inline-flex text-sm font-medium text-primary">
-                Shop products
-                <span className="ml-1" aria-hidden>
-                  →
-                </span>
-              </Link>
-            </motion.div>
-          )}
+                </div>
+              </motion.div>
+            ))}
+          </div>
         </motion.div>
       </div>
     </section>

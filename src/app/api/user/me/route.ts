@@ -37,7 +37,7 @@ export async function PATCH(req: Request) {
     const update = parsed.data;
     const doc = await UserModel.findByIdAndUpdate(current.id, update, { new: true });
     if (!doc) return NextResponse.json({ error: "Not found" }, { status: 404 });
-    return NextResponse.json({ user: toPublicUser(doc) });
+    return NextResponse.json({ user: toPublicUser(doc as any) });
   } catch (err) {
     console.error('[/api/user/me] PATCH error:', err);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });

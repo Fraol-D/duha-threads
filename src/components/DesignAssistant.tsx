@@ -102,7 +102,7 @@ export function DesignAssistant({ onApplyTemplate }: Props) {
   }
 
   return (
-    <div className="rounded-xl bg-white dark:bg-black border border-muted p-4 flex flex-col gap-4 w-full md:w-80">
+    <div className="rounded-xl bg-[--surface]/60 backdrop-blur border border-muted p-4 flex flex-col gap-4 w-full md:w-80">
       <div className="flex gap-2 text-sm">
         {['templates','history','ai'].map(tab => (
           <button

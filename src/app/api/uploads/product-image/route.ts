@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyAuth } from '@/lib/auth/session';
 import { uploadBufferToCloudinary } from '@/lib/cloudinary';
-import { isAdmin } from '@/lib/auth/admin';
+import { isAdminEmail } from '@/config/admin-public';
 import { env } from '@/config/env';
 
 const MAX_SIZE = 8 * 1024 * 1024; // 8MB
@@ -10,7 +10,8 @@ const ALLOWED = ['image/png','image/jpeg','image/jpg','image/webp'];
 export async function POST(req: NextRequest) {
   try {
     const auth = await verifyAuth(req);
-    if (!isAdmin(auth.user)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const email = auth.user?.email;
+    if (!auth.user || !isAdminEmail(email)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     // Defensive Cloudinary configuration check
     if (!env.CLOUDINARY_CLOUD_NAME || !env.CLOUDINARY_API_KEY || !env.CLOUDINARY_API_SECRET) {

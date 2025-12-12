@@ -1,5 +1,6 @@
 import { BentoGrid, BentoTile } from "@/components/ui/BentoGrid";
 import AnalyticsClient from "./AnalyticsClient";
+import { Button } from "@/components/ui/Button";
 import { getCurrentUser } from "@/lib/auth/session";
 import { isAdmin } from "@/lib/auth/admin";
 import Link from "next/link";
@@ -8,7 +9,6 @@ import { UserModel } from "@/lib/db/models/User";
 import { OrderModel } from "@/lib/db/models/Order";
 import { CustomOrderModel } from "@/lib/db/models/CustomOrder";
 import { logger } from "@/lib/logger";
-import { ProductRatingModel } from "@/lib/db/models/ProductRating";
 
 interface DashboardData {
   kpis: {
@@ -22,11 +22,6 @@ interface DashboardData {
   recent: {
     orders: { id: string; total: number; status: string; createdAt: Date }[];
     customOrders: { id: string; total: number; status: string; createdAt: Date }[];
-  };
-  reviews: {
-    total: number;
-    featured: number;
-    latest: { id: string; rating: number; comment: string; productName: string } | null;
   };
 }
 
@@ -53,11 +48,6 @@ const cloneDefaultData = (): DashboardData => ({
     orders: [],
     customOrders: [],
   },
-  reviews: {
-    total: 0,
-    featured: 0,
-    latest: null,
-  },
 });
 
 const generateTempId = () => `temp-${Math.random().toString(36).slice(2, 10)}`;
@@ -80,9 +70,6 @@ async function fetchDashboardData(): Promise<DashboardData> {
       totalUsersCount,
       totalOrdersCount,
       totalCustomOrdersCount,
-      totalReviewsCount,
-      featuredReviewsCount,
-      latestReviewDoc,
     ] = await Promise.all([
       OrderModel.find({ createdAt: { $gte: todayStart, $lt: tomorrowStart } }, { total: 1 }).lean(),
       CustomOrderModel.find(
@@ -102,32 +89,16 @@ async function fetchDashboardData(): Promise<DashboardData> {
       UserModel.countDocuments({}),
       OrderModel.countDocuments({}),
       CustomOrderModel.countDocuments({}),
-      ProductRatingModel.countDocuments({}),
-      ProductRatingModel.countDocuments({ featured: true }),
-      ProductRatingModel.findOne({})
-        .sort({ updatedAt: -1 })
-        .populate([{ path: "productId", select: "name" }])
-        .lean(),
     ]);
 
-    // Define types for the data we're working with to avoid 'any'
-    type OrderDoc = { _id?: { toString(): string } | string; total?: number; status?: string; createdAt?: Date | string | number };
-    type CustomOrderDoc = { _id?: { toString(): string } | string; pricing?: { finalTotal?: number; estimatedTotal?: number }; status?: string; createdAt?: Date | string | number };
-    type ReviewDoc = {
-      _id?: { toString(): string } | string;
-      rating?: number;
-      comment?: string | null;
-      productId?: { name?: string | null } | string | null;
-    };
+    const safeTodayOrders = Array.isArray(todayOrders) ? todayOrders : [];
+    const safeTodayCustomOrders = Array.isArray(todayCustomOrders) ? todayCustomOrders : [];
+    const safeRecentOrders = Array.isArray(recentOrders) ? recentOrders : [];
+    const safeRecentCustomOrders = Array.isArray(recentCustomOrders) ? recentCustomOrders : [];
 
-    const safeTodayOrders = (Array.isArray(todayOrders) ? todayOrders : []) as unknown as OrderDoc[];
-    const safeTodayCustomOrders = (Array.isArray(todayCustomOrders) ? todayCustomOrders : []) as unknown as CustomOrderDoc[];
-    const safeRecentOrders = (Array.isArray(recentOrders) ? recentOrders : []) as unknown as OrderDoc[];
-    const safeRecentCustomOrders = (Array.isArray(recentCustomOrders) ? recentCustomOrders : []) as unknown as CustomOrderDoc[];
-
-    const todaySalesFromOrders = safeTodayOrders.reduce((sum: number, o: OrderDoc) => sum + toNumber(o.total), 0);
+    const todaySalesFromOrders = safeTodayOrders.reduce((sum: number, o: any) => sum + toNumber(o.total), 0);
     const todaySalesFromCustom = safeTodayCustomOrders.reduce(
-      (sum: number, co: CustomOrderDoc) => sum + toNumber(co.pricing?.finalTotal ?? co.pricing?.estimatedTotal),
+      (sum: number, co: any) => sum + toNumber(co.pricing?.finalTotal ?? co.pricing?.estimatedTotal),
       0
     );
 
@@ -145,36 +116,18 @@ async function fetchDashboardData(): Promise<DashboardData> {
     };
 
     safeData.recent = {
-      orders: safeRecentOrders.map((o: OrderDoc) => ({
+      orders: safeRecentOrders.map((o: any) => ({
         id: o?._id?.toString?.() ?? generateTempId(),
         total: toNumber(o?.total),
         status: o?.status ?? "UNKNOWN",
         createdAt: o?.createdAt instanceof Date ? o.createdAt : new Date(o?.createdAt ?? Date.now()),
       })),
-      customOrders: safeRecentCustomOrders.map((co: CustomOrderDoc) => ({
+      customOrders: safeRecentCustomOrders.map((co: any) => ({
         id: co?._id?.toString?.() ?? generateTempId(),
         total: toNumber(co?.pricing?.finalTotal ?? co?.pricing?.estimatedTotal),
         status: co?.status ?? "UNKNOWN",
         createdAt: co?.createdAt instanceof Date ? co.createdAt : new Date(co?.createdAt ?? Date.now()),
       })),
-    };
-
-    const typedLatestReview = (latestReviewDoc ?? null) as ReviewDoc | null;
-
-    safeData.reviews = {
-      total: typeof totalReviewsCount === "number" ? totalReviewsCount : 0,
-      featured: typeof featuredReviewsCount === "number" ? featuredReviewsCount : 0,
-      latest: typedLatestReview
-        ? {
-            id: typedLatestReview._id?.toString?.() ?? generateTempId(),
-            rating: toNumber(typedLatestReview.rating) || 0,
-            comment: typedLatestReview.comment ?? "",
-            productName:
-              typeof typedLatestReview.productId === "object" && typedLatestReview.productId !== null
-                ? ((typedLatestReview.productId as { name?: string | null })?.name ?? "Product")
-                : "Product",
-          }
-        : null,
     };
 
     return safeData;
@@ -194,17 +147,14 @@ export default async function AdminDashboardPage() {
       </div>
     );
   }
-  const { kpis, recent, reviews } = await fetchDashboardData();
+  const { kpis, recent } = await fetchDashboardData();
   const formatCurrency = (value?: number) => currencyFormatter.format(toNumber(value));
-  const latestReviewSnippet = reviews.latest?.comment
-    ? `${reviews.latest.comment.slice(0, 120)}${reviews.latest.comment.length > 120 ? "..." : ""}`
-    : null;
 
   return (
-    <div className="max-w-7xl mx-auto px-4 pb-12 space-y-8 sm:px-6 lg:px-8">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+    <div className="space-y-8">
+      <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Dashboard</h1>
+          <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
           <p className="text-sm text-muted-foreground mt-1">Overview of your store performance</p>
         </div>
       </div>
@@ -215,7 +165,7 @@ export default async function AdminDashboardPage() {
           <div className="flex items-start justify-between">
             <div>
               <h2 className="text-xs uppercase tracking-wider text-muted-foreground mb-2 font-medium">Sales Today</h2>
-              <p className="text-3xl font-bold bg-linear-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent">{formatCurrency(kpis.todaySales)}</p>
+              <p className="text-3xl font-bold bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent">{formatCurrency(kpis.todaySales)}</p>
             </div>
             <div className="p-2 bg-green-500/10 rounded-lg">
               <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -265,42 +215,6 @@ export default async function AdminDashboardPage() {
               </svg>
             </div>
           </div>
-        </BentoTile>
-
-        <BentoTile variant="glass" className="group hover:shadow-lg transition-shadow duration-300">
-          <div className="flex items-start justify-between">
-            <div>
-              <h2 className="text-xs uppercase tracking-wider text-muted-foreground mb-2 font-medium">Customer Voice</h2>
-              <p className="text-3xl font-bold">{reviews.total}</p>
-              <p className="text-xs text-muted-foreground">{reviews.featured} featured on homepage</p>
-            </div>
-            <div className="p-2 bg-pink-500/10 rounded-lg">
-              <svg className="w-5 h-5 text-pink-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.364 1.118l1.519 4.674c.3.921-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.519-4.674a1 1 0 00-.364-1.118L2.077 10.1c-.783-.57-.38-1.81.588-1.81h4.915a1 1 0 00.95-.69l1.519-4.674z" />
-              </svg>
-            </div>
-          </div>
-          {reviews.latest ? (
-            <div className="mt-3 rounded-lg border border-muted/40 bg-[--surface] p-3">
-              <div className="flex items-center justify-between text-[11px] text-muted-foreground mb-2">
-                <span className="font-semibold text-foreground">{reviews.latest.productName}</span>
-                <span className="text-amber-600 font-medium">{reviews.latest.rating.toFixed(1)} / 5</span>
-              </div>
-              {latestReviewSnippet ? (
-                <p className="text-xs text-muted-foreground line-clamp-2">&quot;{latestReviewSnippet}&quot;</p>
-              ) : (
-                <p className="text-xs text-muted-foreground">No comment provided.</p>
-              )}
-            </div>
-          ) : (
-            <p className="text-xs text-muted-foreground mt-3">No reviews yet</p>
-          )}
-          <Link
-            href="/admin/reviews"
-            className="mt-4 inline-flex items-center text-xs font-semibold text-primary hover:underline"
-          >
-            Manage reviews →
-          </Link>
         </BentoTile>
         
         <BentoTile variant="glass" className="group hover:shadow-lg transition-shadow duration-300">
@@ -373,7 +287,7 @@ export default async function AdminDashboardPage() {
       </BentoGrid>
       
       <div className="space-y-6 pt-4">
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-center justify-between">
           <h2 className="text-xl font-bold tracking-tight">Analytics</h2>
         </div>
         <AnalyticsClient />

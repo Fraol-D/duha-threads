@@ -2,7 +2,6 @@ import { NextResponse, NextRequest } from "next/server";
 import { verifyAuth } from "@/lib/auth/session";
 import { isAdmin } from "@/lib/auth/admin";
 import { OrderModel } from "@/lib/db/models/Order";
-import { Types } from "mongoose";
 import { UserModel } from "@/lib/db/models/User";
 // Lenient parsing: avoid 400s from strict schema; coerce/fallback manually.
 
@@ -24,17 +23,12 @@ export async function GET(request: NextRequest) {
     const filter: any = {};
     if (status) filter.status = status;
     if (q) {
-      const rx = { $regex: q, $options: 'i' } as const;
-      const ors: any[] = [
-        { email: rx },
-        { 'deliveryInfo.address': rx },
-        { orderNumber: rx },
-        { $expr: { $regexMatch: { input: { $toString: '$_id' }, regex: q, options: 'i' } } },
+      filter.$or = [
+        { email: { $regex: q, $options: 'i' } },
+        { 'deliveryInfo.address': { $regex: q, $options: 'i' } },
+        { _id: { $regex: q, $options: 'i' } },
+        { orderNumber: { $regex: q, $options: 'i' } },
       ];
-      if (Types.ObjectId.isValid(q)) {
-        ors.unshift({ _id: new Types.ObjectId(q) });
-      }
-      filter.$or = ors;
     }
 
     const totalCount = await OrderModel.countDocuments(filter);

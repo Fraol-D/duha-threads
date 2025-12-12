@@ -49,7 +49,7 @@ export function BuilderSpotlight() {
             <div className="space-y-6">
               {steps.map((step, i) => (
                 <motion.div key={i} variants={fadeInUp} className="flex gap-4">
-                  <div className="shrink-0 w-12 h-12 rounded-full bg-[--bg] border border-muted flex items-center justify-center shadow-sm">
+                  <div className="flex-shrink-0 w-12 h-12 rounded-full bg-[--bg] border border-muted flex items-center justify-center shadow-sm">
                     <step.icon className="w-5 h-5 text-foreground" />
                   </div>
                   <div>
@@ -77,25 +77,19 @@ export function BuilderSpotlight() {
             className="relative"
           >
             {/* Visual representation of the builder */}
-            <Link
-              href="/custom-order"
-              aria-label="Open custom builder"
-              className="group block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-foreground/40 rounded-2xl"
-            >
-              <div className="relative aspect-4/3 rounded-2xl overflow-hidden shadow-2xl bg-[--bg] transition-transform duration-300 group-hover:scale-[1.01]">
-                 <Image 
-                   src="/assets/builder-preview-mock.jpeg" 
-                   alt="Custom Builder Preview" 
-                   fill 
-                   className="object-cover"
-                 />
-                 
-                 {/* Floating Badge */}
-                 <div className="absolute bottom-6 right-6 bg-foreground text-background px-4 py-2 rounded-full text-sm font-bold shadow-xl">
-                    Try it now
-                 </div>
-              </div>
-            </Link>
+            <div className="relative aspect-[4/3] rounded-2xl overflow-hidden shadow-2xl bg-[--bg]">
+               <Image 
+                 src="/assets/builder-preview-mock.jpeg" 
+                 alt="Custom Builder Preview" 
+                 fill 
+                 className="object-cover"
+               />
+               
+               {/* Floating Badge */}
+               <div className="absolute bottom-6 right-6 bg-foreground text-background px-4 py-2 rounded-full text-sm font-bold shadow-xl">
+                  Try it now
+               </div>
+            </div>
           </motion.div>
         </div>
       </div>

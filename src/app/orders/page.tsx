@@ -1,5 +1,4 @@
 "use client";
-import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { OrderListCard } from "@/components/orders/OrderListCard";
@@ -12,15 +11,7 @@ interface OrderListItem {
   totalAmount: number;
   createdAt: string;
   orderNumber: string;
-  items?: Array<{
-    name?: string;
-    size?: string;
-    color?: string;
-    quantity?: number;
-    imageUrl?: string | null;
-    productSlug?: string | null;
-    needsReview?: boolean;
-  }>;
+  items?: Array<{ name?: string; size?: string; color?: string; quantity?: number; imageUrl?: string | null }>;
 }
 
 export default function OrdersPage() {
@@ -57,7 +48,7 @@ export default function OrdersPage() {
             totalAmount: Number.isFinite(totalNum) ? totalNum : 0,
             createdAt: String(r.createdAt || new Date().toISOString()),
             orderNumber: String(r.orderNumber || id.slice(-6)),
-            items: Array.isArray(r.items) ? (r.items as Array<unknown>).map((itRaw: unknown) => {
+            items: Array.isArray(r.items) ? (r.items as Array<unknown>).slice(0,1).map((itRaw: unknown) => {
               if (typeof itRaw !== 'object' || itRaw === null) return {};
               const it = itRaw as Record<string, unknown>;
               return {
@@ -66,8 +57,6 @@ export default function OrdersPage() {
                 color: typeof it.color === 'string' ? it.color : undefined,
                 quantity: typeof it.quantity === 'number' ? it.quantity : undefined,
                 imageUrl: typeof it.imageUrl === 'string' ? it.imageUrl : null,
-                productSlug: typeof it.productSlug === 'string' ? it.productSlug : null,
-                needsReview: Boolean(it.needsReview),
               };
             }) : [],
           };
@@ -112,41 +101,19 @@ export default function OrdersPage() {
             subtitleParts.push(new Date(o.createdAt).toLocaleDateString());
             subtitleParts.push(`Total ${o.totalAmount.toFixed(2)}`);
             const subtitle = subtitleParts.join(' · ');
-            const reviewableItems = (o.items || [])
-              .filter((item) => Boolean(item.needsReview && item.productSlug))
-              .map((item) => ({ ...item, productSlug: item.productSlug as string }));
             return (
-              <div key={o.id} className="space-y-2">
-                <OrderListCard
-                  id={o.id}
-                  orderNumber={o.orderNumber}
-                  type="standard"
-                  createdAt={o.createdAt}
-                  status={o.status}
-                  title={first?.name || `Order ${o.orderNumber}`}
-                  subtitle={subtitle}
-                  thumbnailUrl={first?.imageUrl || null}
-                  totalAmount={o.totalAmount}
-                />
-                {reviewableItems.length > 0 && (
-                  <div className="rounded-lg border border-green-500/30 bg-green-500/10 p-3 text-xs text-green-800">
-                    <p className="font-medium text-[13px] text-green-700">
-                      Delivered item{reviewableItems.length > 1 ? 's' : ''} waiting for your review
-                    </p>
-                    <div className="mt-2 flex flex-wrap gap-2">
-                      {reviewableItems.map((item, idx) => (
-                        <Link
-                          key={`${o.id}-${item.productSlug}-${idx}`}
-                          href={`/products/${item.productSlug}#reviews`}
-                          className="inline-flex items-center gap-1 rounded-full border border-green-500/40 bg-white/30 px-3 py-1 text-[11px] font-semibold text-green-700 backdrop-blur hover:bg-white/60"
-                        >
-                          Review {item.name || 'this product'}
-                        </Link>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
+              <OrderListCard
+                key={o.id}
+                id={o.id}
+                orderNumber={o.orderNumber}
+                type="standard"
+                createdAt={o.createdAt}
+                status={o.status}
+                title={first?.name || `Order ${o.orderNumber}`}
+                subtitle={subtitle}
+                thumbnailUrl={first?.imageUrl || null}
+                totalAmount={o.totalAmount}
+              />
             );
           })}
         </div>

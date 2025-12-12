@@ -58,58 +58,10 @@ const statusColorFor = (status: string, index: number) => {
   return chartPalette.statuses[key] ?? chartPalette.fallback[index % chartPalette.fallback.length] ?? '#6b7280';
 };
 
-const humanizeStatus = (value?: string) => {
-  if (!value) return 'Unknown';
-  return value
-    .split('_')
-    .map((chunk) => chunk.charAt(0).toUpperCase() + chunk.slice(1))
-    .join(' ');
-};
-
-const RADIAN = Math.PI / 180;
-interface PieLabelProps {
-  cx: number;
-  cy: number;
-  midAngle: number;
-  innerRadius: number;
-  outerRadius: number;
-  percent?: number;
-  name?: string;
-}
-
-const renderPieLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, percent, name }: PieLabelProps) => {
-  const radius = innerRadius + (outerRadius - innerRadius) * 0.55;
-  const x = cx + radius * Math.cos(-midAngle * RADIAN);
-  const y = cy + radius * Math.sin(-midAngle * RADIAN);
-  const pct = Math.round(((percent ?? 0) * 100));
-  const text = `${humanizeStatus(name)} ${pct}%`;
-
-  return (
-    <text
-      x={x}
-      y={y}
-      fill="var(--foreground)"
-      fontSize="11"
-      textAnchor={x > cx ? 'start' : 'end'}
-      dominantBaseline="central"
-    >
-      {text}
-    </text>
-  );
-};
-
 export default function AnalyticsClient() {
   const [data, setData] = useState<AnalyticsPayload | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [isCompact, setIsCompact] = useState(false);
-
-  useEffect(() => {
-    const handleResize = () => setIsCompact(window.innerWidth < 768);
-    handleResize();
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
 
   useEffect(() => {
     let active = true;
@@ -125,7 +77,7 @@ export default function AnalyticsClient() {
         } else {
           setError('Failed to load analytics');
         }
-      } catch {
+      } catch (e) {
         if (active) setError('Network error');
       } finally {
         if (active) setLoading(false);
@@ -160,18 +112,12 @@ export default function AnalyticsClient() {
     return [numericValue, name];
   };
 
-  const salesChartHeight = isCompact ? 260 : 320;
-  const secondaryChartHeight = isCompact ? 260 : 320;
-  const pieChartHeight = isCompact ? 320 : 360;
-  const pieOuterRadius = isCompact ? '70%' : '80%';
-  const pieInnerRadius = isCompact ? '40%' : '50%';
-
   return (
     <div className="space-y-6">
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid md:grid-cols-3 gap-4">
         <Card variant="glass" className="p-5 space-y-2 border-none shadow-sm hover:shadow-md transition-shadow">
           <h3 className="text-xs uppercase tracking-wider text-muted-foreground font-medium">Revenue (30d)</h3>
-          <p className="text-2xl font-bold bg-linear-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent">
+          <p className="text-2xl font-bold bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent">
             {formatCurrency(data.totals.totalRevenueLast30Days)}
           </p>
         </Card>
@@ -190,7 +136,7 @@ export default function AnalyticsClient() {
         {data.salesByDay.every(d => d.totalRevenue === 0 && d.totalOrders === 0) ? (
           <p className="text-sm text-muted-foreground py-12 text-center">No data yet – chart will appear once orders arrive.</p>
         ) : (
-          <div className="h-[260px] md:h-80" style={{ height: salesChartHeight }}>
+          <div className="h-80">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={data.salesByDay} margin={{ top: 10, right: 20, bottom: 10, left: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" opacity={0.5} />
@@ -239,13 +185,13 @@ export default function AnalyticsClient() {
         )}
       </Card>
       
-      <div className="grid gap-6 md:grid-cols-2">
+      <div className="grid md:grid-cols-2 gap-6">
         <Card variant="soft3D" className="p-6 space-y-4 border-none shadow-sm">
           <h3 className="text-sm font-semibold">Top Products (Last 30 Days)</h3>
           {data.topProducts.length === 0 ? (
             <p className="text-sm text-muted-foreground py-12 text-center">No product sales yet.</p>
           ) : (
-            <div className="h-[260px] md:h-80" style={{ height: secondaryChartHeight }}>
+            <div className="h-80">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={data.topProducts} margin={{ top: 10, right: 10, bottom: 60, left: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" opacity={0.5} />
@@ -278,19 +224,18 @@ export default function AnalyticsClient() {
           {data.orderStatusBreakdown.length === 0 ? (
             <p className="text-sm text-muted-foreground py-12 text-center">No orders yet.</p>
           ) : (
-            <div className="h-80 md:h-96" style={{ height: pieChartHeight }}>
+            <div className="h-80">
               <ResponsiveContainer width="100%" height="100%">
-                <PieChart margin={{ top: 0, right: 0, bottom: 0, left: 0 }}>
+                <PieChart>
                   <Pie
                     data={data.orderStatusBreakdown}
                     dataKey="count"
                     nameKey="status"
                     cx="50%"
                     cy="50%"
-                    innerRadius={pieInnerRadius}
-                    outerRadius={pieOuterRadius}
-                    labelLine={false}
-                    label={renderPieLabel}
+                    outerRadius={120}
+                    label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                    labelLine={{ stroke: '#9ca3af' }}
                   >
                     {data.orderStatusBreakdown.map((entry, index) => (
                       <Cell key={`cell-${entry.status}-${index}`} fill={statusColorFor(entry.status, index)} />
