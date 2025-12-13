@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { signOut } from "next-auth/react";
 
 type ProfileClientProps = {
   user: {
@@ -21,9 +22,7 @@ export default function ProfileClient({ user }: ProfileClientProps) {
     setError(null);
     setIsLoggingOut(true);
     try {
-      await fetch("/api/auth/logout", { method: "POST" });
-      router.replace("/");
-      router.refresh();
+      await signOut({ callbackUrl: "/" });
     } catch (err) {
       console.error("Logout failed", err);
       setError("Failed to log out. Please try again.");

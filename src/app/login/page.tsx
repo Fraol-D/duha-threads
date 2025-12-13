@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
+import { signIn } from "next-auth/react";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
@@ -22,24 +23,29 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      const res = await fetch("/api/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
+      const res = await signIn("credentials", {
+        email,
+        password,
+        redirect: false,
       });
 
-      if (res.ok) {
+      if (res?.error) {
+        setError(res.error || "Login failed");
+      } else {
         router.push("/");
         router.refresh();
-      } else {
-        const data = await res.json();
-        setError(data.error || "Login failed");
       }
     } catch (err) {
       setError("Something went wrong");
     } finally {
       setLoading(false);
     }
+  }
+
+  async function handleGoogleSignIn() {
+    setError("");
+    setLoading(true);
+    await signIn("google", { callbackUrl: "/" });
   }
 
   return (
@@ -111,6 +117,21 @@ export default function LoginPage() {
 
             <Button type="submit" className="w-full shadow-lg shadow-primary/20" size="lg" disabled={loading}>
               {loading ? "Signing in..." : "Sign in"}
+            </Button>
+
+            <div className="relative text-center text-sm text-muted-foreground">
+              <span className="px-3 bg-[--surface] dark:bg-[--surface] relative z-10">or continue with</span>
+              <div className="absolute inset-0 top-1/2 border-t border-[--muted-border] -z-10" />
+            </div>
+
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full"
+              disabled={loading}
+              onClick={handleGoogleSignIn}
+            >
+              Continue with Google
             </Button>
           </form>
 

@@ -4,7 +4,7 @@ export interface UserDocument {
   _id: string | Types.ObjectId;
   name: string;
   email: string;
-  hashedPassword: string;
+  hashedPassword?: string | null;
   role: "user" | "admin";
   status: "active" | "inactive";
   phone?: string;

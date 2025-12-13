@@ -3,6 +3,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
+import { signIn } from "next-auth/react";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -16,21 +17,26 @@ export default function LoginPage() {
     setError(null);
     setLoading(true);
     try {
-      const res = await fetch("/api/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
+      const res = await signIn("credentials", {
+        email,
+        password,
+        redirect: false,
       });
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        throw new Error(data.error || "Failed to sign in");
+      if (res?.error) {
+        throw new Error(res.error);
       }
       router.push("/");
     } catch (err: any) {
-      setError(err.message || "Login failed");
+      setError(err?.message || "Login failed");
     } finally {
       setLoading(false);
     }
+  }
+
+  async function onGoogle() {
+    setError(null);
+    setLoading(true);
+    await signIn("google", { callbackUrl: "/" });
   }
 
   return (
@@ -76,6 +82,14 @@ export default function LoginPage() {
             className="w-full rounded-lg bg-foreground text-background py-2 font-medium transition transform hover:scale-[1.01] active:scale-[0.99] disabled:opacity-60"
           >
             {loading ? "Signing in…" : "Sign In"}
+          </button>
+          <button
+            type="button"
+            disabled={loading}
+            onClick={onGoogle}
+            className="w-full rounded-lg border border-muted text-foreground py-2 font-medium transition hover:bg-muted/60 active:scale-[0.99] disabled:opacity-60"
+          >
+            Continue with Google
           </button>
         </form>
 

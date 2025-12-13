@@ -1,5 +1,6 @@
 import { cookies } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
+import { auth } from "@/auth";
 import { COOKIE_NAME, verifyAuthToken, signAuthToken } from "@/lib/auth/token";
 import { getDb } from "@/lib/db/connection";
 import { UserModel } from "@/lib/db/models/User";
@@ -13,42 +14,67 @@ async function getAuthCookieValue() {
 export async function getCurrentUser() {
   try {
     const token = await getAuthCookieValue();
-    if (!token) return null;
-    const payload = verifyAuthToken(token);
-    if (!payload) return null;
+    if (token) {
+      const payload = verifyAuthToken(token);
+      if (payload) {
+        await getDb();
+        const user = await UserModel.findById(payload.uid);
+        if (user) return toPublicUser(user);
+      }
+    }
+  } catch (err) {
+    console.error('[getCurrentUser] Error:', err);
+  }
+
+  try {
+    const session = await auth();
+    if (!session?.user?.email) return null;
     await getDb();
-    const user = await UserModel.findById(payload.uid);
+    const user = await UserModel.findOne({ email: session.user.email.toLowerCase() });
     if (!user) return null;
     return toPublicUser(user);
   } catch (err) {
-    console.error('[getCurrentUser] Error:', err);
-    return null;
+    console.error('[getCurrentUser] NextAuth fallback error:', err);
   }
+  return null;
 }
 
 export async function verifyAuth(req: NextRequest): Promise<{ user: { id: string; email: string; role: "user" | "admin" } | null }> {
   try {
     const token = req.cookies.get(COOKIE_NAME)?.value;
-    if (!token) return { user: null };
-    
-    const payload = verifyAuthToken(token);
-    if (!payload) return { user: null };
-    
-    await getDb();
-    const user = await UserModel.findById(payload.uid);
-    if (!user) return { user: null };
-    
+    if (token) {
+      const payload = verifyAuthToken(token);
+      if (payload) {
+        await getDb();
+        const user = await UserModel.findById(payload.uid);
+        if (user) {
+          return {
+            user: {
+              id: user._id.toString(),
+              email: user.email,
+              role: user.role || "user",
+            },
+          };
+        }
+      }
+    }
+  } catch (err) {
+    console.error('[verifyAuth] Error:', err);
+  }
+  try {
+    const session = await auth();
+    if (!session?.user?.email) return { user: null };
     return {
       user: {
-        id: user._id.toString(),
-        email: user.email,
-        role: user.role || "user",
+        id: session.user.id || "",
+        email: session.user.email,
+        role: session.user.role || "user",
       },
     };
   } catch (err) {
-    console.error('[verifyAuth] Error:', err);
-    return { user: null };
+    console.error('[verifyAuth] NextAuth fallback error:', err);
   }
+  return { user: null };
 }
 
 export async function setAuthCookie(userId: string) {

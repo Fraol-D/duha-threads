@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { signOut } from "next-auth/react";
 
 interface PublicUser {
   id: string;
@@ -61,8 +62,7 @@ export default function ProfilePage() {
   }
 
   async function logout() {
-    await fetch("/api/auth/logout", { method: "POST" });
-    router.push("/login");
+    await signOut({ callbackUrl: "/login" });
   }
 
   if (loading) return <div className="py-12 text-center">Loading...</div>;

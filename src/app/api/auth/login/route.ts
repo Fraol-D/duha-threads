@@ -27,6 +27,10 @@ export async function POST(req: Request) {
       console.error(`Login failed: No user found for email: ${email.toLowerCase()}`);
       return NextResponse.json({ error: "Invalid credentials" }, { status: 401 });
     }
+    if (!user.hashedPassword) {
+      console.error(`Login failed: No password set for email: ${email.toLowerCase()}`);
+      return NextResponse.json({ error: "Invalid credentials" }, { status: 401 });
+    }
     const ok = await verifyPassword(password, user.hashedPassword);
     if (!ok) {
       console.error(`Login failed: Password mismatch for email: ${email.toLowerCase()}`);
