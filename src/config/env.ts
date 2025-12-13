@@ -23,6 +23,8 @@ const schema = z.object({
   CLOUDINARY_CLOUD_NAME: z.string().optional(),
   CLOUDINARY_API_KEY: z.string().optional(),
   CLOUDINARY_API_SECRET: z.string().optional(),
+  STRIPE_PUBLIC_KEY: z.string().optional(),
+  STRIPE_SECRET_KEY: z.string().optional(),
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
 });
 
@@ -42,6 +44,8 @@ const raw = {
   CLOUDINARY_CLOUD_NAME: process.env.CLOUDINARY_CLOUD_NAME,
   CLOUDINARY_API_KEY: process.env.CLOUDINARY_API_KEY,
   CLOUDINARY_API_SECRET: process.env.CLOUDINARY_API_SECRET,
+  STRIPE_PUBLIC_KEY: process.env.STRIPE_PUBLIC_KEY,
+  STRIPE_SECRET_KEY: process.env.STRIPE_SECRET_KEY,
   NODE_ENV: process.env.NODE_ENV as string,
 };
 

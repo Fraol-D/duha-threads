@@ -65,7 +65,7 @@ export async function GET(req: NextRequest) {
 
     const salesAgg = await OrderModel.aggregate([
       { $match: { createdAt: { $gte: start30 } } },
-      { $group: { _id: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt' } }, revenue: { $sum: '$total' }, orders: { $sum: 1 } } },
+      { $group: { _id: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt' } }, revenue: { $sum: '$totalAmount' }, orders: { $sum: 1 } } },
       { $sort: { _id: 1 } }
     ]);
 
@@ -81,7 +81,7 @@ export async function GET(req: NextRequest) {
     const topAgg = await OrderModel.aggregate([
       { $match: { createdAt: { $gte: start30 } } },
       { $unwind: '$items' },
-      { $group: { _id: '$items.productId', quantity: { $sum: '$items.quantity' }, revenue: { $sum: { $multiply: ['$items.price', '$items.quantity'] } } } },
+      { $group: { _id: '$items.productId', quantity: { $sum: '$items.quantity' }, revenue: { $sum: '$items.subtotal' } } },
       { $sort: { quantity: -1 } },
       { $limit: 10 }
     ]);
@@ -107,8 +107,8 @@ export async function GET(req: NextRequest) {
     }));
 
     const [totalRevenueAllTimeAgg, last30Agg, totalOrdersAllTime, last30OrdersCount, customOrdersLast30, totalCustomOrders] = await Promise.all([
-      OrderModel.aggregate([{ $group: { _id: null, rev: { $sum: '$total' } } }]),
-      OrderModel.aggregate([{ $match: { createdAt: { $gte: start30 } } }, { $group: { _id: null, rev: { $sum: '$total' } } }]),
+      OrderModel.aggregate([{ $group: { _id: null, rev: { $sum: '$totalAmount' } } }]),
+      OrderModel.aggregate([{ $match: { createdAt: { $gte: start30 } } }, { $group: { _id: null, rev: { $sum: '$totalAmount' } } }]),
       OrderModel.countDocuments({}),
       OrderModel.countDocuments({ createdAt: { $gte: start30 } }),
       CustomOrderModel.countDocuments({ createdAt: { $gte: start30 } }),

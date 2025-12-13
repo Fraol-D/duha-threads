@@ -62,7 +62,16 @@ export default function ProfilePage() {
   }
 
   async function logout() {
-    await signOut({ callbackUrl: "/login" });
+    try {
+      // Clear our custom auth token first
+      await fetch("/api/auth/signout", { method: "POST" });
+      // Then sign out from NextAuth (this clears NextAuth cookies and redirects)
+      await signOut({ callbackUrl: "/login", redirect: true });
+    } catch (err) {
+      console.error("Logout error:", err);
+      // Force redirect even if error occurs
+      window.location.href = "/login";
+    }
   }
 
   if (loading) return <div className="py-12 text-center">Loading...</div>;

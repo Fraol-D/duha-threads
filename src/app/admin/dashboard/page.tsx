@@ -84,13 +84,13 @@ async function fetchDashboardData(): Promise<DashboardData> {
       featuredReviewsCount,
       latestReviewDoc,
     ] = await Promise.all([
-      OrderModel.find({ createdAt: { $gte: todayStart, $lt: tomorrowStart } }, { total: 1 }).lean(),
+      OrderModel.find({ createdAt: { $gte: todayStart, $lt: tomorrowStart } }, { totalAmount: 1 }).lean(),
       CustomOrderModel.find(
         { createdAt: { $gte: todayStart, $lt: tomorrowStart } },
         { "pricing.finalTotal": 1, "pricing.estimatedTotal": 1 }
       ).lean(),
       UserModel.countDocuments({ createdAt: { $gte: todayStart, $lt: tomorrowStart } }),
-      OrderModel.find({}, { total: 1, status: 1, createdAt: 1 })
+      OrderModel.find({}, { totalAmount: 1, status: 1, createdAt: 1 })
         .sort({ createdAt: -1 })
         .limit(5)
         .lean(),
@@ -111,7 +111,7 @@ async function fetchDashboardData(): Promise<DashboardData> {
     ]);
 
     // Define types for the data we're working with to avoid 'any'
-    type OrderDoc = { _id?: { toString(): string } | string; total?: number; status?: string; createdAt?: Date | string | number };
+    type OrderDoc = { _id?: { toString(): string } | string; totalAmount?: number; status?: string; createdAt?: Date | string | number };
     type CustomOrderDoc = { _id?: { toString(): string } | string; pricing?: { finalTotal?: number; estimatedTotal?: number }; status?: string; createdAt?: Date | string | number };
     type ReviewDoc = {
       _id?: { toString(): string } | string;
@@ -125,7 +125,7 @@ async function fetchDashboardData(): Promise<DashboardData> {
     const safeRecentOrders = (Array.isArray(recentOrders) ? recentOrders : []) as unknown as OrderDoc[];
     const safeRecentCustomOrders = (Array.isArray(recentCustomOrders) ? recentCustomOrders : []) as unknown as CustomOrderDoc[];
 
-    const todaySalesFromOrders = safeTodayOrders.reduce((sum: number, o: OrderDoc) => sum + toNumber(o.total), 0);
+    const todaySalesFromOrders = safeTodayOrders.reduce((sum: number, o: OrderDoc) => sum + toNumber(o.totalAmount), 0);
     const todaySalesFromCustom = safeTodayCustomOrders.reduce(
       (sum: number, co: CustomOrderDoc) => sum + toNumber(co.pricing?.finalTotal ?? co.pricing?.estimatedTotal),
       0
@@ -147,7 +147,7 @@ async function fetchDashboardData(): Promise<DashboardData> {
     safeData.recent = {
       orders: safeRecentOrders.map((o: OrderDoc) => ({
         id: o?._id?.toString?.() ?? generateTempId(),
-        total: toNumber(o?.total),
+        total: toNumber(o?.totalAmount),
         status: o?.status ?? "UNKNOWN",
         createdAt: o?.createdAt instanceof Date ? o.createdAt : new Date(o?.createdAt ?? Date.now()),
       })),

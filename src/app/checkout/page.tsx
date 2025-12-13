@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
+import { CreditCard, Wallet, Zap } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
 import { Textarea } from "@/components/ui/Textarea";
@@ -37,6 +38,7 @@ export default function CheckoutPage() {
   const [phone, setPhone] = useState("");
   const [notes, setNotes] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState<'chapa' | 'stripe' | 'pay_on_delivery'>('stripe');
   const total = useMemo(() => items.reduce((sum, i) => sum + (i.product?.basePrice || 0) * i.quantity, 0), [items]);
 
   useEffect(() => {
@@ -57,7 +59,7 @@ export default function CheckoutPage() {
     })();
   }, []);
 
-  async function placeOrder(e: React.FormEvent) {
+  async function handlePayment(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
     if (!deliveryName || !deliveryAddress || !phone) {
@@ -66,29 +68,97 @@ export default function CheckoutPage() {
     }
     setSubmitting(true);
     try {
-      const res = await fetch("/api/orders", {
+      if (paymentMethod === 'pay_on_delivery') {
+        // Create order directly without payment
+        const res = await fetch("/api/checkout", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            deliveryName,
+            deliveryAddress,
+            phone,
+            notes,
+            paymentMethod: 'pay_on_delivery',
+          }),
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          setError(data.error || "Failed to create order");
+          return;
+        }
+        router.push(`/checkout/success?orderId=${data.orderId}`);
+        return;
+      }
+
+      if (paymentMethod === 'stripe') {
+        // First create a PENDING order for Stripe
+        const orderRes = await fetch("/api/checkout", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            deliveryName,
+            deliveryAddress,
+            phone,
+            notes,
+            paymentMethod: 'stripe',
+          }),
+        });
+        const orderData = await orderRes.json();
+        if (!orderRes.ok) {
+          setError(orderData.error || "Failed to create order");
+          return;
+        }
+
+        // Now create Stripe checkout session with the order ID
+        const stripeRes = await fetch("/api/stripe/create-checkout-session", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            amount: total,
+            currency: 'usd',
+            customerEmail: "test@example.com", // TODO: replace with real user email
+            orderId: orderData.orderId,
+          }),
+        });
+        const stripeData = await stripeRes.json();
+        if (!stripeRes.ok || !stripeData.url) {
+          setError(stripeData.error || "Failed to initialize Stripe payment");
+          return;
+        }
+        // Redirect to Stripe Checkout
+        window.location.href = stripeData.url;
+        return;
+      }
+
+      // Chapa payment flow (legacy)
+      const tx_ref = `duha-${Date.now()}`;
+      const res = await fetch("/api/chapa/initialize", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          name: deliveryName,
-            phone,
-            address: deliveryAddress,
-            notes: notes || undefined,
+          amount: total.toFixed(2),
+          currency: "ETB",
+          email: "test@example.com",
+          first_name: deliveryName.split(" ")[0] || deliveryName,
+          last_name: deliveryName.split(" ").slice(1).join(" ") || deliveryName,
+          phone_number: phone,
+          tx_ref,
+          callback_url: `${window.location.origin}/api/chapa/callback`,
+          return_url: `${window.location.origin}/checkout/success?tx_ref=${tx_ref}`,
+          customization: {
+            title: "Duha Threads Payment",
+            description: "Checkout payment for Duha Threads order",
+          },
         }),
       });
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        setError(data.error || "Order placement failed");
+      const data = await res.json();
+      if (!res.ok || !data.checkout_url) {
+        setError(data.error || "Failed to initialize payment");
         return;
       }
-      const data = await res.json();
-      if (process.env.NODE_ENV !== 'production') {
-        console.log('Checkout created order response', data);
-        console.log('Checkout redirecting to', `/orders/${data.id}`);
-      }
-      router.push(`/orders/${data.id}`);
+      window.location.href = data.checkout_url;
     } catch {
-      setError("Network error placing order");
+      setError("Network error processing payment");
     } finally {
       setSubmitting(false);
     }
@@ -155,16 +225,93 @@ export default function CheckoutPage() {
       <div className="space-y-6">
         <Card variant="glass" className="p-6 space-y-4">
           <h2 className="text-xl font-semibold">Delivery</h2>
-          <form onSubmit={placeOrder} className="space-y-4">
+          <form onSubmit={handlePayment} className="space-y-4">
             <Input required placeholder="Full Name" value={deliveryName} onChange={(e) => setDeliveryName(e.currentTarget.value)} />
             <Input required placeholder="Phone" value={phone} onChange={(e) => setPhone(e.currentTarget.value)} />
             <Textarea required placeholder="Delivery Address" value={deliveryAddress} onChange={(e) => setDeliveryAddress(e.currentTarget.value)} />
             <Textarea placeholder="Notes (optional)" value={notes} onChange={(e) => setNotes(e.currentTarget.value)} />
+            
+            <div className="space-y-3 pt-2 border-t border-token">
+              <h3 className="font-medium">Payment Method</h3>
+              <div className="space-y-3">
+                {/* Stripe Card */}
+                <label className="flex items-center gap-3 p-4 border-2 rounded-lg cursor-pointer transition-all hover:bg-muted/30"
+                  style={{
+                    borderColor: paymentMethod === 'stripe' ? 'var(--ring)' : 'var(--muted-border)',
+                    backgroundColor: paymentMethod === 'stripe' ? 'rgba(var(--ring-rgb), 0.05)' : 'transparent',
+                  }}>
+                  <input
+                    type="radio"
+                    name="paymentMethod"
+                    value="stripe"
+                    checked={paymentMethod === 'stripe'}
+                    onChange={(e) => setPaymentMethod(e.target.value as 'chapa' | 'stripe' | 'pay_on_delivery')}
+                    className="w-4 h-4"
+                  />
+                  <div className="flex-1 flex items-center gap-3">
+                    <CreditCard className="w-6 h-6" />
+                    <div className="flex-1">
+                      <div className="font-medium text-sm">Stripe Payment</div>
+                      <div className="text-xs text-muted-foreground">Credit/Debit Card</div>
+                    </div>
+                  </div>
+                </label>
+
+                {/* Chapa Card */}
+                <label className="flex items-center gap-3 p-4 border-2 rounded-lg cursor-pointer transition-all hover:bg-muted/30"
+                  style={{
+                    borderColor: paymentMethod === 'chapa' ? 'var(--ring)' : 'var(--muted-border)',
+                    backgroundColor: paymentMethod === 'chapa' ? 'rgba(var(--ring-rgb), 0.05)' : 'transparent',
+                  }}>
+                  <input
+                    type="radio"
+                    name="paymentMethod"
+                    value="chapa"
+                    checked={paymentMethod === 'chapa'}
+                    onChange={(e) => setPaymentMethod(e.target.value as 'chapa' | 'stripe' | 'pay_on_delivery')}
+                    className="w-4 h-4"
+                  />
+                  <div className="flex-1 flex items-center gap-3">
+                    <Zap className="w-6 h-6" />
+                    <div className="flex-1">
+                      <div className="font-medium text-sm">Chapa</div>
+                      <div className="text-xs text-muted-foreground">Payment Gateway (Test Mode)</div>
+                    </div>
+                  </div>
+                </label>
+
+                {/* Pay on Delivery Card */}
+                <label className="flex items-center gap-3 p-4 border-2 rounded-lg cursor-pointer transition-all hover:bg-muted/30"
+                  style={{
+                    borderColor: paymentMethod === 'pay_on_delivery' ? 'var(--ring)' : 'var(--muted-border)',
+                    backgroundColor: paymentMethod === 'pay_on_delivery' ? 'rgba(var(--ring-rgb), 0.05)' : 'transparent',
+                  }}>
+                  <input
+                    type="radio"
+                    name="paymentMethod"
+                    value="pay_on_delivery"
+                    checked={paymentMethod === 'pay_on_delivery'}
+                    onChange={(e) => setPaymentMethod(e.target.value as 'chapa' | 'stripe' | 'pay_on_delivery')}
+                    className="w-4 h-4"
+                  />
+                  <div className="flex-1 flex items-center gap-3">
+                    <Wallet className="w-6 h-6" />
+                    <div className="flex-1">
+                      <div className="font-medium text-sm">Pay on Delivery</div>
+                      <div className="text-xs text-muted-foreground">Cash on delivery</div>
+                    </div>
+                  </div>
+                </label>
+              </div>
+            </div>
+
             <div className="flex items-center justify-between font-medium pt-2 border-t border-token">
               <span>Total</span>
               <span className="text-xl">${total.toFixed(2)}</span>
             </div>
-            <Button type="submit" className="w-full" disabled={submitting}>{submitting ? 'Placing…' : 'Place Order'}</Button>
+            <Button type="submit" className="w-full" disabled={submitting}>
+              {submitting ? 'Processing…' : paymentMethod === 'stripe' ? 'Pay with Stripe' : paymentMethod === 'chapa' ? 'Pay with Chapa' : 'Place Order'}
+            </Button>
             {error && <p className="text-red-600 text-sm">{error}</p>}
           </form>
         </Card>

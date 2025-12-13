@@ -28,7 +28,7 @@ function resolveRole(email: string): "user" | "admin" {
   return adminEmails.includes(email.toLowerCase()) ? "admin" : "user";
 }
 
-async function syncUserProfile(input: { email: string; name?: string | null }) {
+async function syncUserProfile(input: { email: string; name?: string | null; image?: string | null }) {
   await getDb();
   const email = input.email.toLowerCase();
   const existing = await UserModel.findOne({ email });
@@ -38,6 +38,10 @@ async function syncUserProfile(input: { email: string; name?: string | null }) {
     let shouldSave = false;
     if (!existing.name && input.name) {
       existing.name = input.name;
+      shouldSave = true;
+    }
+    if (input.image && existing.image !== input.image) {
+      existing.image = input.image;
       shouldSave = true;
     }
     if (existing.role !== role && role === "admin") {
@@ -56,6 +60,7 @@ async function syncUserProfile(input: { email: string; name?: string | null }) {
   const user = await UserModel.create({
     name,
     email,
+    image: input.image,
     hashedPassword: null,
     role,
     status: "active",
@@ -73,6 +78,14 @@ if (googleClientId && googleClientSecret) {
     Google({
       clientId: googleClientId,
       clientSecret: googleClientSecret,
+      profile(profile) {
+        return {
+          id: profile.sub,
+          name: profile.name,
+          email: profile.email,
+          image: profile.picture,
+        };
+      },
     })
   );
 }
@@ -108,29 +121,71 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   pages: {
     signIn: "/login",
   },
+  trustHost: true,
+  allowDangerousEmailAccountLinking: true,
   callbacks: {
-    async signIn({ user }) {
-      const appUser = user as AppUser;
-      if (!appUser.email) return false;
-      const synced = await syncUserProfile({ email: appUser.email, name: appUser.name });
-      appUser.id = synced._id.toString();
-      appUser.role = synced.role;
+    async signIn({ user, account, profile, email, credentials }) {
+      // Allow sign in for credentials
+      if (account?.provider === 'credentials') return true;
+
+      // For OAuth (Google), link to existing user if email matches
+      if (account?.provider === 'google' && user?.email) {
+        const db = await getDb();
+        const existing = await UserModel.findOne({ email: user.email.toLowerCase() });
+        if (existing) {
+          // If the user does not have an image, update it
+          if (profile && profile.picture && existing.image !== profile.picture) {
+            existing.image = profile.picture;
+            await existing.save();
+          }
+          // Check if Google account link exists in accounts collection
+          const AccountModel = db.models.Account || db.model('Account', new db.Schema({}, { strict: false }), 'accounts');
+          const existingAccount = await AccountModel.findOne({
+            userId: existing._id.toString(),
+            provider: 'google',
+            providerAccountId: account.providerAccountId,
+          });
+          if (!existingAccount) {
+            // Link Google account to existing user
+            await AccountModel.create({
+              userId: existing._id.toString(),
+              type: 'oauth',
+              provider: 'google',
+              providerAccountId: account.providerAccountId,
+              access_token: account.access_token,
+              token_type: account.token_type,
+              id_token: account.id_token,
+              scope: account.scope,
+              expires_at: account.expires_at,
+              refresh_token: account.refresh_token,
+              session_state: account.session_state,
+            });
+          }
+          return true;
+        }
+      }
+      // Default: allow sign in
       return true;
     },
-    async jwt({ token, user }) {
+    async jwt({ token, user, account, profile }) {
       const appUser = user as AppUser | undefined;
       if (appUser) {
         token.id = appUser.id ?? token.id;
         token.role = appUser.role ?? (token.role as Role | undefined) ?? "user";
+        if ((appUser as any).image) {
+          token.image = (appUser as any).image;
+        }
       }
 
       if (!token.role && token.email) {
         const synced = await syncUserProfile({
           email: token.email as string,
           name: (token.name as string) || undefined,
+          image: (token.image as string) || undefined,
         });
         token.id = synced._id.toString();
         token.role = synced.role;
+        if (synced.image) token.image = synced.image;
       }
 
       return token;
@@ -139,6 +194,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       if (session.user) {
         session.user.id = (token.id as string | undefined) ?? session.user.id;
         session.user.role = (token.role as Role | undefined) ?? session.user.role;
+        if (token.image) session.user.image = token.image as string;
       }
       return session;
     },

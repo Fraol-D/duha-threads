@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { ProfileImage } from "./ProfileImage";
 import { useEffect, useState } from "react";
 import {
   Home,
@@ -37,6 +38,7 @@ const navItems: NavItem[] = [
 export function Header() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [loaded, setLoaded] = useState(false);
+  const [profileImage, setProfileImage] = useState<string | undefined>(undefined);
   const [theme, setTheme] = useState<"light" | "dark">("light");
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isMobileView, setIsMobileView] = useState(false);
@@ -67,6 +69,7 @@ export function Header() {
         if (res.ok) {
           const json = await res.json();
           setIsAdmin(json.user?.role === "admin");
+          setProfileImage(json.user?.image);
         }
       } catch {
         // ignore auth fetch failures; header still renders
@@ -200,7 +203,18 @@ export function Header() {
                 aria-label="Profile"
                 className="inline-flex items-center justify-center rounded-full p-2 hover:bg-[--surface] transition-colors focus:outline-none focus:ring-2 focus:ring-foreground/40"
               >
-                <UserIcon className="h-5 w-5" />
+                {profileImage ? (
+                  <ProfileImage
+                    src={profileImage}
+                    alt="Profile"
+                    width={28}
+                    height={28}
+                    className="h-7 w-7 rounded-full object-cover border border-muted"
+                    unoptimized
+                  />
+                ) : (
+                  <UserIcon className="h-5 w-5" />
+                )}
                 <span className="sr-only">Profile</span>
               </Link>
             </div>
@@ -292,7 +306,18 @@ export function Header() {
                       onClick={() => setMobileMenuOpen(false)}
                       className="flex items-center gap-3 rounded-2xl px-4 py-3 text-base font-medium transition-colors hover:bg-muted/50"
                     >
-                      <UserIcon className="h-5 w-5" />
+                      {profileImage ? (
+                        <ProfileImage
+                          src={profileImage}
+                          alt="Profile"
+                          width={28}
+                          height={28}
+                          className="h-7 w-7 rounded-full object-cover border border-muted"
+                          unoptimized
+                        />
+                      ) : (
+                        <UserIcon className="h-5 w-5" />
+                      )}
                       <span>Account</span>
                     </Link>
                   </li>
