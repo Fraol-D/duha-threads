@@ -14,6 +14,7 @@ interface OrderListItem {
   totalAmount: number;
   currency: string;
   status: string;
+  paymentMethod?: 'chapa' | 'pay_on_delivery';
   createdAt: string;
   updatedAt: string;
   isCustomOrder: boolean;
@@ -167,6 +168,7 @@ export default function AdminOrdersClient() {
                       <th className="text-left font-medium p-2">Order</th>
                       <th className="text-left font-medium p-2">Customer</th>
                       <th className="text-left font-medium p-2">Total</th>
+                      <th className="text-left font-medium p-2">Payment</th>
                       <th className="text-left font-medium p-2">Status</th>
                       <th className="text-left font-medium p-2">Created</th>
                       <th className="text-left font-medium p-2">Type</th>
@@ -194,6 +196,11 @@ export default function AdminOrdersClient() {
                           </div>
                         </td>
                         <td className="p-2">{formatCurrency(o.totalAmount)}</td>
+                        <td className="p-2">
+                          <span className="text-xs px-2 py-1 rounded-full inline-block bg-blue-100 text-blue-900 dark:bg-blue-900/30 dark:text-blue-300">
+                            {o.paymentMethod === 'pay_on_delivery' ? '💵 POD' : '💳 Chapa'}
+                          </span>
+                        </td>
                         <td className="p-2">
                           <span className={`text-xs px-2 py-1 rounded-full inline-block ${statusTone(o.status)}`}>
                             {normalizeStatus(o.status)}

@@ -37,6 +37,7 @@ export default function CheckoutPage() {
   const [phone, setPhone] = useState("");
   const [notes, setNotes] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState<'chapa' | 'pay_on_delivery'>('chapa');
   const total = useMemo(() => items.reduce((sum, i) => sum + (i.product?.basePrice || 0) * i.quantity, 0), [items]);
 
   useEffect(() => {
@@ -57,7 +58,7 @@ export default function CheckoutPage() {
     })();
   }, []);
 
-  async function placeOrder(e: React.FormEvent) {
+  async function handlePayment(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
     if (!deliveryName || !deliveryAddress || !phone) {
@@ -66,29 +67,58 @@ export default function CheckoutPage() {
     }
     setSubmitting(true);
     try {
-      const res = await fetch("/api/orders", {
+      if (paymentMethod === 'pay_on_delivery') {
+        // Create order directly without Chapa payment
+        const res = await fetch("/api/checkout", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            deliveryName,
+            deliveryAddress,
+            phone,
+            notes,
+            paymentMethod: 'pay_on_delivery',
+          }),
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          setError(data.error || "Failed to create order");
+          return;
+        }
+        // Redirect to success page
+        router.push(`/checkout/success?orderId=${data.orderId}`);
+        return;
+      }
+
+      // Chapa payment flow
+      const tx_ref = `duha-${Date.now()}`;
+      const res = await fetch("/api/chapa/initialize", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          name: deliveryName,
-            phone,
-            address: deliveryAddress,
-            notes: notes || undefined,
+          amount: total.toFixed(2),
+          currency: "ETB",
+          email: "test@example.com", // TODO: replace with real user email if available
+          first_name: deliveryName.split(" ")[0] || deliveryName,
+          last_name: deliveryName.split(" ").slice(1).join(" ") || deliveryName,
+          phone_number: phone,
+          tx_ref,
+          callback_url: `${window.location.origin}/api/chapa/callback`,
+          return_url: `${window.location.origin}/checkout/success?tx_ref=${tx_ref}`,
+          customization: {
+            title: "Duha Threads Payment",
+            description: "Checkout payment for Duha Threads order",
+          },
         }),
       });
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        setError(data.error || "Order placement failed");
+      const data = await res.json();
+      if (!res.ok || !data.checkout_url) {
+        setError(data.error || "Failed to initialize payment");
         return;
       }
-      const data = await res.json();
-      if (process.env.NODE_ENV !== 'production') {
-        console.log('Checkout created order response', data);
-        console.log('Checkout redirecting to', `/orders/${data.id}`);
-      }
-      router.push(`/orders/${data.id}`);
+      window.location.href = data.checkout_url;
     } catch {
-      setError("Network error placing order");
+      setError("Network error processing payment");
     } finally {
       setSubmitting(false);
     }
@@ -155,16 +185,47 @@ export default function CheckoutPage() {
       <div className="space-y-6">
         <Card variant="glass" className="p-6 space-y-4">
           <h2 className="text-xl font-semibold">Delivery</h2>
-          <form onSubmit={placeOrder} className="space-y-4">
+          <form onSubmit={handlePayment} className="space-y-4">
             <Input required placeholder="Full Name" value={deliveryName} onChange={(e) => setDeliveryName(e.currentTarget.value)} />
             <Input required placeholder="Phone" value={phone} onChange={(e) => setPhone(e.currentTarget.value)} />
             <Textarea required placeholder="Delivery Address" value={deliveryAddress} onChange={(e) => setDeliveryAddress(e.currentTarget.value)} />
             <Textarea placeholder="Notes (optional)" value={notes} onChange={(e) => setNotes(e.currentTarget.value)} />
+            
+            <div className="space-y-3 pt-2 border-t border-token">
+              <h3 className="font-medium">Payment Method</h3>
+              <div className="flex items-center gap-4">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="paymentMethod"
+                    value="chapa"
+                    checked={paymentMethod === 'chapa'}
+                    onChange={(e) => setPaymentMethod(e.target.value as 'chapa' | 'pay_on_delivery')}
+                    className="w-4 h-4"
+                  />
+                  <span className="text-sm">Pay with Chapa</span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="paymentMethod"
+                    value="pay_on_delivery"
+                    checked={paymentMethod === 'pay_on_delivery'}
+                    onChange={(e) => setPaymentMethod(e.target.value as 'chapa' | 'pay_on_delivery')}
+                    className="w-4 h-4"
+                  />
+                  <span className="text-sm">Pay on Delivery</span>
+                </label>
+              </div>
+            </div>
+
             <div className="flex items-center justify-between font-medium pt-2 border-t border-token">
               <span>Total</span>
               <span className="text-xl">${total.toFixed(2)}</span>
             </div>
-            <Button type="submit" className="w-full" disabled={submitting}>{submitting ? 'Placing…' : 'Place Order'}</Button>
+            <Button type="submit" className="w-full" disabled={submitting}>
+              {submitting ? 'Processing…' : paymentMethod === 'chapa' ? 'Pay with Chapa' : 'Place Order'}
+            </Button>
             {error && <p className="text-red-600 text-sm">{error}</p>}
           </form>
         </Card>

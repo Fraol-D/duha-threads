@@ -11,9 +11,12 @@ import { env } from "@/config/env";
 import { generateOrderNumber, isOrderNumberDuplicateError } from '@/lib/orders/orderNumber';
 
 const bodySchema = z.object({
+  deliveryName: z.string().min(2).optional(),
   deliveryAddress: z.string().min(5),
   phone: z.string().min(5),
-  email: z.string().email(),
+  email: z.string().email().optional(),
+  notes: z.string().optional(),
+  paymentMethod: z.enum(['chapa', 'pay_on_delivery']).default('chapa'),
 });
 
 export async function POST(req: Request) {
@@ -25,7 +28,8 @@ export async function POST(req: Request) {
   const json = await req.json().catch(() => null);
   const parsed = bodySchema.safeParse(json);
   if (!parsed.success) return NextResponse.json({ error: "Invalid input" }, { status: 400 });
-  const { deliveryAddress, phone, email } = parsed.data;
+  const { deliveryAddress, phone, email: emailInput, deliveryName, notes, paymentMethod } = parsed.data;
+  const email = emailInput || user.email;
 
   await getDb();
   const cartItems = await CartItemModel.find({ userId: user.id }).lean();
@@ -49,17 +53,20 @@ export async function POST(req: Request) {
   // Build order items with snapshots
   const items = cartItems.map((i) => {
     const p = productMap.get(i.productId.toString())!;
+    const unitPrice = p.basePrice;
+    const subtotal = unitPrice * i.quantity;
     return {
       productId: i.productId,
       name: p.name,
-      price: p.basePrice,
+      unitPrice,
+      subtotal,
       size: i.size,
       color: i.color,
       quantity: i.quantity,
     };
   });
 
-  const subtotal = items.reduce((sum, it) => sum + it.price * it.quantity, 0);
+  const subtotal = items.reduce((sum, it) => sum + it.subtotal, 0);
   const total = subtotal; // placeholder for taxes/discounts
 
   const orderBase = {
@@ -70,7 +77,10 @@ export async function POST(req: Request) {
     email,
     subtotal,
     total,
-    status: "Pending",
+    totalAmount: total,
+    currency: 'USD',
+    paymentMethod,
+    status: paymentMethod === 'pay_on_delivery' ? 'CONFIRMED' : 'PENDING',
   };
 
   let order: OrderDocument | null = null;

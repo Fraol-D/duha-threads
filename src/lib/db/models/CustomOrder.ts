@@ -129,6 +129,7 @@ export interface CustomOrderDocument extends Document {
   priceEstimate?: number | null;
   finalPrice?: number | null;
   status: CustomOrderStatus;
+  paymentMethod: 'chapa' | 'pay_on_delivery';
   statusHistory: IStatusHistoryEntry[];
   createdAt: Date;
   updatedAt: Date;
@@ -258,6 +259,7 @@ const CustomOrderSchema = new Schema<CustomOrderDocument>(
       default: 'PENDING_REVIEW',
       required: true,
     },
+    paymentMethod: { type: String, enum: ['chapa', 'pay_on_delivery'], required: true, default: 'chapa' },
     statusHistory: { type: [StatusHistorySchema], default: [] },
   },
   { timestamps: true }

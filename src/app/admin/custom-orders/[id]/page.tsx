@@ -86,6 +86,7 @@ interface AdminCustomOrder extends BaseCustomOrder {
     estimatedTotal: number;
     finalTotal?: number;
   };
+  paymentMethod?: 'chapa' | 'pay_on_delivery';
   statusHistory: Array<{
     status: string;
     changedAt: string;
@@ -114,6 +115,7 @@ export default function AdminCustomOrderDetailPage() {
 
   const [newStatus, setNewStatus] = useState<string>("");
   const [newFinalTotal, setNewFinalTotal] = useState<string>("");
+  const [formError, setFormError] = useState<string>("");
   const [adminNoteDraft, setAdminNoteDraft] = useState<string>("");
   const [adminNotes, setAdminNotes] = useState<string>("");
   const [publicStatusDraft, setPublicStatusDraft] = useState<string>('private');
@@ -175,6 +177,16 @@ export default function AdminCustomOrderDetailPage() {
   async function handleUpdate() {
     if (!order) return;
 
+    // Validate required fields
+    if (!newStatus) {
+      setFormError("Status is required.");
+      return;
+    }
+    if (!newFinalTotal || isNaN(Number(newFinalTotal))) {
+      setFormError("Final Total is required and must be a valid number.");
+      return;
+    }
+    setFormError("");
     setUpdating(true);
     setError(null);
 
@@ -265,26 +277,32 @@ export default function AdminCustomOrderDetailPage() {
           </Link>
           <h1 className="text-3xl font-semibold tracking-tight">Order Management</h1>
         </div>
-        <Badge className="text-sm md:text-base px-4 py-2 self-start md:self-auto">
-          {order.status.replace(/_/g, " ")}
-        </Badge>
+        <div className="flex items-center gap-2 self-start md:self-auto">
+          <Badge className="text-sm md:text-base px-4 py-2">
+            {order.status.replace(/_/g, " ")}
+          </Badge>
+          <Badge variant="secondary" className="text-sm md:text-base px-4 py-2">
+            {order.paymentMethod === 'pay_on_delivery' ? '💵 Pay on Delivery' : '💳 Chapa'}
+          </Badge>
+        </div>
       </div>
 
       <Card variant="glass" className="p-6 space-y-4">
         <h2 className="text-lg md:text-xl font-semibold">Update Order</h2>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <div className="space-y-2">
-            <label className="text-sm font-medium">Status</label>
-            <Select value={newStatus} onChange={setNewStatus} options={adminStatusOptions} />
+            <label className="text-sm font-medium">Status <span className="text-red-600">*</span></label>
+            <Select value={newStatus} onChange={setNewStatus} options={adminStatusOptions} required />
           </div>
           <div className="space-y-2">
-            <label className="text-sm font-medium">Final Total ($)</label>
+            <label className="text-sm font-medium">Final Total ($) <span className="text-red-600">*</span></label>
             <Input
               type="number"
               step="0.01"
               value={newFinalTotal}
               onChange={(e) => setNewFinalTotal(e.currentTarget.value)}
               placeholder={order.pricing.estimatedTotal.toFixed(2)}
+              required
             />
           </div>
           <div className="space-y-2">
@@ -297,6 +315,7 @@ export default function AdminCustomOrderDetailPage() {
             />
           </div>
         </div>
+        {formError && <div className="text-red-600 text-sm mb-2">{formError}</div>}
         <div className="space-y-2">
           <label className="text-sm font-medium">New Note</label>
           <Textarea

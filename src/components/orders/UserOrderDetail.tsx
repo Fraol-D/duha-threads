@@ -7,6 +7,7 @@ interface UserOrderDetailProps {
   orderNumber?: string;
   id: string;
   status: string;
+  paymentMethod?: 'chapa' | 'pay_on_delivery';
   createdAt: string;
   items: {
     name: string;
@@ -41,7 +42,7 @@ const STATUS_COLORS: Record<string, string> = {
   CANCELED: 'bg-red-200 text-red-700'
 };
 
-export function UserOrderDetail({ orderNumber, id, status, createdAt, items, subtotal, totalAmount, currency, deliveryInfo, isCustomOrder, customPreviewImageUrl }: UserOrderDetailProps) {
+export function UserOrderDetail({ orderNumber, id, status, paymentMethod, createdAt, items, subtotal, totalAmount, currency, deliveryInfo, isCustomOrder, customPreviewImageUrl }: UserOrderDetailProps) {
   const primary = items[0];
   const additionalCount = items.length > 1 ? items.length - 1 : 0;
   const statusColor = STATUS_COLORS[status] || 'bg-gray-200 text-gray-700';
@@ -85,7 +86,12 @@ export function UserOrderDetail({ orderNumber, id, status, createdAt, items, sub
         <div className="flex items-center justify-between">
           <div className="space-y-1">
             <div className="text-xs font-medium text-muted-foreground">Order status</div>
-            <span className={`inline-block px-3 py-1 rounded-full text-xs font-semibold ${statusColor}`}>{status.replace(/_/g,' ')}</span>
+            <div className="flex gap-2 items-center flex-wrap">
+              <span className={`inline-block px-3 py-1 rounded-full text-xs font-semibold ${statusColor}`}>{status.replace(/_/g,' ')}</span>
+              <span className="inline-block px-2 py-1 rounded-full text-xs bg-blue-100 text-blue-900 dark:bg-blue-900/30 dark:text-blue-300">
+                {paymentMethod === 'pay_on_delivery' ? '💵 Pay on Delivery' : '💳 Chapa'}
+              </span>
+            </div>
           </div>
           <div className="hidden md:block w-full max-w-md">
             <Stepper steps={steps} />

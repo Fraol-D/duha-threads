@@ -46,6 +46,7 @@ export interface OrderDocument extends Document {
   totalAmount: number; // alias for subtotal (future: add shipping, tax)
   currency: string;
   status: OrderStatus;
+  paymentMethod: 'chapa' | 'pay_on_delivery';
   isCustomOrder: boolean;
   customOrderId?: Types.ObjectId | null;
   createdAt: Date;
@@ -101,6 +102,7 @@ const OrderSchema = new Schema<OrderDocument>(
       default: "PENDING",
       index: true
     },
+    paymentMethod: { type: String, enum: ['chapa', 'pay_on_delivery'], required: true, default: 'chapa' },
     isCustomOrder: { type: Boolean, required: true, default: false },
     customOrderId: { type: Schema.Types.ObjectId, ref: 'CustomOrder', default: null },
   },

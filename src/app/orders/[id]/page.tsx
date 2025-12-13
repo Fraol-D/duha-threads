@@ -9,6 +9,7 @@ interface OrderDoc {
   id: string;
   orderNumber?: string;
   status: string;
+  paymentMethod?: 'chapa' | 'pay_on_delivery';
   items: OrderItem[];
   subtotal: number;
   totalAmount: number;
@@ -47,6 +48,7 @@ export default function OrderDetailPage() {
           id: o.id,
           orderNumber: typeof o.orderNumber === 'string' ? o.orderNumber : undefined,
           status: o.status,
+          paymentMethod: o.paymentMethod || 'chapa',
           items: Array.isArray(o.items) ? o.items.map((raw: unknown) => {
             const it = raw as Record<string, unknown>;
             const unit = typeof it.unitPrice === 'number' ? it.unitPrice : (typeof it.price === 'number' ? it.price : 0);
@@ -84,6 +86,7 @@ export default function OrderDetailPage() {
       orderNumber: order.orderNumber,
       id: order.id,
       status: order.status,
+      paymentMethod: order.paymentMethod,
       createdAt: order.createdAt,
       items: order.items,
       subtotal: order.subtotal,
