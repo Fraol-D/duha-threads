@@ -5,7 +5,7 @@
 
 const MONGODB_URI =
   process.env.MONGODB_URI ||
-  "mongodb+srv://fraolashebir84:67tfWBkn10QWP81t@nodetest.6founly.mongodb.net/tshirt_app?retryWrites=true&w=majority&appName=nodeTest";
+  "mongodb+srv://nebasat2003_db_user:JVesEh9F5myJ4vkz@cluster0.aczk86e.mongodb.net/?appName=Cluster0";
 if (!process.env.MONGODB_URI) {
   console.log(
     "ℹ️ Using hardcoded fallback connection string. Set MONGODB_URI in .env.local to override."

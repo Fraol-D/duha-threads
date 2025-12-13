@@ -32,9 +32,23 @@ export interface PublicUser {
 type SerializableUser = UserDocument | HydratedDocument<UserDocument>;
 
 export function toPublicUser(doc: SerializableUser): PublicUser {
+
   const id = typeof doc._id === "string" ? doc._id : doc._id.toString();
-  const createdAt = doc.createdAt instanceof Date ? doc.createdAt : new Date(doc.createdAt);
-  const updatedAt = doc.updatedAt instanceof Date ? doc.updatedAt : new Date(doc.updatedAt);
+  // Handle missing or invalid date fields gracefully
+  let createdAt: Date;
+  let updatedAt: Date;
+  try {
+    createdAt = doc.createdAt ? new Date(doc.createdAt) : new Date();
+    if (isNaN(createdAt.getTime())) createdAt = new Date();
+  } catch {
+    createdAt = new Date();
+  }
+  try {
+    updatedAt = doc.updatedAt ? new Date(doc.updatedAt) : new Date();
+    if (isNaN(updatedAt.getTime())) updatedAt = new Date();
+  } catch {
+    updatedAt = new Date();
+  }
 
   return {
     id,

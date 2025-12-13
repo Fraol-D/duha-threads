@@ -10,6 +10,12 @@ import { Input } from "@/components/ui/Input";
 import { fadeInUp } from "@/lib/motion";
 
 export default function SignupPage() {
+    // Google sign-in handler (copied from login page)
+    async function onGoogle() {
+      setError("");
+      setLoading(true);
+      await (await import("next-auth/react")).signIn("google", { callbackUrl: "/profile" });
+    }
   const router = useRouter();
   const [formData, setFormData] = useState({
     name: "",
@@ -172,6 +178,14 @@ export default function SignupPage() {
             <Button type="submit" className="w-full shadow-lg shadow-primary/20" size="lg" disabled={loading}>
               {loading ? "Creating account..." : "Create account"}
             </Button>
+            <button
+              type="button"
+              disabled={loading}
+              onClick={onGoogle}
+              className="w-full rounded-lg border border-muted text-foreground py-2 font-medium transition hover:bg-muted/60 active:scale-[0.99] disabled:opacity-60 mt-2"
+            >
+              Continue with Google
+            </button>
           </form>
 
           <div className="text-center text-sm">

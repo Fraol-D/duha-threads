@@ -110,11 +110,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   },
   callbacks: {
     async signIn({ user }) {
-      const appUser = user as AppUser;
-      if (!appUser.email) return false;
-      const synced = await syncUserProfile({ email: appUser.email, name: appUser.name });
-      appUser.id = synced._id.toString();
-      appUser.role = synced.role;
+      if (!user.email) return false;
       return true;
     },
     async jwt({ token, user }) {
