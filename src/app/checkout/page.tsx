@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
+import { CreditCard, Wallet, Zap } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
 import { Textarea } from "@/components/ui/Textarea";
@@ -232,8 +233,13 @@ export default function CheckoutPage() {
             
             <div className="space-y-3 pt-2 border-t border-token">
               <h3 className="font-medium">Payment Method</h3>
-              <div className="flex items-center gap-4 flex-wrap">
-                <label className="flex items-center gap-2 cursor-pointer">
+              <div className="space-y-3">
+                {/* Stripe Card */}
+                <label className="flex items-center gap-3 p-4 border-2 rounded-lg cursor-pointer transition-all hover:bg-muted/30"
+                  style={{
+                    borderColor: paymentMethod === 'stripe' ? 'var(--ring)' : 'var(--muted-border)',
+                    backgroundColor: paymentMethod === 'stripe' ? 'rgba(var(--ring-rgb), 0.05)' : 'transparent',
+                  }}>
                   <input
                     type="radio"
                     name="paymentMethod"
@@ -242,9 +248,21 @@ export default function CheckoutPage() {
                     onChange={(e) => setPaymentMethod(e.target.value as 'chapa' | 'stripe' | 'pay_on_delivery')}
                     className="w-4 h-4"
                   />
-                  <span className="text-sm">💳 Stripe (Test)</span>
+                  <div className="flex-1 flex items-center gap-3">
+                    <CreditCard className="w-6 h-6" />
+                    <div className="flex-1">
+                      <div className="font-medium text-sm">Stripe Payment</div>
+                      <div className="text-xs text-muted-foreground">Credit/Debit Card</div>
+                    </div>
+                  </div>
                 </label>
-                <label className="flex items-center gap-2 cursor-pointer">
+
+                {/* Chapa Card */}
+                <label className="flex items-center gap-3 p-4 border-2 rounded-lg cursor-pointer transition-all hover:bg-muted/30"
+                  style={{
+                    borderColor: paymentMethod === 'chapa' ? 'var(--ring)' : 'var(--muted-border)',
+                    backgroundColor: paymentMethod === 'chapa' ? 'rgba(var(--ring-rgb), 0.05)' : 'transparent',
+                  }}>
                   <input
                     type="radio"
                     name="paymentMethod"
@@ -253,9 +271,21 @@ export default function CheckoutPage() {
                     onChange={(e) => setPaymentMethod(e.target.value as 'chapa' | 'stripe' | 'pay_on_delivery')}
                     className="w-4 h-4"
                   />
-                  <span className="text-sm">💸 Chapa</span>
+                  <div className="flex-1 flex items-center gap-3">
+                    <Zap className="w-6 h-6" />
+                    <div className="flex-1">
+                      <div className="font-medium text-sm">Chapa</div>
+                      <div className="text-xs text-muted-foreground">Payment Gateway (Test Mode)</div>
+                    </div>
+                  </div>
                 </label>
-                <label className="flex items-center gap-2 cursor-pointer">
+
+                {/* Pay on Delivery Card */}
+                <label className="flex items-center gap-3 p-4 border-2 rounded-lg cursor-pointer transition-all hover:bg-muted/30"
+                  style={{
+                    borderColor: paymentMethod === 'pay_on_delivery' ? 'var(--ring)' : 'var(--muted-border)',
+                    backgroundColor: paymentMethod === 'pay_on_delivery' ? 'rgba(var(--ring-rgb), 0.05)' : 'transparent',
+                  }}>
                   <input
                     type="radio"
                     name="paymentMethod"
@@ -264,7 +294,13 @@ export default function CheckoutPage() {
                     onChange={(e) => setPaymentMethod(e.target.value as 'chapa' | 'stripe' | 'pay_on_delivery')}
                     className="w-4 h-4"
                   />
-                  <span className="text-sm">💵 Pay on Delivery</span>
+                  <div className="flex-1 flex items-center gap-3">
+                    <Wallet className="w-6 h-6" />
+                    <div className="flex-1">
+                      <div className="font-medium text-sm">Pay on Delivery</div>
+                      <div className="text-xs text-muted-foreground">Cash on delivery</div>
+                    </div>
+                  </div>
                 </label>
               </div>
             </div>
