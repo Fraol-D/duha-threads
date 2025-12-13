@@ -22,6 +22,9 @@ export default function ProfileClient({ user }: ProfileClientProps) {
     setError(null);
     setIsLoggingOut(true);
     try {
+      // Clear our custom auth token
+      await fetch("/api/auth/signout", { method: "POST" });
+      // Then sign out from NextAuth
       await signOut({ callbackUrl: "/" });
     } catch (err) {
       console.error("Logout failed", err);

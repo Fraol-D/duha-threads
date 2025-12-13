@@ -46,7 +46,8 @@ export interface OrderDocument extends Document {
   totalAmount: number; // alias for subtotal (future: add shipping, tax)
   currency: string;
   status: OrderStatus;
-  paymentMethod: 'chapa' | 'pay_on_delivery';
+  paymentMethod: 'chapa' | 'stripe' | 'pay_on_delivery';
+  paymentVerified?: boolean; // tracks if payment was verified via Stripe/gateway
   isCustomOrder: boolean;
   customOrderId?: Types.ObjectId | null;
   createdAt: Date;
@@ -102,7 +103,8 @@ const OrderSchema = new Schema<OrderDocument>(
       default: "PENDING",
       index: true
     },
-    paymentMethod: { type: String, enum: ['chapa', 'pay_on_delivery'], required: true, default: 'chapa' },
+    paymentMethod: { type: String, enum: ['chapa', 'stripe', 'pay_on_delivery'], required: true, default: 'stripe' },
+    paymentVerified: { type: Boolean, default: false },
     isCustomOrder: { type: Boolean, required: true, default: false },
     customOrderId: { type: Schema.Types.ObjectId, ref: 'CustomOrder', default: null },
   },

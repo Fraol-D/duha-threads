@@ -17,6 +17,8 @@ export async function GET(req: NextRequest) {
     todayStart.setHours(0, 0, 0, 0);
     const tomorrowStart = new Date(todayStart.getTime() + 24 * 60 * 60 * 1000);
 
+    console.log('[DASHBOARD] Date range:', { todayStart, tomorrowStart });
+
     // Parallel queries for efficiency
     const [
       todayOrders,
@@ -29,13 +31,13 @@ export async function GET(req: NextRequest) {
       totalOrdersCount,
       totalCustomOrdersCount,
     ] = await Promise.all([
-      OrderModel.find({ createdAt: { $gte: todayStart, $lt: tomorrowStart } }, { total: 1 }).lean(),
+      OrderModel.find({ createdAt: { $gte: todayStart, $lt: tomorrowStart } }, { totalAmount: 1 }).lean(),
       CustomOrderModel.find(
         { createdAt: { $gte: todayStart, $lt: tomorrowStart } },
         { "pricing.finalTotal": 1, "pricing.estimatedTotal": 1 }
       ).lean(),
       UserModel.countDocuments({ createdAt: { $gte: todayStart, $lt: tomorrowStart } }),
-      OrderModel.find({}, { userId: 1, total: 1, status: 1, createdAt: 1 })
+      OrderModel.find({}, { userId: 1, totalAmount: 1, status: 1, createdAt: 1 })
         .sort({ createdAt: -1 })
         .limit(5)
         .lean(),
@@ -49,17 +51,25 @@ export async function GET(req: NextRequest) {
       CustomOrderModel.countDocuments({}),
     ]);
 
-    const todaySalesFromOrders = todayOrders.reduce((sum, o: any) => sum + (o.total || 0), 0);
+    const todaySalesFromOrders = todayOrders.reduce((sum, o: any) => sum + (o.totalAmount || 0), 0);
     const todaySalesFromCustom = todayCustomOrders.reduce(
       (sum, co: any) => sum + (co.pricing?.finalTotal ?? co.pricing?.estimatedTotal ?? 0),
       0
     );
     const todaySales = todaySalesFromOrders + todaySalesFromCustom;
+    
+    console.log('[DASHBOARD] Sales calculation:', {
+      todayOrders: todayOrders.length,
+      todayOrdersTotalAmount: todaySalesFromOrders,
+      todayCustomOrders: todayCustomOrders.length,
+      todayCustomOrdersTotal: todaySalesFromCustom,
+      todaySalesTotal: todaySales,
+    });
 
     // Simple structure for recent items
     const recentOrdersData = recentOrders.map((o: any) => ({
       id: o._id.toString(),
-      total: o.total,
+      total: o.totalAmount,
       status: o.status,
       createdAt: o.createdAt,
     }));

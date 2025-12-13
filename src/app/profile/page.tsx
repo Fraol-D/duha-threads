@@ -62,6 +62,9 @@ export default function ProfilePage() {
   }
 
   async function logout() {
+    // Clear our custom auth token
+    await fetch("/api/auth/signout", { method: "POST" });
+    // Then sign out from NextAuth
     await signOut({ callbackUrl: "/login" });
   }
 

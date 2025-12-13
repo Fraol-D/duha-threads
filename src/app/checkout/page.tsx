@@ -37,7 +37,7 @@ export default function CheckoutPage() {
   const [phone, setPhone] = useState("");
   const [notes, setNotes] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const [paymentMethod, setPaymentMethod] = useState<'chapa' | 'pay_on_delivery'>('chapa');
+  const [paymentMethod, setPaymentMethod] = useState<'chapa' | 'stripe' | 'pay_on_delivery'>('stripe');
   const total = useMemo(() => items.reduce((sum, i) => sum + (i.product?.basePrice || 0) * i.quantity, 0), [items]);
 
   useEffect(() => {
@@ -68,7 +68,7 @@ export default function CheckoutPage() {
     setSubmitting(true);
     try {
       if (paymentMethod === 'pay_on_delivery') {
-        // Create order directly without Chapa payment
+        // Create order directly without payment
         const res = await fetch("/api/checkout", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -85,12 +85,51 @@ export default function CheckoutPage() {
           setError(data.error || "Failed to create order");
           return;
         }
-        // Redirect to success page
         router.push(`/checkout/success?orderId=${data.orderId}`);
         return;
       }
 
-      // Chapa payment flow
+      if (paymentMethod === 'stripe') {
+        // First create a PENDING order for Stripe
+        const orderRes = await fetch("/api/checkout", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            deliveryName,
+            deliveryAddress,
+            phone,
+            notes,
+            paymentMethod: 'stripe',
+          }),
+        });
+        const orderData = await orderRes.json();
+        if (!orderRes.ok) {
+          setError(orderData.error || "Failed to create order");
+          return;
+        }
+
+        // Now create Stripe checkout session with the order ID
+        const stripeRes = await fetch("/api/stripe/create-checkout-session", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            amount: total,
+            currency: 'usd',
+            customerEmail: "test@example.com", // TODO: replace with real user email
+            orderId: orderData.orderId,
+          }),
+        });
+        const stripeData = await stripeRes.json();
+        if (!stripeRes.ok || !stripeData.url) {
+          setError(stripeData.error || "Failed to initialize Stripe payment");
+          return;
+        }
+        // Redirect to Stripe Checkout
+        window.location.href = stripeData.url;
+        return;
+      }
+
+      // Chapa payment flow (legacy)
       const tx_ref = `duha-${Date.now()}`;
       const res = await fetch("/api/chapa/initialize", {
         method: "POST",
@@ -98,7 +137,7 @@ export default function CheckoutPage() {
         body: JSON.stringify({
           amount: total.toFixed(2),
           currency: "ETB",
-          email: "test@example.com", // TODO: replace with real user email if available
+          email: "test@example.com",
           first_name: deliveryName.split(" ")[0] || deliveryName,
           last_name: deliveryName.split(" ").slice(1).join(" ") || deliveryName,
           phone_number: phone,
@@ -193,17 +232,28 @@ export default function CheckoutPage() {
             
             <div className="space-y-3 pt-2 border-t border-token">
               <h3 className="font-medium">Payment Method</h3>
-              <div className="flex items-center gap-4">
+              <div className="flex items-center gap-4 flex-wrap">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="paymentMethod"
+                    value="stripe"
+                    checked={paymentMethod === 'stripe'}
+                    onChange={(e) => setPaymentMethod(e.target.value as 'chapa' | 'stripe' | 'pay_on_delivery')}
+                    className="w-4 h-4"
+                  />
+                  <span className="text-sm">💳 Stripe (Test)</span>
+                </label>
                 <label className="flex items-center gap-2 cursor-pointer">
                   <input
                     type="radio"
                     name="paymentMethod"
                     value="chapa"
                     checked={paymentMethod === 'chapa'}
-                    onChange={(e) => setPaymentMethod(e.target.value as 'chapa' | 'pay_on_delivery')}
+                    onChange={(e) => setPaymentMethod(e.target.value as 'chapa' | 'stripe' | 'pay_on_delivery')}
                     className="w-4 h-4"
                   />
-                  <span className="text-sm">Pay with Chapa</span>
+                  <span className="text-sm">💸 Chapa</span>
                 </label>
                 <label className="flex items-center gap-2 cursor-pointer">
                   <input
@@ -211,10 +261,10 @@ export default function CheckoutPage() {
                     name="paymentMethod"
                     value="pay_on_delivery"
                     checked={paymentMethod === 'pay_on_delivery'}
-                    onChange={(e) => setPaymentMethod(e.target.value as 'chapa' | 'pay_on_delivery')}
+                    onChange={(e) => setPaymentMethod(e.target.value as 'chapa' | 'stripe' | 'pay_on_delivery')}
                     className="w-4 h-4"
                   />
-                  <span className="text-sm">Pay on Delivery</span>
+                  <span className="text-sm">💵 Pay on Delivery</span>
                 </label>
               </div>
             </div>
@@ -224,7 +274,7 @@ export default function CheckoutPage() {
               <span className="text-xl">${total.toFixed(2)}</span>
             </div>
             <Button type="submit" className="w-full" disabled={submitting}>
-              {submitting ? 'Processing…' : paymentMethod === 'chapa' ? 'Pay with Chapa' : 'Place Order'}
+              {submitting ? 'Processing…' : paymentMethod === 'stripe' ? 'Pay with Stripe' : paymentMethod === 'chapa' ? 'Pay with Chapa' : 'Place Order'}
             </Button>
             {error && <p className="text-red-600 text-sm">{error}</p>}
           </form>

@@ -9,7 +9,7 @@ interface OrderDoc {
   id: string;
   orderNumber?: string;
   status: string;
-  paymentMethod?: 'chapa' | 'pay_on_delivery';
+  paymentMethod?: 'chapa' | 'stripe' | 'pay_on_delivery';
   items: OrderItem[];
   subtotal: number;
   totalAmount: number;

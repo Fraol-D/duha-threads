@@ -54,7 +54,7 @@ export async function GET(request: NextRequest) {
       totalAmount: o.totalAmount ?? o.total ?? 0,
       currency: o.currency || 'USD',
       status: o.status,
-      paymentMethod: o.paymentMethod || 'chapa',
+      paymentMethod: o.paymentMethod || 'stripe',
       createdAt: o.createdAt,
       updatedAt: o.updatedAt,
       isCustomOrder: !!o.isCustomOrder,

@@ -16,12 +16,14 @@ const bodySchema = z.object({
   phone: z.string().min(5),
   email: z.string().email().optional(),
   notes: z.string().optional(),
-  paymentMethod: z.enum(['chapa', 'pay_on_delivery']).default('chapa'),
+  paymentMethod: z.enum(['chapa', 'stripe', 'pay_on_delivery']).default('stripe'),
 });
 
 export async function POST(req: Request) {
   const user = await getCurrentUser();
-  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  // Allow guest checkout - but for now require auth for simplicity
+  // TODO: Implement guest checkout if needed
+  if (!user) return NextResponse.json({ error: "Please log in to checkout" }, { status: 401 });
   if (!env.MONGODB_URI || !env.MONGODB_URI.startsWith("mongodb")) {
     return NextResponse.json({ error: "Database not configured" }, { status: 500 });
   }

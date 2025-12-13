@@ -86,7 +86,7 @@ interface AdminCustomOrder extends BaseCustomOrder {
     estimatedTotal: number;
     finalTotal?: number;
   };
-  paymentMethod?: 'chapa' | 'pay_on_delivery';
+  paymentMethod?: 'chapa' | 'stripe' | 'pay_on_delivery';
   statusHistory: Array<{
     status: string;
     changedAt: string;
@@ -282,7 +282,7 @@ export default function AdminCustomOrderDetailPage() {
             {order.status.replace(/_/g, " ")}
           </Badge>
           <Badge variant="secondary" className="text-sm md:text-base px-4 py-2">
-            {order.paymentMethod === 'pay_on_delivery' ? '💵 Pay on Delivery' : '💳 Chapa'}
+            {order.paymentMethod === 'pay_on_delivery' ? '💵 Pay on Delivery' : order.paymentMethod === 'stripe' ? '💳 Stripe' : '💸 Chapa'}
           </Badge>
         </div>
       </div>

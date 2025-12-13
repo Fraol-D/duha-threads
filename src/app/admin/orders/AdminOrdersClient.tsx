@@ -14,7 +14,7 @@ interface OrderListItem {
   totalAmount: number;
   currency: string;
   status: string;
-  paymentMethod?: 'chapa' | 'pay_on_delivery';
+  paymentMethod?: 'chapa' | 'stripe' | 'pay_on_delivery';
   createdAt: string;
   updatedAt: string;
   isCustomOrder: boolean;
@@ -198,7 +198,7 @@ export default function AdminOrdersClient() {
                         <td className="p-2">{formatCurrency(o.totalAmount)}</td>
                         <td className="p-2">
                           <span className="text-xs px-2 py-1 rounded-full inline-block bg-blue-100 text-blue-900 dark:bg-blue-900/30 dark:text-blue-300">
-                            {o.paymentMethod === 'pay_on_delivery' ? '💵 POD' : '💳 Chapa'}
+                            {o.paymentMethod === 'pay_on_delivery' ? '💵 POD' : o.paymentMethod === 'stripe' ? '💳 Stripe' : '💸 Chapa'}
                           </span>
                         </td>
                         <td className="p-2">

@@ -7,7 +7,7 @@ interface UserOrderDetailProps {
   orderNumber?: string;
   id: string;
   status: string;
-  paymentMethod?: 'chapa' | 'pay_on_delivery';
+  paymentMethod?: 'chapa' | 'stripe' | 'pay_on_delivery';
   createdAt: string;
   items: {
     name: string;
@@ -89,7 +89,7 @@ export function UserOrderDetail({ orderNumber, id, status, paymentMethod, create
             <div className="flex gap-2 items-center flex-wrap">
               <span className={`inline-block px-3 py-1 rounded-full text-xs font-semibold ${statusColor}`}>{status.replace(/_/g,' ')}</span>
               <span className="inline-block px-2 py-1 rounded-full text-xs bg-blue-100 text-blue-900 dark:bg-blue-900/30 dark:text-blue-300">
-                {paymentMethod === 'pay_on_delivery' ? '💵 Pay on Delivery' : '💳 Chapa'}
+                {paymentMethod === 'pay_on_delivery' ? '💵 Pay on Delivery' : paymentMethod === 'stripe' ? '💳 Stripe' : '💸 Chapa'}
               </span>
             </div>
           </div>
