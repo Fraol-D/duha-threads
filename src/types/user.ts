@@ -4,6 +4,7 @@ export interface UserDocument {
   _id: string | Types.ObjectId;
   name: string;
   email: string;
+  image?: string;
   hashedPassword?: string | null;
   role: "user" | "admin";
   status: "active" | "inactive";
@@ -19,6 +20,7 @@ export interface PublicUser {
   id: string;
   name: string;
   email: string;
+  image?: string;
   role: "user" | "admin";
   status: "active" | "inactive";
   phone?: string;
@@ -54,6 +56,7 @@ export function toPublicUser(doc: SerializableUser): PublicUser {
     id,
     name: doc.name,
     email: doc.email,
+    image: (doc as any).image,
     role: doc.role,
     status: (doc.status as "active" | "inactive") ?? "active",
     phone: doc.phone,
