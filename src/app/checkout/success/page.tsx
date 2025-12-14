@@ -1,11 +1,13 @@
-'use client';
+"use client";
+
+import { Suspense } from "react";
 
 import { MascotSlot } from "@/components/ui/MascotSlot";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 
-export default function CheckoutSuccessPage() {
+function CheckoutSuccessContent() {
   const searchParams = useSearchParams();
   const [verifying, setVerifying] = useState(false);
   const [verified, setVerified] = useState(false);
@@ -45,5 +47,13 @@ export default function CheckoutSuccessPage() {
         <Link href="/products" className="underline">Continue Shopping</Link>
       </div>
     </div>
+  );
+}
+
+export default function CheckoutSuccessPage() {
+  return (
+    <Suspense>
+      <CheckoutSuccessContent />
+    </Suspense>
   );
 }

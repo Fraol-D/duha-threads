@@ -3,6 +3,9 @@ import { getCurrentUser } from "@/lib/auth/session";
 import { isAdmin } from "@/lib/auth/admin";
 import { AdminShell, type AdminNavItem } from "@/components/admin/AdminShell";
 
+export const dynamic = "force-dynamic";
+export const fetchCache = "force-no-store";
+
 const navItems: AdminNavItem[] = [
   { label: "Dashboard", href: "/admin/dashboard", icon: "dashboard" },
   { label: "Orders", href: "/admin/orders", icon: "orders" },
