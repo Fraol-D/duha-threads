@@ -26,6 +26,9 @@ const schema = z.object({
   STRIPE_PUBLIC_KEY: z.string().optional(),
   STRIPE_SECRET_KEY: z.string().optional(),
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
+    CHAPA_SECRET_KEY: z.string().optional(),
+    CHAPA_PUBLIC_KEY: z.string().optional(),
+    CHAPA_ENCRYPTION_KEY: z.string().optional(),
 });
 
 // Build raw map from process.env (only accessing once here)
@@ -47,6 +50,9 @@ const raw = {
   STRIPE_PUBLIC_KEY: process.env.STRIPE_PUBLIC_KEY,
   STRIPE_SECRET_KEY: process.env.STRIPE_SECRET_KEY,
   NODE_ENV: process.env.NODE_ENV as string,
+    CHAPA_SECRET_KEY: process.env.CHAPA_SECRET_KEY,
+    CHAPA_PUBLIC_KEY: process.env.CHAPA_PUBLIC_KEY,
+    CHAPA_ENCRYPTION_KEY: process.env.CHAPA_ENCRYPTION_KEY,
 };
 
 const parsed = schema.safeParse(raw);
