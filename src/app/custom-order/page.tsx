@@ -490,7 +490,10 @@ export default function CustomOrderBuilderPage() {
                                   <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Content</label>
                                   <Input 
                                     value={active.designText ?? ''} 
-                                    onChange={(e)=>setPlacements(prev => prev.map(x => x.id===active.id ? { ...x, designText: e.currentTarget.value } : x))} 
+                                    onChange={(e)=>{
+                                      const v = e.currentTarget.value;
+                                      setPlacements(prev => prev.map(x => x.id===active.id ? { ...x, designText: v } : x));
+                                    }}
                                     placeholder={`Enter text for ${areaLabel(active.area)}`}
                                     className="bg-[--surface] border-none shadow-inner"
                                   />

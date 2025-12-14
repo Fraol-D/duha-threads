@@ -36,7 +36,7 @@ export default function LoginPage() {
   async function onGoogle() {
     setError(null);
     setLoading(true);
-    await signIn("google", { callbackUrl: "/" });
+    await signIn("google", { callbackUrl: "/profile" });
   }
 
   return (
