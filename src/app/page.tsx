@@ -3,6 +3,9 @@ import { getFeaturedProducts, getHeroProduct } from "@/lib/products/queries";
 import { getFeaturedReviews } from "@/lib/reviews/queries";
 import HomeClient from "../components/HomeClient";
 
+export const dynamic = "force-dynamic";
+export const fetchCache = "force-no-store";
+
 export default async function RootPage() {
   // Wrap in try-catch to handle DB connection failures gracefully
   try {
