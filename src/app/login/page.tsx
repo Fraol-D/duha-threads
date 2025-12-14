@@ -121,7 +121,7 @@ export default function LoginPage() {
 
             <div className="relative flex items-center gap-3 text-sm text-muted-foreground">
               <div className="flex-1 border-t border-[--muted-border]" />
-              <span className="px-2 flex-shrink-0">or continue with</span>
+              <span className="px-2 shrink-0">or continue with</span>
               <div className="flex-1 border-t border-[--muted-border]" />
             </div>
 

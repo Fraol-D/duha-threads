@@ -21,6 +21,7 @@ type AppUser = {
   email?: string | null;
   name?: string | null;
   role?: Role;
+  image?: string | null;
 };
 
 function resolveRole(email: string): "user" | "admin" {
@@ -121,10 +122,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   pages: {
     signIn: "/login",
   },
-  trustHost: true,
-  allowDangerousEmailAccountLinking: true,
   callbacks: {
-    async signIn({ user, account, profile, email, credentials }) {
+    async signIn({ user, account, profile }) {
       // Allow sign in for credentials
       if (account?.provider === 'credentials') return true;
 
@@ -167,13 +166,13 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       // Default: allow sign in
       return true;
     },
-    async jwt({ token, user, account, profile }) {
+    async jwt({ token, user }) {
       const appUser = user as AppUser | undefined;
       if (appUser) {
         token.id = appUser.id ?? token.id;
         token.role = appUser.role ?? (token.role as Role | undefined) ?? "user";
-        if ((appUser as any).image) {
-          token.image = (appUser as any).image;
+        if (appUser.image) {
+          token.image = appUser.image;
         }
       }
 
